@@ -39,6 +39,7 @@ class Environment:
             "dimensionality":'2D', #1D or 2D environment 
             "boundary_conditions":"solid", #solid vs periodic
             "scale": 1, #scale of environment
+            "aspect":1, #x/y aspect ratio 2D only
         }
         update_class_params(self, default_params)
         update_class_params(self, params)
@@ -54,11 +55,11 @@ class Environment:
             if self.boundary_conditions != 'periodic': 
                 self.walls = np.array(
                     [   [[0, 0], [0, self.scale]],
-                        [[0, self.scale], [self.scale, self.scale]],
-                        [[self.scale, self.scale], [self.scale, 0]],
-                        [[self.scale, 0], [0, 0]]])
-            self.centre = np.array([self.scale / 2, self.scale / 2])
-            self.extent = np.array([0, self.scale, 0, self.scale])
+                        [[0, self.scale], [self.aspect*self.scale, self.scale]],
+                        [[self.aspect*self.scale, self.scale], [self.aspect*self.scale, 0]],
+                        [[self.aspect*self.scale, 0], [0, 0]]])
+            self.centre = np.array([self.aspect*self.scale / 2, self.scale / 2])
+            self.extent = np.array([0, self.aspect*self.scale, 0, self.scale])
 
         # save some prediscretised coords
         self.discrete_coords = self.discretise_environment(dx=self.dx)
@@ -467,7 +468,7 @@ class Agent:
             #Bounce off walls you collide with
             elif True in wall_collisions:
                 colliding_wall = walls[np.argwhere(wall_collisions==True)[0][0]]
-                self.velocity = wall_bounce(self.velocity,colliding_wall)
+                self.velocity = 0.2*wall_bounce(self.velocity,colliding_wall)
                 self.pos += self.velocity * dt
 
             #Drift velocity set to move agent away from walls
@@ -589,8 +590,8 @@ class Agent:
                 fig, ax = self.Environment.plot_environment()
             s=15 * np.ones_like(time)
             if decay_point_size == True:
-                s = 15*np.exp((time - time[-1])/30)
-                s[(time[-1]-time)>120]*=0
+                s = 15*np.exp((time - time[-1])/10)
+                s[(time[-1]-time)>15]*=0
             c = ["C0"]*len(time)
             s[-1]=40
             c[-1]='r'
@@ -617,7 +618,7 @@ class Agent:
     
     def animate_trajectory(self,
                            t_end=None):
-        """Returns a real speed animation (anim) of the trajectory, 25fps. 
+        """Returns a real speed animation (anim) of the trajectory, 20fps. 
         Should be saved using comand like 
         anim.save("./where_to_save/animations.gif",dpi=300)
 
@@ -633,7 +634,7 @@ class Agent:
         def animate(i,fig,ax,t_max):
             t = self.history['t']
             t_start = t[0]
-            t_end = t[0]+(i+1)*40e-3
+            t_end = t[0]+(i+1)*50e-3
             ax.clear()
             if self.Environment.dimensionality == '2D':
                 fig, ax = self.Environment.plot_environment(fig=fig,ax=ax)
@@ -645,7 +646,7 @@ class Agent:
             return 
 
         fig,ax=self.plot_trajectory(0,10*self.dt)
-        anim = matplotlib.animation.FuncAnimation(fig,animate,interval=40,frames=int(t_end/40e-3),blit=False,fargs=(fig,ax,t_end))
+        anim = matplotlib.animation.FuncAnimation(fig,animate,interval=50,frames=int(t_end/50e-3),blit=False,fargs=(fig,ax,t_end))
         return anim
 
     def plot_position_heatmap(self,
@@ -748,7 +749,7 @@ class Neurons:
                 'place_cell_centres':None, #if given this will overwrite 'n',
                 'wall_geometry':'geodesic',
             #default grid cell params
-                "gridscale":0.4,
+                "gridscale":0.45,
                 "random_orientations":True,
                 "random_gridscales":True,
             #default boundary vector cell params
@@ -815,7 +816,7 @@ class Neurons:
             self.test_angles = np.array(test_angles)
             self.sigma_angle = (11.25/360)*2*np.pi #11.25 degrees as in de Cothi and Barry 2020
             self.tuning_angles = np.random.uniform(0,2*np.pi,size=self.n)
-            self.tuning_distances = np.maximum(0,np.random.normal(loc=0.2,
+            self.tuning_distances = np.maximum(0,np.random.normal(loc=0.15,
                                                              scale=0.1,
                                                              size=self.n))
             self.sigma_distances = self.tuning_distances/beta + xi
@@ -1157,7 +1158,7 @@ class Neurons:
         def animate(i,fig,ax,chosen_neurons,t_max):
             t = self.history['t']
             t_start = t[0]
-            t_end = t[0]+(i+1)*40e-3
+            t_end = t[0]+(i+1)*50e-3
             ax.clear()
             fig, ax = self.plot_rate_timeseries(t_start=t_start,t_end=t_end, chosen_neurons=chosen_neurons, plot_spikes=True, fig=fig, ax=ax,xlim=t_max)
             plt.close()
@@ -1165,7 +1166,7 @@ class Neurons:
 
         fig, ax = self.plot_rate_timeseries(t_start=0,t_end=10*self.Agent.dt,chosen_neurons=chosen_neurons,xlim=t_end)
         # fig, ax = plt.subplots()
-        anim = matplotlib.animation.FuncAnimation(fig,animate,interval=40,frames=int(t_end/40e-3),blit=False,fargs=(fig,ax,chosen_neurons,t_end))
+        anim = matplotlib.animation.FuncAnimation(fig,animate,interval=50,frames=int(t_end/50e-3),blit=False,fargs=(fig,ax,chosen_neurons,t_end))
         return anim
 
     def boundary_vector_preference_function(self,x):
@@ -1568,7 +1569,7 @@ def mountain_plot(X,
 
     NbyX = 0.7* NbyX / np.max(np.abs(NbyX))
     if fig is None and ax is None: 
-        fig, ax = plt.subplots(figsize=(3, len(NbyX)*5.5/25)) #~6mm gap between lines
+        fig, ax = plt.subplots(figsize=(4, len(NbyX)*5.5/25)) #~6mm gap between lines
     for i in range(len(NbyX)):
         ax.plot(X, NbyX[i] + i + 1, c=color)
         ax.fill_between(X, NbyX[i] + i + 1, i + 1, facecolor=fc)
