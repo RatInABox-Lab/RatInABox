@@ -468,7 +468,7 @@ class Agent:
             #Bounce off walls you collide with
             elif True in wall_collisions:
                 colliding_wall = walls[np.argwhere(wall_collisions==True)[0][0]]
-                self.velocity = 0.2*wall_bounce(self.velocity,colliding_wall)
+                self.velocity = 1*wall_bounce(self.velocity,colliding_wall)
                 self.pos += self.velocity * dt
 
             #Drift velocity set to move agent away from walls
@@ -579,7 +579,7 @@ class Agent:
             skiprate = max(1, int(scatter_distance / (approx_speed * dt)))
             trajectory = pos[startid:endid, :][::skiprate]
         if self.Environment.dimensionality == '1D':
-            scatter_distance = 0.04
+            scatter_distance = 0.02
             skiprate = max(1, int(scatter_distance / (approx_speed * dt)))
             trajectory = pos[startid:endid][::skiprate]
         time = t[startid:endid][::skiprate]
@@ -607,13 +607,19 @@ class Agent:
         if self.Environment.dimensionality == "1D":
             if fig is None and ax is None:
                 fig, ax = plt.subplots(figsize=(6, 3))
-            ax.scatter(time, trajectory,alpha=0.7)
+            ax.scatter(time/60, trajectory,alpha=0.7)
             ax.spines["left"].set_position(("data", t[startid]))
-            ax.set_xlabel("Time / s")
+            ax.set_xlabel("Time / min")
             ax.set_ylabel("Position / m")
             if xlim is not None: 
                 ax.set_xlim(right=xlim)
             ax.set_ylim(bottom=0,top=self.Environment.extent[1])
+            ax.spines["right"].set_color(None)
+            ax.spines["top"].set_color(None)
+            ax.set_xticks([t_start/60,t_end/60])
+            ex = self.Environment.extent
+            ax.set_yticks([ex[0],ex[1]])
+
         return fig, ax
     
     def animate_trajectory(self,

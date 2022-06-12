@@ -65,17 +65,28 @@ Env.add_wall([[0.3,0.0],[0.3,0.5]])
 ![](./readme_figs/walls.png)
 
 #### Boundary conditions 
-Boundary conditions can be "periodic" or "solid". Place cells and the Agent will respect boundaries accordingly.
+Boundary conditions can be "periodic" or "solid". Place cells and the Agent will respect boundaries accordingly. Initialise with 'solid' or 'periodic' boundary conditions with 
+```
+Env = Environment(
+    params = {'boundary_conditions':'periodic'} #or 'solid' (default)
+) 
+```
 ![](./figures/readme/boundary_conditions.png)
 
 #### 1- or 2-dimensions 
-Most features work in both 1 and 2 dimensions. Some don't (e.g. walls, boundary_vector_cells aren't defined in 1D)
-![](./figures/readme/one_dimension.pdf)
+Most features work in both 1 and 2 dimensions. The following figure shows 1 min of exploration of an agent in a 1D environment with periodic boundary conditions spanned by 10 place cells. 
+Initialise a 1- or 2D environmnet like 
+```
+Env = Environment(
+    params = {'dimensionality':'1D'} #or '2D' (default)
+) 
+```
+![](./figures/readme/one_dimension.png)
 
 
 ### (ii) `Agent()` features
 #### Wall repelling 
-Walls mildly repel the agents. Coupled with the finite turning speed this creates a combined effect that the agent is encourged over explore walls and corners (as shown in ...et al.). This can of course be turned off.
+Walls in the environment mildly "repel" the agent. Coupled with the finite turning speed this creates, somewhat counterintuitively, a combined effect where the agent is biased to  over-explore near walls and corners. This is displayed in the heatmaps below which summarise 1 hour of exploration with wall repulsion on (left) and off(right). Note increased time spent near walls in left, but not right plot. This bias is true of real rodent foraging behaviour. 
 ```
 Αg.walls_repel = True #False
 ```
@@ -91,7 +102,7 @@ Agent.speed_coherence_time = 3
 Agent.rotation_velocity_std = 0.1
 Agent.rotational_velocity_coherence_time = 3
 ```
-![](./figures/readme/walls_repel.pdf)
+![](./figures/readme/motion_model.pdf)
 
 
 #### Policy control 
