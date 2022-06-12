@@ -62,11 +62,11 @@ Arbitrarily add walls to the environment to replicate any desired maze structure
 ```
 Env.add_wall([[0.3,0.0],[0.3,0.5]])
 ```
-![](./readme_figs/walls.pdf)
+![](./readme_figs/walls.png)
 
 #### Boundary conditions 
 Boundary conditions can be "periodic" or "solid". Place cells and the Agent will respect boundaries accordingly.
-![](./figures/readme/boundary_conditions.pdf)
+![](./figures/readme/boundary_conditions.png)
 
 #### 1- or 2-dimensions 
 Most features work in both 1 and 2 dimensions. Some don't (e.g. walls, boundary_vector_cells aren't defined in 1D)
