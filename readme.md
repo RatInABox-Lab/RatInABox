@@ -15,7 +15,7 @@ RatInABox is a toolkit for simulating navigation and/or hippocampal-entorhinal c
 
 Here's an animation of the kind of simulation you can run. It shows an agent randomly exploring a 2D environment with a wall. Four populations of cells (place cells, grid cells, boundary vector cells and velocity cells) "fire" as the agent explores. Below shows the code needed to replicate this exact simulation (13 lines).
 
-![](./figures/readme/whole_simulation.gif)
+![](./readme_figs/whole_simulation.gif)
 
 ## Key features
 
