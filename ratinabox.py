@@ -431,7 +431,8 @@ class Agent:
         return
 
     def update(self, 
-               dt=None):
+               dt=None,
+               drift_velocity=None):
         """Movement policy update. 
             In principle this does a very simple thing: 
             • updates time by dt
@@ -522,6 +523,16 @@ class Agent:
                 noise_scale=self.speed_std,
                 coherence_time=self.speed_coherence_time))
             self.velocity = (speed_new/speed)*self.velocity
+
+            #drift velocity towards the drift velocity which has been passed into the update function
+            if drift_velocity is not None:
+                self.velocity += ornstein_uhlenbeck(
+                    dt=dt,
+                    x=self.velocity,
+                    drift=drift_velocity,
+                    noise_scale=0,
+                    coherence_time=0.3)
+
 
         elif self.Environment.dimensionality == "1D":
             self.pos = self.pos + dt*self.velocity
@@ -1029,9 +1040,11 @@ class Neurons:
         return fig, ax
 
     def plot_rate_map(self, 
-                      chosen_neurons="10", 
+                      chosen_neurons="all", 
                       plot_spikes=True,
-                      by_history=False,):
+                      by_history=False,
+                      fig=None,
+                      ax=None):
         """Plots rate maps of neuronal firing rates across the environment
         Args:
             chosen_neurons (): Which neurons to plot. string "10" will plot 10 of them, "all" will plot all of them, a list like [1,4,5] will plot cells indexed 1, 4 and 5. Defaults to "10".
@@ -1056,11 +1069,12 @@ class Neurons:
         if self.Agent.Environment.dimensionality == "2D":
             color = list(matplotlib.colors.to_rgba(self.color))
             coloralpha = color; coloralpha[-1]=0.5 
-            fig, ax = plt.subplots(
-                1,
-                len(chosen_neurons),
-                figsize=(3 * len(chosen_neurons), 3 * 1),
-                facecolor=coloralpha,
+            if fig is None and ax is None: 
+                fig, ax = plt.subplots(
+                    1,
+                    len(chosen_neurons),
+                    figsize=(3 * len(chosen_neurons), 3 * 1),
+                    facecolor=coloralpha,
             )
             if not hasattr(ax, "__len__"):
                 ax = [ax]
@@ -1112,7 +1126,8 @@ class Neurons:
                     rate_maps.append(rate_map)
                 rate_maps = np.array(rate_maps)
             
-            fig, ax = self.Agent.Environment.plot_environment(height=len(chosen_neurons))
+            if fig is None and ax is None:
+                fig, ax = self.Agent.Environment.plot_environment(height=len(chosen_neurons))
             fig, ax = mountain_plot(
                 X = x, 
                 NbyX = rate_maps, 
@@ -1140,7 +1155,7 @@ class Neurons:
         fig, ax = self.Agent.Environment.plot_environment()
         place_cell_centres = self.place_cell_centres
         ax.scatter(
-            place_cell_centres[:, 0], place_cell_centres[:, 1], c="C1", marker="x", s=15
+            place_cell_centres[:, 0], place_cell_centres[:, 1], c="C1", marker="x", s=15, zorder=2
         )
         return fig, ax
     
