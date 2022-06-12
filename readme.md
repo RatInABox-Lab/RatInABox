@@ -2,7 +2,7 @@
 
 ![](./readme_figs/whole_simulation.gif)
 
-RatInABox is a toolkit for simulating navigation and/or hippocampal-entorhinal cell types. Essentially it simulates a rat 🐀, with a brain🧠, in a box 📦. With it you can
+RatInABox is a toolkit for simulating navigation and/or hippocampal-entorhinal cell types. With it you can:
 
 * Generate pseudo-realistic trajectories for rats foraging/exploring 1 and 2D environments
 * Simulate spatially selective cells typically found in the Hippocampal-Entorhinal system (place cells, grid cells, boundary vector cells, and velocity cells). 
