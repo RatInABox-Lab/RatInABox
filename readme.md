@@ -7,9 +7,9 @@ RatInABox is a toolkit for simulating navigation and/or hippocampal-entorhinal c
 * Generate pseudo-realistic trajectories for rats foraging/exploring 1 and 2D environments
 * Simulate spatially selective cells typically found in the Hippocampal-Entorhinal system (place cells, grid cells, boundary vector cells, and velocity cells). 
 
-~~Gridworld~~ RatInABox represents a clean departure from pre-discretised "gridworld" models which have typically been used for simulating hippocampal navigation. Position and neuronal firing rates are calculated online with float precision. 
+This is not gridworld. RatInABox represents a clean departure from pre-discretised "gridworld" models which have typically been used for simulating hippocampal navigation. Position and neuronal firing rates are calculated online with float precision. 
 
-`RatInABox` contains just three classes: 
+`RatInABox` contains three classes: 
 
 1. `Environment()`: The environment/maze that the agent lives in. 1- or 2-dimensional. Handles geometry, walls, boundary conditions etc.
 2. `Agent()`: The agent (or "rat") moving around the Environment. 
@@ -62,7 +62,7 @@ Arbitrarily add walls to the environment to replicate any desired maze structure
 ```
 Env.add_wall([[0.3,0.0],[0.3,0.5]])
 ```
-![](./figures/readme/walls.pdf)
+![](./readme_figs/walls.pdf)
 
 #### Boundary conditions 
 Boundary conditions can be "periodic" or "solid". Place cells and the Agent will respect boundaries accordingly.
