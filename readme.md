@@ -1,18 +1,19 @@
 # RatInABox 🐀📦
 
-RatInABox is a toolkit for simulating pseudo-realistic motion in  and 2-dimensional environment. It simulates a rat 🐀 in a box 📦. With it you can
+RatInABox is a toolkit for simulating pseudo-realistic motion in continuous 1 and 2-dimensional environment. Essentially it simulates a rat 🐀 in a box 📦. With it you can
 
 * Generate pseudo-realistic trajectories for rats foraging/exploring 1 and 2D environments
-* Simulate spatially selective cells typically found in the Hippocampal-Entorhinal system (place cells, grid cells, boundary vector cells, and velocity cells).
+* Simulate spatially selective cells typically found in the Hippocampal-Entorhinal system (place cells, grid cells, boundary vector cells, and velocity cells). 
 
-This is not gridworld. This simulator is fundamentally continuous in both time and space. 
-There are three main classes: 
+~~Gridworld~~ RatInABox represents a clean departure from pre-discretised "gridworld" models which have so far been sued for simulating hippocampal navigation. Position and neuronal firing rates are calculated online with float precision. 
 
-1. `Environment()`: The environment/maze the agent lives in. 1 or 2D. Handles geometry, collision with walls, boundary conditions.
-2. `Agent()`: The agent or rat doing the exploring. Agents exist within an Environment. Agents move around the environment. 
-3. `Neurons()`: Neurons have firing rates determined by the agent (e.g. it's position i). Neurons exist with an Agent. 
+RatInABox contains just three classes: 
 
-Here's a pretty animation of the kind of simulation you can run. It shows an agent randomly exploring a 2D environment with a wall. Four place cells, A single gaussian place cell is located in the middle of hte environmetn and fires when the agent enters its receptive field. 
+1. `Environment()`: The environment/maze the agent lives in. 1- or 2-dimensional. Handles geometry, walls, boundary conditions etc.
+2. `Agent()`: The agent (or "rat") moving around the environment. 
+3. `Neurons()`: A population of neurons. Neurons have firing rates determined by the state of the agent (e.g. it's position). 
+
+Here's an animation of the kind of simulation you can run. It shows an agent randomly exploring a 2D environment with a wall. Four populations of cells  (place cells, grid cells, boundary vector cells and velcity cells) "fire" as the agent explore. Below shows the code needed to replicate this exact simulation (13 lines!).
 
 ![Example environments](./figures/readme/animation.gif)
 
@@ -27,5 +28,21 @@ Here's a pretty animation of the kind of simulation you can run. It shows an age
 ## Installation 
 
 ## Features 
+Here is a list of features loosely organised into three categories. Those pertaining to (i) Environment, (ii) Agent and (iii) the Neurons. 
 
-### 
+### (i) `Environment()` features
+#### Walls 
+Arbitrarily add walls to the environment to replicate any desired maze structure
+```
+Env.add_wall([])
+```
+
+#### Boundary conditions 
+#### 1- or 2-dimensions 
+
+
+### (ii) `Agent()` features
+#### 
+
+### (iii) `Neuron()` features 
+
