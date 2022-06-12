@@ -1,1207 +1,1251 @@
 import scipy
-from scipy import signal
-import scipy.stats
 import numpy as np
 import matplotlib
-import matplotlib.pyplot as plt
-import mpl_toolkits
-import pandas as pd
-from tqdm.notebook import tqdm
-import time
-
-import tomplotlib.tomplotlib as tpl
-
-tpl.figureDirectory = "./Figures/"
-tpl.setColorscheme(colorscheme=2)
-
+from matplotlib import pyplot as plt
 
 class Environment:
-    """Environment class: defines the environment and geometry of the world the agent lives in. 
-    This class needs no other classes to initialise it. It exists independently of 
-    Key functions: 
-        • get_distance: geodesic distance between two points (accounting for walls and boundary conditions)
-        • check_wall_intercepts: when the agent takes a "step" this function checks the agent deosn;t collide with a wall, if it does it adjusts the step accordingly 
+    """Environment class: defines the environment the agent lives in. 
+    This class needs no other classes to initialise it. It exists independently of any Agents or Neurons. 
+
+    A default parameters dictionary (with descriptions) can be fount in __init__()
+
+    List of functions...
+        ...that you might use:
+            • add_wall()
+            • sample_positions()
+            • plot_environment()
+        ...that you probably won't directly use:
+            • discretise_environment()
+            • get_vectors_between___accounting_for_environment()
+            • get_distances_between___accounting_for_environment()
+            • check_if_posision_is_in_environment()
+            • check_walls()
+            • apply_boundary_conditions()
+    Key variables:
+            • walls
+            • extent
+            • dimensionality
+            • boundary_conditions
     """
 
-    def __init__(self, params={}):
+    def __init__(self,
+                 params={}):
         """Initialise environment, takes as input a parameter dictionary who's values supercede a default dictionary.
 
         Args:
             params (dict, optional). Defaults to {}.
         """
         default_params = {
-            "maze_type": "one_room",
-            "scale": 1,
-            "aspect": 2,
-            "dx": 0.02,  # superficially discretises the environment for plotting purposes
+            "dimensionality":'2D', #1D or 2D environment 
+            "boundary_conditions":"solid", #solid vs periodic
+            "scale": 1, #scale of environment
         }
-        update_params(self, default_params)
-        update_params(self, params)
-        # defines walls of an environment
-        self.walls = {}
-        if self.maze_type == "one_room":
-            self.dimensionality = "2D"
-            self.walls["room1"] = np.array(
-                [
-                    [[0, 0], [0, self.scale]],
-                    [[0, self.scale], [self.scale, self.scale]],
-                    [[self.scale, self.scale], [self.scale, 0]],
-                    [[self.scale, 0], [0, 0]],
-                ]
-            )
-            self.extent = np.array([0, self.scale, 0, self.scale])
-            self.centre = np.array([self.scale / 2, self.scale / 2])
-        if self.maze_type == "one_room_one_wall":
-            self.dimensionality = "2D"
-            wall_pos = 0.75
-            self.walls["room1"] = np.array(
-                [
-                    [[0, 0], [0, self.scale]],
-                    [[0, self.scale], [self.scale, self.scale]],
-                    [[self.scale, self.scale], [self.scale, 0]],
-                    [[self.scale, 0], [0, 0]],
-                ]
-            )
-            self.walls["wall"] = np.array(
-                [
-                    [
-                        [wall_pos * self.scale, 0],
-                        [wall_pos * self.scale, wall_pos * self.scale],
-                    ]
-                ]
-            )
+        update_class_params(self, default_params)
+        update_class_params(self, params)
 
-            self.walls["wall_dontplot"] = np.array(
-                [
-                    [
-                        [wall_pos * self.scale, -3 * self.scale],
-                        [wall_pos * self.scale, wall_pos * self.scale],
-                    ]
-                ]
-            )
-            self.centre = np.array([self.scale / 2, self.scale / 2])
-            self.extent = np.array([0, self.scale, 0, self.scale])
-        if self.maze_type == "one_room_rectangle":
-            self.dimensionality = "2D"
-            self.walls["room1"] = np.array(
-                [
-                    [[0, 0], [0, self.scale]],
-                    [[0, self.scale], [self.aspect * self.scale, self.scale]],
-                    [
-                        [self.aspect * self.scale, self.scale],
-                        [self.aspect * self.scale, 0],
-                    ],
-                    [[self.aspect * self.scale, 0], [0, 0]],
-                ]
-            )
-            self.extent = np.array([0, self.aspect * self.scale, 0, self.scale])
-            self.centre = np.array([self.aspect * self.scale / 2, self.scale / 2])
+        self.dx=0.01 #superficially discretises the environment for plotting purposes only 
 
-        if self.maze_type == "one_room_periodic":
-            self.dimensionality = "2D"
-            self.extent = np.array([0, self.scale, 0, self.scale])
-            self.centre = np.array([self.scale / 2, self.scale / 2])
-
-        if self.maze_type == "loop":
-            self.dimensionality = "1D"
-            self.radius = self.scale / (2 * np.pi)
+        if self.dimensionality == "1D":
             self.extent = np.array([0, self.scale])
+            self.centre = np.array([self.scale / 2, self.scale / 2])
+
+        self.walls = np.array([])
+        if self.dimensionality == "2D":
+            if self.boundary_conditions != 'periodic': 
+                self.walls = np.array(
+                    [   [[0, 0], [0, self.scale]],
+                        [[0, self.scale], [self.scale, self.scale]],
+                        [[self.scale, self.scale], [self.scale, 0]],
+                        [[self.scale, 0], [0, 0]]])
+            self.centre = np.array([self.scale / 2, self.scale / 2])
+            self.extent = np.array([0, self.scale, 0, self.scale])
 
         # save some prediscretised coords
-        self.discrete_coords = self.discretise_space(dx=self.dx)
+        self.discrete_coords = self.discretise_environment(dx=self.dx)
         self.flattened_discrete_coords = self.discrete_coords.reshape(
             -1, self.discrete_coords.shape[-1]
         )
 
-    def discretise_space(self, dx=0.02):
-        """Discretises the environment 
+    def add_wall(self, 
+                 wall):
+        """Add a wall to the (2D) environment.
+        Extends self.walls array to include one new wall. 
         Args:
-            dx (float): discretisation distance
-        Returns:
-            array: and Ny x Mx x 2 array of position coordinates or Nx x 1 for 1D
-
-        """  # returns a 2D array of locations discretised by dx
-        if self.dimensionality == "2D":
-            [minx, maxx, miny, maxy] = list(self.extent)
-            self.x_array = np.arange(minx + dx / 2, maxx, dx)
-            self.y_array = np.arange(miny + dx / 2, maxy, dx)[::-1]
-            x_mesh, y_mesh = np.meshgrid(self.x_array, self.y_array)
-            coordinate_mesh = np.array([x_mesh, y_mesh])
-            discrete_coords = np.swapaxes(np.swapaxes(coordinate_mesh, 0, 1), 1, 2)
-            return discrete_coords
-
-        elif self.dimensionality == "1D":
-            if self.maze_type == "loop":
-                dtheta = 2 * np.pi / (int((2 * np.pi * self.radius) / dx))
-                self.theta_array = np.arange(0 + dtheta / 2, 2 * np.pi, dtheta)
-                discrete_coords = self.radius * self.theta_array.reshape(-1, 1)
-                return discrete_coords
-
-    def get_distance(self, pos1, pos2, return_vector_aswell=False):
-        """Takes two position arrays and returns the array of pair-wise distances between points in
-        Eventually this will take into account walls, locomotion costs etc. 
-        Args:
-            pos1 (array): N x dimensionality array of poisitions
-            pos2 (array): M x dimensionality array of positions
-        Returns:
-            N x M array of pairwise distances
-        """
-        pos1_ = pos1.reshape(-1, 1, pos1.shape[-1])
-        pos2_ = pos2.reshape(1, -1, pos2.shape[-1])
-        pos1 = np.repeat(pos1_, pos2_.shape[1], axis=1)
-        pos2 = np.repeat(pos2_, pos1_.shape[0], axis=0)
-        lines = np.stack((pos1, pos2), axis=-2)
-        # print(lines)
-        vectors = lines[..., 0, :] - lines[..., 1, :]
-        if self.dimensionality == "2D":
-            if self.maze_type == "one_room_one_wall":
-                wall = self.walls["wall_dontplot"][0]
-                wall_ = wall
-                distances = np.linalg.norm(vectors, axis=-1).reshape(-1)
-                wall = wall_.reshape((1, 1,) + wall.shape)
-                wall = np.repeat(wall, lines.shape[0], axis=0)
-                wall = np.repeat(wall, lines.shape[1], axis=1)
-                line_and_walls = np.stack((lines, wall), axis=-3)
-                line_and_walls = line_and_walls.reshape(
-                    (-1,) + line_and_walls.shape[-3:]
-                )
-                line_and_walls = line_and_walls + np.random.normal(
-                    scale=1e-4, size=line_and_walls.shape
-                )
-                intersect_ = intersect(line_and_walls)
-                to_top_of_wall = np.linalg.norm(pos1_ - wall_[0], axis=-1).reshape(
-                    -1, 1
-                )
-                from_top_of_wall = np.linalg.norm(wall_[0] - pos2_, axis=-1).reshape(
-                    1, -1
-                )
-                to_bottom_of_wall = np.linalg.norm(pos1_ - wall_[1], axis=-1).reshape(
-                    -1, 1
-                )
-                from_bottom_of_wall = np.linalg.norm(wall_[1] - pos2_, axis=-1).reshape(
-                    1, -1
-                )
-                top_route = (to_top_of_wall + from_top_of_wall).reshape(-1)
-                bottom_route = (to_bottom_of_wall + from_bottom_of_wall).reshape(-1)
-                new_quickest_route = np.minimum(top_route, bottom_route)
-                distances[intersect_] = new_quickest_route[intersect_]
-                distances = distances.reshape(pos1_.shape[0], pos2_.shape[1])
-            elif self.maze_type == "one_room_periodic":
-                flip = np.abs(vectors) > (self.scale / 2)
-                vectors[flip] = -np.sign(vectors[flip]) * (
-                    self.scale - np.abs(vectors[flip])
-                )
-                distances = np.linalg.norm(vectors, axis=-1)
-            else:
-                distances = np.linalg.norm(vectors, axis=-1)  # shape = N x M
-
-        if self.dimensionality == "1D":
-            if self.maze_type == "loop":
-                distances = np.linalg.norm(vectors, axis=-1)  # shape = N x M
-                overhalfways = vectors[distances > np.pi * self.radius]
-                vectors[distances > np.pi * self.radius] = -np.sign(overhalfways) * (
-                    2 * np.pi * self.radius - np.abs(overhalfways)
-                )
-                distances = np.linalg.norm(vectors, axis=-1)
-
-        if return_vector_aswell == True:
-            return distances, vectors
+            wall (np.array): 2x2 array [[x1,y1],[x2,y2]]
+        """  
+        assert self.dimensionality == "2D", "can only add walls into a 2D environment"      
+        wall = np.expand_dims(np.array(wall),axis=0)
+        if len(self.walls) == 0: 
+            self.walls = wall
         else:
-            return distances
+            self.walls = np.concatenate((self.walls,wall),axis=0)
+        return 
 
-    def sample_pos(self):
-        """Returns a random position in the environment
-        """
-        ex = self.extent
-        if self.dimensionality == "2D":
-            position = np.array(
-                [np.random.uniform(ex[0], ex[1]), np.random.uniform(ex[2], ex[3])]
-            )
-        if self.dimensionality == "1D":
-            position = np.array([np.random.uniform(0, 2 * np.pi)])
-        return position
-
-    def scatter_feature_centres(self, n=10, jitter=False, random=False):
-        """Evenly (if jitter=False) scatters n locations across the environment which can act as, for example, the centres of gaussian place fields. 
+    def sample_positions(self, 
+                         n=10,
+                        method="uniform_jitter"):
+        """Scatters n locations across the environment which can act as, for example, the centres of gaussian place fields, or as a random starting position. 
+        If method == "uniform" an evenly spaced grid of locations is returns.  If "uniform_jitter" these locations are jittered slightly. Note is n doesn't uniformly divide the size (i.e. n !/ m^2 in a square environment) then the largest number that can be scattered uniformly are found, the remaining are randomly placed. 
         Args:
-            n (int): noumber of features 
-            jitter (bool, optional): jitter the feature locations a bit. Defaults to False.
-
+            n (int): number of features 
+            method: "uniform", "uniform_jittered" or "random" for how points are distributed
+            true_random: if True, just randomly scatters point
         Returns:
-            _type_: _description_
+            array: (n x dimensionality) of positions 
         """
-        if self.dimensionality == "2D":
-            if random == True:
-                centres = np.random.uniform(size=(n, 2))
-                centres[:, 0] *= self.extent[1] - self.extent[0]
-                centres[:, 1] *= self.extent[3] - self.extent[2]
-            else:
+        if self.dimensionality == "1D":
+            if method == "random":
+                positions = np.random.uniform(self.extent[0],self.extent[1],size=(n,1))
+            elif method[:7] == "uniform":
+                dx = self.scale / n
+                positions = np.arange(0 + dx/2, self.scale, dx).reshape(-1, 1)
+                if method[7:] == "_jitter":
+                    positions += np.random.uniform(
+                        -0.45 * dx, 0.45 * dx, positions.shape)
+            return positions
+
+        elif self.dimensionality == "2D":
+            if method == "random":
+                positions = np.random.uniform(size=(n, 2))
+                positions[:, 0] *= self.extent[1] - self.extent[0]
+                positions[:, 1] *= self.extent[3] - self.extent[2]
+            elif method[:7] == "uniform":
                 ex = self.extent
                 area = (ex[1] - ex[0]) * (ex[3] - ex[2])
                 delta = np.sqrt(area / n)
                 x = np.arange(ex[0] + delta / 2, ex[1] - delta / 2 + 1e-6, delta)
                 y = np.arange(ex[2] + delta / 2, ex[3] - delta / 2 + 1e-6, delta)
-                centres = np.array(np.meshgrid(x, y)).reshape(2, -1).T
-                if jitter == True:
-                    centres += np.random.uniform(
-                        -0.45 * delta, 0.45 * delta, centres.shape
-                    )
-            return centres
+                positions = np.array(np.meshgrid(x, y)).reshape(2, -1).T
+                n_uniformly_distributed = positions.shape[0]
+                if method[7:] == "_jitter":
+                    positions += np.random.uniform(-0.45 * delta, 0.45 * delta, positions.shape)
+                n_remaining = n - n_uniformly_distributed
+                if n_remaining > 0: 
+                    positions_remaining = self.sample_positions(n=n_remaining,method="random")
+                    positions = np.vstack((positions,positions_remaining))
+            return positions
+                                
+    def plot_environment(self,
+                         fig=None,
+                         ax=None,
+                         height=1):
+        """Plots the environment, dark grey lines show the walls
+        Args:        
+            fig,ax: the fig and ax to plot on (can be None)
+            height: if 1D, how many line plots will be stacked (5.5mm per line)
+        Returns:
+            fig, ax: the environment figures, can be used for further downstream plotting.
+        """        
 
-        elif self.dimensionality == "1D":
-            if self.maze_type == "loop":
-                dtheta = 2 * np.pi / n
-                centres = self.radius * np.arange(
-                    0 + dtheta / 2, 2 * np.pi, dtheta
-                ).reshape(-1, 1)
-                if jitter == True:
-                    centres += np.random.uniform(
-                        -0.45 * dtheta, 0.45 * dtheta, centres.shape
-                    )
-                return centres
+        if self.dimensionality == '1D':
+            extent = self.extent
+            fig, ax = plt.subplots(
+                    figsize=(3*(extent[1] - extent[0]),height*(5.5/25))
+                )
+            ax.set_xlim(left=extent[0],right=extent [1])
+            ax.spines['left'].set_color('none')
+            ax.spines['right'].set_color('none')        
+            ax.spines['bottom'].set_position('zero')
+            ax.spines['top'].set_color('none')
+            ax.set_yticks([])
+            ax.set_xticks([extent[0],extent[1]])
+            ax.set_xlabel("Position / m")
 
-    def check_wall_intercepts(self, proposed_step):
-        """Given the curent proposed step [currentPos, nextPos] it calculates the perpendicular distance [#1,float] to the nearest wall [#2,array] (from next pos). It also checks if there is an immediate collison [#3,bool] with any wall [#4,array] on the current step (though this should be uneccesary if the handles te warning appropriately)
+        if self.dimensionality == '2D':
+            extent, walls = self.extent, self.walls
+            if fig is None and ax is None: 
+                fig, ax = plt.subplots(
+                    figsize=(3*(extent[1] - extent[0]), 3*(extent[3] - extent[2]))
+                )
+            background = matplotlib.patches.Rectangle((extent[0],extent[2]),extent[1],extent[3],facecolor='lightgrey',zorder=-1)
+            ax.add_patch(background)
+            for wall in walls:
+                ax.plot(
+                    [wall[0][0], wall[1][0]],
+                    [wall[0][1], wall[1][1]],
+                    color="grey",
+                    linewidth=4,
+                )
+            ax.set_aspect("equal")
+            ax.grid(False)
+            ax.axis("off")
+            ax.set_xlim(left=extent[0]-0.03,right=extent[1]+0.03)
+            ax.set_ylim(bottom=extent[2]-0.03,top=extent[3]+0.03)
+        return fig, ax
+
+    def discretise_environment(self,
+                               dx=None):
+        """Discretises the environment, for plotting purposes.
+        Returns an array of positions spanning the environment 
+        Important: this discretisation is not used for geometry or firing rate calculations which are precise. Its typically used if you want to, say, display the receptive field of a neuron so you want to calculate its firing rate at all points across the environment and plot those. 
+        Args:
+            dx (float): discretisation distance
+        Returns:
+            array: and Ny x Mx x 2 array of position coordinates or Nx x 1 for 1D
+        """  # returns a 2D array of locations discretised by dx
+        if dx is None: dx = self.dx
+        [minx, maxx] = list(self.extent[:2])
+        self.x_array = np.arange(minx + dx / 2, maxx, dx)
+        discrete_coords = self.x_array.reshape(-1,1)
+        if self.dimensionality == "2D":
+            [miny,maxy] = list(self.extent[2:])
+            self.y_array = np.arange(miny + dx / 2, maxy, dx)[::-1]
+            x_mesh, y_mesh = np.meshgrid(self.x_array, self.y_array)
+            coordinate_mesh = np.array([x_mesh, y_mesh])
+            discrete_coords = np.swapaxes(np.swapaxes(coordinate_mesh, 0, 1), 1, 2)
+        return discrete_coords
+
+    def get_vectors_between___accounting_for_environment(self, 
+     pos1=None,
+     pos2=None,
+     line_segments=None):
+        """Takes two position arrays and returns the array of pair-wise vectors from pos1's to pos2's, taking into account boundary conditions. Unlike the global function "get_vectors_between()' (which this calls) this additionally accounts for the boundaries such that if two positions fall on either sides of the boundary AND boundary cons are periodic then the returned shortest vector actually goes around the loop, not across the environment)... 
+            pos1 (array): N x dimensionality array of poisitions
+            pos2 (array): M x dimensionality array of positions
+            wall_geometry: how the distance calculation handles walls in the env
+        Returns:
+            N x M x dimensionality array of pairwise vectors 
+        """
+        vectors = get_vectors_between(pos1=pos1,pos2=pos2,line_segments=line_segments)
+        if self.boundary_conditions == "periodic":
+                flip = np.abs(vectors) > (self.scale / 2)
+                vectors[flip] = -np.sign(
+                    vectors[flip])*(self.scale-np.abs(vectors[flip]))
+        return vectors
+
+    def get_distances_between___accounting_for_environment(self,
+     pos1,
+     pos2,
+     wall_geometry='euclidean'):
+        """Takes two position arrays and returns the array of pair-wise distances between points, taking into account walls and boundary conditions. Unlike the global function get_distances_between() (which this one, at times, calls) this additionally accounts for the boundaries and walls in the environment)... 
+        ...For example, geodesic geometry estimates distance by shortest walk...line_of_sight geometry distance is euclidean but if there is a wall in between two positions (i.e. no line of sight) then the returned distance is "very high"...if boundary conditions are periodic distance is via the shortest possible route, which may or may not go around the back. euclidean geometry essentially ignores walls when calculating distances between two points.
+        Allowed geometries, typically passed from the neurons class, are "euclidean", "geodesic" or "line_of_sight"
+        Args:
+            pos1 (array): N x dimensionality array of poisitions
+            pos2 (array): M x dimensionality array of positions
+            wall_geometry: how the distance calculation handles walls in the env
+        Returns:
+            N x M array of pairwise distances 
+        """
+
+        line_segments = get_line_segments_between(pos1=pos1,pos2=pos2) 
+        vectors = self.get_vectors_between___accounting_for_environment(pos1=None,pos2=None,line_segments=line_segments)
+
+        #shorthand
+        walls = self.walls
+        dimensionality = self.dimensionality
+        boundary_conditions = self.boundary_conditions
+
+        if dimensionality == "1D":
+            distances = get_distances_between(vectors=vectors)
+
+
+        if dimensionality == "2D":
+            if wall_geometry == 'euclidean':
+                distances = get_distances_between(vectors=vectors)
+            
+            if wall_geometry == 'line_of_sight': 
+                assert boundary_conditions == 'solid', "line of sight geometry not available for periodic boundary conditions"
+                #if a wall obstructs line-of-sight between two positions, distance is set to 1000
+                internal_walls = walls[4:] #only the internal walls (not room walls) are worth checking
+                mask = np.ones(vectors.shape[:2])
+                line_segments_ = line_segments.reshape(-1, *line_segments.shape[-2:])
+                wall_obstructs_view_of_cell = vector_intercepts(line_segments_,
+                                                               internal_walls,
+                                                               return_collisions=True)
+                wall_obstructs_view_of_cell = wall_obstructs_view_of_cell.reshape(line_segments.shape[:2])
+                distances = get_distances_between(vectors=vectors)
+                distances[wall_obstructs_view_of_cell==True] = 1000
+            
+            if wall_geometry == 'geodesic':
+                assert boundary_conditions == 'solid', "line of sight geometry not available for periodic boundary conditions"
+                assert len(walls) <= 5, "unfortunately geodesic geomtry is only defined in closed rooms with one additional wall"
+                distances = get_distances_between(vectors=vectors)
+                if len(walls) == 4: 
+                    pass
+                else:
+                    wall = walls[4]
+                    via_wall_distances = []
+                    for part_of_wall in wall: 
+                        wall_edge = np.expand_dims(part_of_wall,axis=0)
+                        if self.check_if_position_is_in_environment(part_of_wall):
+                            distances_via_part_of_wall = (
+                            get_distances_between(pos1,wall_edge)
+                            +
+                            get_distances_between(wall_edge,pos2))
+                            via_wall_distances.append(distances_via_part_of_wall)
+                    via_wall_distances = np.array(via_wall_distances)
+                    line_segments_ = line_segments.reshape(-1, *line_segments.shape[-2:])
+                    wall_obstructs_view_of_cell = vector_intercepts(line_segments_,
+                                                               np.expand_dims(wall,axis=0),
+                                                               return_collisions=True)
+                    wall_obstructs_view_of_cell = wall_obstructs_view_of_cell.reshape(line_segments.shape[:2])
+                    flattened_distances = distances.reshape(-1)
+                    flattened_wall_obstructs_view_of_cell = wall_obstructs_view_of_cell.reshape(-1)
+                    flattened_distances[flattened_wall_obstructs_view_of_cell] = np.amin(via_wall_distances,axis=0).reshape(-1)[flattened_wall_obstructs_view_of_cell]
+                    distances = flattened_distances.reshape(distances.shape)
+                
+        return distances
+
+    def check_if_position_is_in_environment(self, 
+                                            pos):
+        """Returns True if np.array(pos) is INside the environment
+        Points EXACTLY on the edge of the environment are NOT classed as being inside the environment. This is relevant in geodesic geometry calculations since routes past the edge of a wall connection with the edge of an environmnet are not valid routes.
+        Args:
+            pos (array): np.array([x,y])
+        Returns:
+            bool: True if pos is inside environment.
+        """        
+        pos = np.array(pos).reshape(-1)
+        if self.dimensionality == '2D':
+            if ((pos[0] > self.extent[0]) and
+                (pos[0] < self.extent[1]) and
+                (pos[1] > self.extent[2]) and 
+                (pos[1] < self.extent[3])):
+                return True
+            else: 
+                return False
+        elif self.dimensionality == '1D':
+            if ((pos[0] > self.extent[0]) and
+                (pos[0] < self.extent[1])):
+                return True
+            else: 
+                return False
+    
+    def check_walls(self,
+                    proposed_step):
+        """Given proposed step [current_pos, next_pos] it returns three lists 
+        1. a list of all the walls in the environment #shape=(N_walls,2,2)
+        2. a boolean list of whether the step directly crosses (collides with) any of these walls  #shape=(N_walls,)
+        3. a list of the vectors of shortest distance from all the walls to current_pos #shape=(N_walls,2)
         Args:
             proposed_step (array): The proposed step. np.array( [ [x_current, y_current] , [x_next, y_next] ] )
-
         Returns:
-            tuple: (#1,#2,#3,#4)
+            tuple: (1,2,3)
         """
-        s1, s2 = np.array(proposed_step[0]), np.array(proposed_step[1])
-        pos = s1
-        ds = s2 - s1
-        stepLength = np.linalg.norm(ds)
-        ds_perp = get_perpendicular(ds)
-        collisionList = [[], []]
-        futureCollisionList = [[], []]
+        if self.dimensionality == '1D': 
+            #no walls in 1D to collide with 
+            return (None, None, None)
+        elif self.dimensionality == '2D':
+            if (self.walls is None) or (len(self.walls) == 0): 
+                #no walls to collide with 
+                return (None, None, None)
+            elif self.walls is not None: 
+                walls = self.walls
+                wall_collisions = vector_intercepts(walls,proposed_step,return_collisions=True).reshape(-1)
+                walls_to_pos_vectors = shortest_vectors_from_points_to_lines(proposed_step[0],walls)
+                walls_to_pos_vectors = walls_to_pos_vectors.reshape(walls_to_pos_vectors.shape[-2:])
+                return (walls,wall_collisions,walls_to_pos_vectors)
 
-        closest_wall_distance = None
-        closest_wall = None
-        collision_now = False
-        collision_now_wall = None
-
-        # check if the current step results in a collision
-        walls = self.walls  # current wall state
-        for room in walls.keys():
-            for wall in walls[room]:
-                w1, w2 = np.array(wall[0]), np.array(wall[1])
-                dw = w2 - w1
-                dw_perp = get_perpendicular(dw)
-                # calculates point of intercept between the line passing along the current step direction and the lines passing along the walls,
-                # if this intercept lies on the current step and on the current wall (0 < lam_s < 1, 0 < lam_w < 1) this implies a "collision"
-                # if it lies ahead of the current step and on the current wall (lam_s > 1, 0 < lam_w < 1) then we should "veer" away from this wall
-                # this occurs iff the solution to s1 + lam_s*(s2-s1) = w1 + lam_w*(w2 - w1) satisfies 0 <= lam_s & lam_w <= 1
-                with np.errstate(divide="ignore"):
-                    lam_s = (np.dot(w1, dw_perp) - np.dot(s1, dw_perp)) / (
-                        np.dot(ds, dw_perp)
-                    )
-                    lam_w = (np.dot(s1, ds_perp) - np.dot(w1, ds_perp)) / (
-                        np.dot(dw, ds_perp)
-                    )
-                # there are two situations we need to worry about:
-                # • 0 < lam_s < 1 and 0 < lam_w < 1: the collision is ON the current proposed step . Do something immediately.
-                # • lam_s > 1     and 0 < lam_w < 1: the collision is on the current trajectory, some time in the future. Maybe do something.
-                if (0 <= lam_s <= 1) and (0 <= lam_w <= 1):
-                    collision_now = True
-                    collision_now_wall = wall
-
-                # calculate the shortest distance from the current point (s1) to the wall segment.
-                # This is done by solving w1+lam.(w2-w1)+gam(dw_perp)=s1.
-                # If 0<lam<1 then the shortest distance is gam.||dw_perp||
-                # Else, distance is min(||s1-w1||,||s1-w2||)
-                lam = np.dot((s2 - w1), dw) / np.dot(dw, dw)
-                gam = np.dot((s2 - w1), dw_perp) / np.dot(dw_perp, dw_perp)
-                if 0 < lam < 1:
-                    D = np.abs(gam * np.dot(dw_perp, dw_perp))
-                else:
-                    D = min(np.linalg.norm(s2 - w1), np.linalg.norm(s2 - w2))
-                if (closest_wall_distance is None) or (D < closest_wall_distance):
-                    closest_wall_distance = D
-                    closest_wall = wall
-        return (closest_wall_distance, closest_wall, collision_now, collision_now_wall)
+    def apply_boundary_conditions(self,
+                                  pos):
+        """Performs a boundary check. If pos is OUTside the environment and the boundary conditions are solid then it is returned 1cm within it. If pos is OUTside the environment but boundary conditions are periodic its position is looped to the other side
+        Args:
+            pos (np.array): 1 or 2 dimensional position
+        returns new_pos
+        """        
+        if self.check_if_position_is_in_environment(pos) is False:
+            if self.dimensionality =='1D':
+                if self.boundary_conditions == 'periodic':
+                    pos = pos % self.extent[1]
+                if self.boundary_conditions == 'solid':
+                    pos = min(max(pos,self.extent[0]+0.01),self.extent[1]-0.01)
+                    pos = np.reshape(pos,(-1))
+            if self.dimensionality == '2D':
+                if self.boundary_conditions == 'periodic':
+                    pos[0] = pos[0] % self.extent[1]
+                    pos[1] = pos[1] % self.extent[3]
+                if self.boundary_conditions == 'solid':
+                    #in theory this wont be used as wall bouncing catches it earlier on
+                    pos[0] = min(max(pos[0],self.extent[0]+0.01),self.extent[1]-0.01)
+                    pos[1] = min(max(pos[1],self.extent[2]+0.01),self.extent[3]-0.01)
+        return pos
 
 
 class Agent:
-    """Agent defines an agent moving around the environment. Specifically this class handles the movement policy, and communicates with the environment class to ensure the agent obeys boundaries and walls etc. Initialises with param dictionary which must contain the Environment (class) in which the agent exists. Only has one function update(dt) which moves the agent along in time by dt.
+    """This class defines an agent moving around the environment. Specifically this class handles the movement policy, and communicates with the environment class to ensure the agent's movement obeys boundaries and walls etc. Initialises with a params dictionary which must contain the Environment (class) in which the agent exists, and also other key parameters required for the motion model. Only has one key function update(dt) which moves the agent along in time by dt.
+
+    A default parameters dictionary (with descriptions) can be fount in __init__()
+
+    List of functions:
+        • update()
+        • plot_trajectory()
+        • animate_trajectory()
+        • plot_position_heatmap()
+
+    List of key variables:
+        • t
+        • pos
+        • velocity
+        • history
     """
 
-    def __init__(self, params={}, load_from_file=None):
-        """Sets the parameters of the maze anad agent (using default if not provided) 
-        and initialises everything. This includes: 
+    def __init__(self, 
+                 params={}):
+        """Sets the parameters of agent (using default if not provided) and initialises everything. This includes: 
         Args:
             params (dict, optional): A dictionary of parameters which you want to differ from the default. Defaults to {}.
         """
         default_params = {
+            #the Environment class
             "Environment": None,
-            "policy": "raudies",
-            "velocity_decay_time": 3.0,
-            "drift_velocity": 0.0,
-            "velocity_noise_scale": 0.1,
-            "wall_follow_distance": 0.02,
+            # speed parameters
+            "speed_coherence_time": 3.0,
+            "speed_mean":0.3,
+            "speed_std":0.1,
+            # rotational velocity parameters (relevant in 2D only)
+            "rotational_velocity_coherence_time":1, 
+            "rotational_velocity_std":np.pi/2,
+            # do (if so from how wall) walls repel the agent 
+            "walls_repel":True,
+            "wall_repel_distance":0.1,
         }
-        if load_from_file is not None:
-            self.loadFromFile(name=load_from_file)
-        else:
-            update_params(self, default_params)
-            update_params(self, params)
-            # initialise history dataframes
-            self.history = {}
-            self.history["t"] = []
-            self.history["pos"] = []
 
-            # time and runID
-            self.t = 0
+        update_class_params(self, default_params)
+        update_class_params(self, params)
 
-            # set pos/vel
-            if self.Environment.dimensionality == "2D":
-                ex = self.Environment.extent
-                self.pos = np.array(
-                    [np.random.uniform(ex[0], ex[1]), np.random.uniform(ex[2], ex[3])]
-                )
-                direction = np.random.uniform(0, 2 * np.pi)
-                self.velocity = self.velocity_noise_scale * np.array(
-                    [np.cos(direction), np.sin(direction)]
-                )
-            if self.Environment.dimensionality == "1D":
-                if self.Environment.maze_type == "loop":
-                    # self.pos = np.array([np.random.uniform(0,2*np.pi)])*self.Environment.radius
-                    self.pos = np.array([0])
-                    self.velocity = np.array([self.velocity_noise_scale])
-            # handle None params
+        # initialise history dataframes
+        self.history = {}
+        self.history["t"] = []
+        self.history["pos"] = []
+        self.history["vel"] = []
+        self.history["rot_vel"] = []
+
+        # time and runID
+        self.t = 0
+        self.dt=0.01 #defualt dt = 10 ms
+
+        # initialise starting positions and velocity
+        if self.Environment.dimensionality == "2D":
+            self.pos = self.Environment.sample_positions(n=1,method='random')[0]
+            direction = np.random.uniform(0, 2 * np.pi)
+            self.velocity = self.speed_mean * np.array(
+                [np.cos(direction), np.sin(direction)]
+            )
+            self.rotational_velocity = 0
+
+        if self.Environment.dimensionality == "1D":
+            self.pos = self.Environment.sample_positions(n=1,method='random')[0]
+            self.velocity = np.array([self.speed_mean])
         return
 
-    def update_state(self, dt):
+    def update(self, 
+               dt=None):
         """Movement policy update. 
             In principle this does a very simple thing: 
             • updates time by dt
             • updates position along the velocity direction 
             • updates velocity (speed and direction) according to a movement policy
-            In reality it's a complex function as the policy requires checking for immediate or upcoming collisions with all walls at each step.
-            This is done by function self.check_wall_intercepts()
-            What it does with this info (bounce off wall, turn to follow wall, etc.) depends on policy. 
+            In reality it's a complex function as the policy requires checking for immediate or upcoming collisions with all walls at each step as well as handling boundary conditions.
+            Specifically the full loop looks like this:
+            1) Update time by dt
+            2) Propose a new position (x_new =? x_old + v.dt)
+            3.1) Check if this step collides with any walls (and act accordingly)
+            3.2) Check you distance and direction from walls and be repelled by them is necessary
+            4) Check position is still within maze and handle boundary conditions appropriately 
+            5) Update velocity for the next time step. In 2D this is done by varying the agents heading direction and speed according to ornstein-uhlenbeck processes. In 1D, simply the velocity is varied according to ornstein-uhlenbeck. 
+            6) Store new position and time in history data frame
         """
+        if dt == None: dt = self.dt
         self.dt = dt
         self.t += dt
-        extent = self.Environment.extent
 
-        if self.Environment.dimensionality == "2D":
-            proposed_new_pos = self.pos + self.velocity * dt
+        #proposed position update
+        proposed_new_pos = self.pos + self.velocity * dt
+        
+        if self.Environment.dimensionality == '2D':
             proposed_step = np.array([self.pos, proposed_new_pos])
-            # if np.linalg.norm(self.last_safe_position-self.pos) >= self.next_check_distance:
-            # it's been long since you knew you were far all walls. Check again
-            drift_velocity = 0
-            if len(self.Environment.walls) > 0:  # check you don't collide with a wall
-                (collision_now, i) = (True, 1)
-                while (
-                    collision_now == True and i <= 2
-                ):  # 2 should catch if it collides with a corner
-                    (
-                        _,
-                        _,
-                        collision_now,
-                        collision_now_wall,
-                    ) = self.Environment.check_wall_intercepts(proposed_step)
-                    if collision_now == True:
-                        self.velocity = wall_bounce_or_follow(
-                            self.velocity, collision_now_wall, "bounce"
-                        )
-                        proposed_new_pos = self.pos + self.velocity * dt
-                        proposed_step = np.array([self.pos, proposed_new_pos])
-                    i += 1
+            wall_check = self.Environment.check_walls(proposed_step)
+            walls = wall_check[0] #shape=(N_walls,2,2)
+            wall_collisions = wall_check[1]  #shape=(N_walls,)
+            vectors_from_walls = wall_check[2]  #shape=(N_walls,2)
 
-            if self.Environment.maze_type[-8:] != "periodic":
-                # catch instances when agent leaves area (put back inside)
-                flip_velocity = False
-                if self.pos[0] < extent[0]:
-                    self.pos[0] = extent[0] + 0.02
-                    flip_velocity = True
-                if self.pos[0] > extent[1]:
-                    self.pos[0] = extent[1] - 0.02
-                    flip_velocity = True
-                if self.pos[1] < extent[2]:
-                    self.pos[1] = extent[2] + 0.02
-                    flip_velocity = True
-                if self.pos[1] > extent[3]:
-                    self.pos[1] = extent[3] - 0.02
-                    flip_velocity = True
-                if flip_velocity == True:
-                    self.velocity = -self.velocity
+            if (wall_collisions is None) or (True not in wall_collisions):
+                #it is safe to move to the new position
+                self.pos = self.pos + self.velocity * dt
+            
+            #Bounce off walls you collide with
+            elif True in wall_collisions:
+                colliding_wall = walls[np.argwhere(wall_collisions==True)[0][0]]
+                self.velocity = wall_bounce(self.velocity,colliding_wall)
+                self.pos += self.velocity * dt
 
-            elif self.Environment.maze_type[-8:] == "periodic":
-                # catch instances where agent leaves area, bring to other side
-                if self.pos[0] < extent[0]:
-                    self.pos[0] += extent[1] - extent[0]
-                if self.pos[0] > extent[1]:
-                    self.pos[0] -= extent[1] - extent[0]
-                if self.pos[1] < extent[2]:
-                    self.pos[1] += extent[3] - extent[2]
-                if self.pos[1] > extent[3]:
-                    self.pos[1] -= extent[3] - extent[2]
+            #Drift velocity set to move agent away from walls
+            if self.walls_repel == True: 
+                if walls is not None: 
+                    distance_to_walls = np.linalg.norm(vectors_from_walls,axis=-1)
+                    normalised_vectors_from_walls = vectors_from_walls / np.expand_dims(distance_to_walls,axis=-1)
+                    x, d = distance_to_walls, self.wall_repel_distance
+                    drift_speeds = np.piecewise(x=x,
+                            condlist=[
+                                        (x<=d),
+                                        (x>d), ],
+                            funclist=[
+                                        lambda x: (self.speed_mean+self.speed_std)*(1-x/d),
+                                        lambda x: 0,])
+                    drift_velocities =  np.expand_dims(drift_speeds,axis=-1)*normalised_vectors_from_walls
+                    wall_drift_velocity = drift_velocities.sum(axis=0)
+                    self.pos += wall_drift_velocity * dt
 
-            # UPDATE POSITION
-            self.pos += self.velocity * dt
 
+            #handles instances when agent leaves environmnet 
+            if self.Environment.check_if_position_is_in_environment(self.pos) is False:
+                self.pos = self.Environment.apply_boundary_conditions(self.pos)
+
+            #note the REAL velocity may differ at this point foo mself.vel if, for example, the agent drifted from walls, or collided with a wall 
+            if len(self.history['vel'])>=1:
+                last_pos = np.array(self.history["pos"][-1])
+                shift = self.Environment.get_vectors_between___accounting_for_environment(pos1=self.pos,pos2=last_pos)
+                save_velocity = shift.reshape(-1)/self.dt #accounts for periodic 
+            else: save_velocity = self.velocity
+            
             # UPDATE VELOCITY
-            drift_velocity = self.drift_velocity
-            velocity_noise_scale = self.velocity_noise_scale
-            velocity_decay_time = self.velocity_decay_time
-
-            self.velocity += ornstein_uhlenbeck(
+            #update angle
+            direction = get_angle(self.velocity)
+            self.rotational_velocity += ornstein_uhlenbeck(
                 dt=dt,
-                v=self.velocity,
-                drift=drift_velocity,
-                noise_scale=velocity_noise_scale,
-                decay_time=velocity_decay_time,
+                x=self.rotational_velocity,
+                drift=0,
+                noise_scale=self.rotational_velocity_std,
+                coherence_time=self.rotational_velocity_coherence_time,
             )
+            dtheta = self.rotational_velocity*dt
+            self.velocity = rotate(self.velocity,dtheta)
+
+            #update speed
+            speed = np.linalg.norm(self.velocity)
+            speed_new = np.abs(speed + ornstein_uhlenbeck(
+                dt=dt,
+                x=speed,
+                drift=self.speed_mean,
+                noise_scale=self.speed_std,
+                coherence_time=self.speed_coherence_time))
+            self.velocity = (speed_new/speed)*self.velocity
 
         elif self.Environment.dimensionality == "1D":
-            if self.Environment.maze_type == "loop":
-                radius = self.Environment.radius
-                self.pos = np.mod(self.pos + dt * self.velocity, 2 * np.pi * radius)
-                self.velocity += ornstein_uhlenbeck(
-                    dt=dt,
-                    v=self.velocity,
-                    drift=self.drift_velocity,
-                    noise_scale=self.velocity_noise_scale,
-                    decay_time=self.velocity_decay_time,
+            self.pos = self.pos + dt*self.velocity
+            if self.Environment.check_if_position_is_in_environment(self.pos) is False:
+                if self.Environment.boundary_conditions == 'solid':
+                    self.velocity *= -1
+                self.pos = self.Environment.apply_boundary_conditions(self.pos)
+                
+            self.velocity += ornstein_uhlenbeck(
+                dt=dt,
+                x=self.velocity,
+                drift=self.speed_mean,
+                noise_scale=self.speed_std,
+                coherence_time=self.speed_coherence_time,
                 )
+            save_velocity = self.velocity
 
         # write to history
         self.history["t"].append(self.t)
         self.history["pos"].append(list(self.pos))
+        self.history["vel"].append(list(save_velocity))
+        if self.Environment.dimensionality == '2D': 
+            self.history["rot_vel"].append(self.rotational_velocity)
 
         return self.pos
+    
+    def plot_trajectory(self, 
+                        t_start=0, 
+                        t_end=None, 
+                        fig=None, 
+                        ax=None,
+                        decay_point_size=False,
+                        xlim=None
+                              ):
 
-
-# NEURON CLASSES
-"""The below classes can be combined to make complex multilayer heirarchies of multi compartment neurons. 
-Crucially, each classes ALWAYS has two functions: 
-• get_state(): returns the firing rate or membrane voltage of the neuron according to the input layers to this neuron. If pos variable is supplied, this recursibvely calls get_state() in all upstream layers until StateNeurons eventually supply the actual state at the desired position. 
-• update_state(): basically calles get_state() but (1) does so with pos=None, this means it calculates the state from the lastrecorded state of the inout layers, rather that recursively calculating from the bottom up. (2) saves these in place.
-
-Just, always, update_state() is what you want to use during a training loop where the neurons are "live" and reflect the current state of the system. get_state() can be used later during analysis to poll the receptive fields etc of the neurons."""
-
-
-class StateNeurons:
-    """State neurons are special in that they (may) explicitly have access to the state of the system (position, velocity etc.) and interact with the environment. They do not take their input from any other neurons, rather they are "fundamental", representing sensory observations. 
-    The input params dictionary must contain the Agent class (who's position determines how these neurons fire and contains the Environment - who's geometry may be important for determining firing rate). The other key param is "type" which specifis type of state neuron (e.g. gaussian, gaussian_threshold, one_hot, velocity, head_direction). "color" is jsut used for later plotting. 
-    """
-
-    def __init__(self, params={}):
-        default_params = {
-            "Agent": None,
-            "name": "Features",
-            "type": "gaussian_threshold",
-            "locations": None,
-            "widths": 0.15,
-            "color": None,
-            "top_layer": False,
-            "min_fr": 0,
-            "max_fr": 1,
-        }
-        update_params(self, default_params)
-        update_params(self, params)
-
-        self.n = len(self.locations)
-        if isinstance(self.widths, (float, int)):
-            self.widths = self.widths * np.ones(self.n)
-        self.Environment = self.Agent.Environment
-
-    def get_state(self, pos=None, route=None):
-        """
-        Returns the firing rate of the neuron. 
-        pos can be
-
-            • np.array(): an array of locations 
-            • 'from_agent': uses Agent.pos 
-            • 'all' : array of locations over entire environment (for rate map plotting) 
-        
-        Here route can be ignored (no need to decided whether state neurons read from basal or apical dendrite, they always read out directly from environment. It will never be used but exists as this function can be called at the end of a long list of recursive get_state() calls, in other (downstream) neurons. 
-        """
-
-        if pos == None:  # get stored state (presumably recently updates)
-            state = self.phi_U
-
-        else:  # actually calculate state
-            if pos == "from_agent":
-                pos = self.Agent.pos
-            elif pos == "all":
-                pos = self.Environment.flattened_discrete_coords
-
-            distance_to_centres = self.Environment.get_distance(self.locations, pos)
-            widths = self.widths.reshape(-1, 1)
-
-            if self.Environment.dimensionality == "2D":
-                if self.type == "gaussian_threshold":
-                    state = np.maximum(
-                        np.exp(-(distance_to_centres ** 2) / (2 * (widths ** 2)))
-                        - np.exp(-1 / 2),
-                        0,
-                    ) / (1 - np.exp(-1 / 2))
-                if self.type == "gaussian":
-                    state = np.exp(-(distance_to_centres ** 2) / (2 * (widths ** 2)))
-                if self.type == "one_hot":
-                    closest_centres = np.argmin(np.abs(distance_to_centres), axis=0)
-                    state = np.eye(self.n)[closest_centres].T
-                if self.type == "diff_of_gaussians":
-                    ratio = 1.5
-                    state = np.exp(
-                        -(distance_to_centres ** 2) / (2 * (widths ** 2))
-                    ) - (1 / ratio ** 2) * np.exp(
-                        -(distance_to_centres ** 2) / (2 * ((ratio * widths) ** 2))
-                    )
-                    state *= ratio ** 2 / (ratio ** 2 - 1)
-                if self.type == "top_hat":
-                    closest_centres = np.argmin(np.abs(distance_to_centres), axis=0)
-                    state = np.eye(self.n)[closest_centres].T
-
-            if self.Environment.dimensionality == "1D":
-                if self.type == "von_mises":
-                    kappa = 1 / widths ** 2
-                    state = (
-                        np.e
-                        ** (
-                            kappa
-                            * np.cos(distance_to_centres / self.Environment.radius)
-                        )
-                    ) / (np.e ** kappa)
-                if self.type == "gaussian_threshold":
-                    state = np.maximum(
-                        np.exp(-(distance_to_centres ** 2) / (2 * (widths ** 2)))
-                        - np.exp(-1 / 2),
-                        0,
-                    ) / (1 - np.exp(-1 / 2))
-                if self.type == "gaussian":
-                    state = np.exp(-(distance_to_centres ** 2) / (2 * (widths ** 2)))
-                if self.type == "diff_of_gaussians":
-                    ratio = 1.5
-                    state = np.exp(
-                        -(distance_to_centres ** 2) / (2 * (widths ** 2))
-                    ) - (1 / ratio) * np.exp(
-                        -(distance_to_centres ** 2) / (2 * ((ratio * widths) ** 2))
-                    )
-                    state *= ratio / (ratio - 1)
-                if self.type == "one_hot":
-                    closest_centres = np.argmin(np.abs(distance_to_centres), axis=0)
-                    state = np.eye(self.n)[closest_centres].T
-
-            state = state * (self.max_fr - self.min_fr) + self.min_fr
-
-        return state
-
-    def update_state(self):
-        """Updates the state of these state neurons using the Agents current position. Stores the current firing rate in self.phi_U
-        """
-        state = self.get_state(pos="from_agent")
-        self.phi_U = state.reshape(-1)
-
-
-class Neurons:
-    """PyramidalNeurons is, arguably, the most important class. It manages the sets of neurons i'm interested in studying and which exist in a multilayer network of other neurons and have input dendritic weights which can be trained. It works like this:
-    All pyramidal neurons have somatic compartments. This defines the firing rate of the neurons, essentially their output. Dendritic compartments can be added using self.add_comartment(). Depending on the conditions (specifically the current theta phase) the soma's membrane voltage is determined from the membrane voltages of it's input dendritic compartments. The dendritc compartments (defined as a class below) themselves have input layers but will only comunicate with the soma - that is they don't spike and so cannot be read by other neurons. 
-
-    """
-
-    def __init__(self, params: dict):
-        default_params = {
-            "name": "Neurons",
-            "n": 10,
-            "Agent": None,
-            "top_layer": False,
-            "error_timescale": 5,
-            "noise_level": 0.01,
-            "noise_timescale": 100e-3,
-            # actiavtion params
-            "activation": "sigmoid",
-            "max_fr": 1,
-            "min_fr": -1,
-            "mid_x": 0,
-            "width_x": 2,
-            # theta params
-            "theta_model": "square",
-            "theta_freq": 10,
-            "theta_phase": 0,  # in radians
-            "theta_bias": 0,  # -1=all basal/bottom-up, +1=all apical/top_down
-        }
-        update_params(self, default_params)
-        update_params(self, params)
-
-        self.phi_U = np.zeros(self.n)
-        self.noise = np.zeros_like(self.phi_U)
-        self.Compartments = {"basal": None, "apical": None}
-
-        self.history = {"time": [], "loss": []}
-        self.t = 0
-        self.error = 0  # error trace
-
-        self.activation_params = {
-            "activation": self.activation,
-            "max_fr": self.max_fr,
-            "min_fr": self.min_fr,
-            "mid_x": self.mid_x,
-            "width_x": self.width_x,
-        }
-
-        self.theta_params = {
-            "theta_model": self.theta_model,
-            "theta_freq": self.theta_freq,
-            "theta_phase": self.theta_phase,  # in radians
-            "theta_bias": self.theta_bias,
-            "theta_T": 1 / self.theta_freq,
-        }
-
-    def add_compartment(self, params={}):
-        """Adds a dendritic compartment to the neuron. Params dictionary must contain a 'name' ('basal' or 'apical') and a 'layers' (a list of input layers , ie. neuron classes which feed into it) amongst other (see class listing for details)
-        Args:
-            params (dict)
-        """
-        params["n"] = self.n
-        params["ParentLayer"] = self
-        self.Compartments[params["name"]] = DendriticCompartment(params)
-
-    def update_dendrite_states(self):
-        """Updtes the firing rates of the dendritic compartments.
-        """
-        for compartment_name, compartment in self.Compartments.items():
-            compartment.update_state()
-        return
-
-    def update_soma_states(self):
-        """Updates firing rate of the somatic compartment.
-        """
-        self.get_state(pos=None, save_in_place=True, add_noise=True)
-
-    def update_weights(self):
-        """Dendritc prediction of somatic activity"""
-        dt = self.Agent.dt
-        for (compartment_name, compartment) in self.Compartments.items():
-            if compartment.eta != 0:
-                compartment.update_weights(target=self.phi_U, dt=dt)
-
-        try:
-            phi_Vb, phi_Va = (
-                self.Compartments["basal"].phi_V,
-                self.Compartments["apical"].phi_V,
-            )
-            error = np.mean(np.abs(phi_Vb - phi_Va))
-            if len(self.history["loss"]) == 0:
-                self.error = error
-            self.error = (dt / self.error_timescale) * error + (
-                1 - dt / self.error_timescale
-            ) * self.error
-            self.history["time"].append(self.t)
-            self.history["loss"].append(self.error)
-        except KeyError:
-            pass
-
-        return
-
-    def get_state(self, pos=None, route="basal", save_in_place=False, add_noise=False):
-        """
-        Returns the firing rate of the neurons. 
-        Either:
-            • pos = None: simply gets the last records state of the neurons dendritic compartments and uses these to estimate the firing rate (for the current time/theta phase). 
-        or 
-            • pos = np.array(): an array of locations 
-            • pos = 'from_agent': uses Agent.pos 
-            • pos = 'all' : array of locations over entire environment (for rate map plotting) 
-        in which case this function recursively calls get_state from it's input layer (which calls get_state ...) until this terminates at features. 
-        
-        route, in the recursive case, determines if the information route to the feature neurons initially goes through. 
-            • 'basal':  basal dendrites i.e.   bottom-up inference. information flow example in third layer of four layer network  1 --> 2 --> 3
-            • 'apical': apical dendrite i.e. top-down generation. information flow example in third layer of four layer network  1 --> 2 --> 3 --> 4 --> 4 --> 3
-        returns the state/an array of states evaluated at the position/s 
-
-        save_in_place whether to actually save in place (should only be done in training loop)
-
-        """
-        if pos == None:
-
-            basal = self.Compartments["basal"]
-            apical = self.Compartments["apical"]
-            self.t = self.Agent.t
-            theta = get_theta(self.t, self.theta_params)
-            U = (
-                theta * basal.V + (1 - theta) * apical.V
-            )  # this needs to be more general, i.e. an input somehow specifies this function
-            phi_U = activate(U, other_args=self.activation_params)
-
-        else:
-            compartment = self.Compartments[route]
-            next_route = route
-            if self.top_layer == True:
-                next_route = "basal"
-            U = compartment.get_state(pos=pos, route=next_route)
-            phi_U = activate(U, other_args=self.activation_params)
-
-        if add_noise == True:
-            dt = self.Agent.dt
-            self.noise = self.noise + ornstein_uhlenbeck(
-                dt,
-                self.noise,
-                drift=0,
-                noise_scale=self.noise_level,
-                decay_time=self.noise_timescale,
-            )
-            noise = self.noise
-            phi_U += noise
-
-        if save_in_place == True:
-            self.U = U
-            self.phi_U = phi_U
-
-        return phi_U
-
-    def plot_activation(self):
-        fig, ax = plt.subplots(figsize=(1.5, 1.5))
-        x = np.arange(-5, 5, 0.1)
-        y = activate(x, other_args=self.activation_params)
-        y_prime = activate(x, other_args=self.activation_params, deriv=True)
-        ax.plot(x, y, label="f(x)")
-        ax.plot(x, y_prime, label="df/dx")
-        tpl.xyAxes(ax)
-        ax.set_xlabel("x")
-        ax.legend(loc="lower right")
-        ax.set_xticks([self.mid_x])
-        ax.set_yticks([self.max_fr, self.min_fr])
-        return fig, ax
-
-
-
-
-
-class Visualiser:
-    def __init__(
-        self, Environment=None, Agent=None, Neurons=None,
-    ):
-        self.Agent = Agent
-        self.Environment = Environment
-        self.Neurons = Neurons  # list
-        layer_dict = {}
-        for layer in self.Neurons:
-            layer_dict[layer.name] = layer
-        self.Neurons = layer_dict
-
-    def plot_maze_structure(self, fig=None, ax=None, save=False):
-        extent, walls = self.Environment.extent, self.Environment.walls
-        if fig == None and ax == None:
-            fig, ax = plt.subplots(
-                figsize=((extent[1] - extent[0]), (extent[3] - extent[2]))
-            )
-        for wall_object in walls.keys():
-            for wall in walls[wall_object]:
-                if wall_object[-8:] != "dontplot":
-                    ax.plot(
-                        [wall[0][0], wall[1][0]],
-                        [wall[0][1], wall[1][1]],
-                        color="darkgrey",
-                        linewidth=4,
-                    )
-        ax.set_aspect("equal")
-        ax.grid(False)
-        ax.axis("off")
-        if save == True:
-            tpl.saveFigure(fig, "mazeStructure")
-        return fig, ax
-
-    def plot_feature_locations(self, layer_name="Features"):
-        fig, ax = self.plot_maze_structure()
-        feature_locations = self.Neurons[layer_name].locations
-        ax.scatter(
-            feature_locations[:, 0], feature_locations[:, 1], c="C1", marker="x", s=15
-        )
-        return fig, ax
-
-    def plot_trajectory(self, timerange="all", fig=None, ax=None):
-        t = np.array(self.Agent.history["t"])
-        dt = self.Agent.dt
-        t, pos = np.array(self.Agent.history["t"]), np.array(self.Agent.history["pos"])
-        if timerange == "all":
-            startid, endid = 0, -1
-        if type(timerange) in (float, int):
-            if timerange < 0:
-                startid = np.argmin(np.abs(t - (t[-1] + timerange * 60)))
-                endid = -1
-            if timerange >= 0:
-                startid = 0
-                endid = np.argmin(np.abs(t - timerange * 60))
-        if type(timerange) is list:
-            startid = np.argmin(np.abs(t - timerange[0] * 60))
-            endid = np.argmin(np.abs(t - timerange[1] * 60))
-        if self.Environment.dimensionality == "2D":
-            print(dt)
-            skiprate = max(1, int(0.01 / (0.1 * dt)))
+        """Plots the trajectory between t_start (seconds) and t_end (defaulting to the last time available)
+        Args: 
+            • t_start: start time in seconds 
+            • t_end: end time in seconds (default = self.history["t"][-1])
+            • fig, ax: the fig, ax to plot on top of, optional, if not provided used self.Environment.plot_Environment(). This can be used to plot trajectory on top of receptive fields etc. 
+            • decay_point_size: decay trajectory point size over time (recent times = largest)
+            xlim: In 1D, force the xlim to be a certain time (useful if animating this function)
+        Returns:
+            fig, ax
+        """        
+        dt = self.dt
+        t, pos = np.array(self.history["t"]), np.array(self.history["pos"])
+        approx_speed = max(self.speed_std,self.speed_mean)
+        if t_end == None:
+            t_end = t[-1]
+        startid = np.argmin(np.abs(t - (t_start)))
+        endid = np.argmin(np.abs(t - (t_end)))
+        if self.Environment.dimensionality == '2D':
+            scatter_distance = 0.02
+            skiprate = max(1, int(scatter_distance / (approx_speed * dt)))
             trajectory = pos[startid:endid, :][::skiprate]
+        if self.Environment.dimensionality == '1D':
+            scatter_distance = 0.04
+            skiprate = max(1, int(scatter_distance / (approx_speed * dt)))
+            trajectory = pos[startid:endid][::skiprate]
+        time = t[startid:endid][::skiprate]
+
+        if self.Environment.dimensionality == "2D":
+            # time = t[startid:endid][::skiprate]
             if fig is None and ax is None:
-                fig, ax = self.plot_maze_structure()
+                fig, ax = self.Environment.plot_environment()
+            s=15 * np.ones_like(time)
+            if decay_point_size == True:
+                s = 15*np.exp((time - time[-1])/30)
+                s[(time[-1]-time)>120]*=0
+            c = ["C0"]*len(time)
+            s[-1]=40
+            c[-1]='r'
             ax.scatter(
                 trajectory[:, 0],
                 trajectory[:, 1],
-                s=10,
+                s=s,
                 alpha=0.7,
                 zorder=2,
-                c="C0",
+                c=c,
                 linewidth=0,
             )
         if self.Environment.dimensionality == "1D":
-            skiprate = max(1, int(0.1 / dt))
             if fig is None and ax is None:
-                fig, ax = plt.subplots(figsize=(4, 2))
-            ax.scatter(t[startid:endid][::skiprate], pos[startid:endid][::skiprate])
-            tpl.xyAxes(ax)
+                fig, ax = plt.subplots(figsize=(6, 3))
+            ax.scatter(time, trajectory,alpha=0.7)
             ax.spines["left"].set_position(("data", t[startid]))
-        tpl.saveFigure(fig, "trajectory")
+            ax.set_xlabel("Time / s")
+            ax.set_ylabel("Position / m")
+            if xlim is not None: 
+                ax.set_xlim(right=xlim)
+            ax.set_ylim(bottom=0,top=self.Environment.extent[1])
         return fig, ax
+    
+    def animate_trajectory(self,
+                           t_end=None):
+        """Returns a real speed animation (anim) of the trajectory, 25fps. 
+        Should be saved using comand like 
+        anim.save("./where_to_save/animations.gif",dpi=300)
 
-    def plot_heatmap(self, granularity=0.05):
-        pos = np.array(self.Agent.history["pos"])
-        ex = self.Environment.extent
-        pos = np.vstack(
-            (
-                pos,
-                np.array(
-                    [[ex[0], ex[2]], [ex[1], ex[2]], [ex[0], ex[3]], [ex[1], ex[3]]]
-                ),
+        Args:
+            t_end (_type_, optional): _description_. Defaults to None.
+
+        Returns:
+            animation
+        """        
+        if t_end == None: 
+            t_end = self.history['t'][-1]
+
+        def animate(i,fig,ax,t_max):
+            t = self.history['t']
+            t_start = t[0]
+            t_end = t[0]+(i+1)*40e-3
+            ax.clear()
+            if self.Environment.dimensionality == '2D':
+                fig, ax = self.Environment.plot_environment(fig=fig,ax=ax)
+                xlim=None
+            if self.Environment.dimensionality == '1D':
+                xlim=t_max
+            fig, ax = self.plot_trajectory(t_start=t_start,t_end=t_end, fig=fig, ax=ax, decay_point_size=True,xlim=xlim)
+            plt.close()
+            return 
+
+        fig,ax=self.plot_trajectory(0,10*self.dt)
+        anim = matplotlib.animation.FuncAnimation(fig,animate,interval=40,frames=int(t_end/40e-3),blit=False,fargs=(fig,ax,t_end))
+        return anim
+
+    def plot_position_heatmap(self,
+                              dx=None,
+                              weights=None,
+                              fig=None,
+                              ax=None):
+        """Plots a heatmap of postions the agent has been in. vmin is always set to zero, so the darkest colormap color (if seen) represents locations which have never been visited 
+        Args:
+            dx (float, optional): The heatmap bin size. Defaults to 5cm in 2D or 1cm in 1D.
+        """        
+        if self.Environment.dimensionality == '1D':
+            if dx is None: dx = 0.01
+            pos = np.array(self.history["pos"])
+            ex = self.Environment.extent
+            if fig is None and ax is None: 
+                fig, ax = self.Environment.plot_environment(height=1)
+            heatmap, centres = bin_data_for_histogramming(data=pos,extent=ex,dx=dx)
+            #maybe do smoothing? 
+            ax.plot(centres,heatmap)
+            ax.fill_between(centres,0,heatmap,alpha=0.3)
+            ax.set_ylim(top=np.max(heatmap)*1.2)
+            return fig, ax
+        
+        elif self.Environment.dimensionality == '2D':
+            if dx is None: dx = 0.05
+            pos = np.array(self.history["pos"])
+            ex = self.Environment.extent
+            heatmap=bin_data_for_histogramming(data=pos,extent=ex,dx=dx)
+            if fig == None and ax == None: 
+                fig, ax = self.Environment.plot_environment()
+            vmin=0; vmax=np.max(heatmap)
+            ax.imshow(heatmap, extent=ex, interpolation='bicubic',
+            vmin=vmin,vmax=vmax,
             )
-        )
-        bins = [int((ex[1] - ex[0]) / granularity), int((ex[3] - ex[2]) / granularity)]
-        heatmap, xedges, yedges = np.histogram2d(pos[:, 0], pos[:, 1], bins=bins)
-        extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
-        fig, ax = self.plot_maze_structure()
-        ax.imshow(heatmap.T[::-1, :], extent=extent)
         return fig, ax
 
-    def plot_rate_map(
-        self, layer_name="Features", route="basal", neuron_id="all", cbar=False
-    ):
-        layer = self.Neurons[layer_name]
-        color = layer.color
-        rate_maps = layer.get_state(pos="all", route=route)
 
-        if self.Environment.dimensionality == "2D":
-            if neuron_id is None or neuron_id == "all":
-                neuron_id = [np.random.randint(0, rate_maps.shape[0])]
-            if type(neuron_id) in (list, np.ndarray):
-                neuron_id = np.array(neuron_id)
-                neuron_id = [
-                    np.argmin(np.linalg.norm(layer.locations - neuron_id, axis=1))
-                ]
-            if type(neuron_id) is str:
-                if neuron_id.isdigit():
-                    neuron_id = np.linspace(
-                        0, rate_maps.shape[0] - 1e-6, int(neuron_id)
-                    ).astype(int)
-                    pass
-            else:
-                neuron_id = [neuron_id]
+class Neurons:
+    """The Neuron class defines a population of Neurons. All Neurons have firing rates which depend explicity on (that is, they "encode" -- if I'm still allowed to say that) the state of the Agent. As the Agent moves the firing rate of the cells adjust accordingly. 
 
-            rate_maps = rate_maps[neuron_id, :]
+    The input dictionary 'params'  must contain the Agent class (who's position/velocity etc. determines how these neurons fire. Agent will itself contains the Environment - who's geometry and distance calculating abilities may be important for determining firing rates). 
+   
+    The next most key parameter is "cell_class". We current support four types of cells. Each of these has their own specific params (). 
+        • 'cell_type':'place_cells'
+                • 'width'
+                    float, in meters 
+                • 'description'
+                    'gaussian'/'gaussian_threshold'/'diff_of_gaussians'/'top_hat'/'one_hot'
+                • 'place_cell_centres'
+                    Can be None. Or can be array or locations. 
+                • 'wall_geometry'
+                    'geodesic'/'euclidean'/'line_of_sight'
+        • 'grid_cells'
+                • 'gridscale':
+                    float, meters 
+                • 'random_orientations'
+                    bool
+                • 'random_gridscales'
+                    bool
+        • 'boundary_vector_cells'
+        • 'velocity_cells'
+        
+    The key function here is "update_state()" which pulls the position, velocity etc. from the Agent and sets the firing rate of the cells accordingly. The neuron firing rates can also be queried for any arbitrary pos/velocity (i.e. not just the Agents current state) by passing these in directly to the function "get_state()".
+    
+    Importantly, a key and very useful ability of this class is that the firing rate of the neurons can be queried not just at a single position but in an array of positions. Doing so is a vectorised calculation so is relatively fast. It means (for position dependent cells, e.g. place_cells,  grid_cells, boundary_vector_cells) you can query their firing rate at all positions across the environment and see their receptive fields, by calling get_state(pos='all'). This first asks the Environment for an array of discretised positions and then returns the firing rate of neurons at all of them. (more generally  pos can be any array of positions shape=(N_pos,N_dimensionality)).
 
-            rows = 1
+    Because geometry calculation come from the Environment class, Neurons obey the geometry and boundary conditions defined there. For example, if geometry is "line_of_sight" then a place cell will only fire if there is a direct line of sight between a position and its centre location (i.e. no obstructing walls). Another example, if boundary conditons are periodic, place cell, grid cell firing rates will respect this and loop over the edges. 
+
+
+    List of key functions...
+        ..that you're likely to use: 
+            • update() updates firing rates according to the agent. Saves them
+            • get_state(), gets firing rate, doesn't necessarily save them and positions/velocities don't have to come from the Agent
+            • plot_rate_timeseries()
+            • plot_rate_map()
+            • plot_place_cell_locations() 
+        ...that you probably won't directly use:
+            • boundary_vector_preference_function()
+    
+
+    Finally, we intend for this to be a parent class. Feel free to write your own update() and get_state() functions (e.g. perhaps these neurons are the weighted sum of other neurons). As long as you save the firing rate on each step the plotting functions will still work. 
+        
+    """
+    def __init__(self, 
+                 params={}):
+        """Initialises the Neurons class. Requires params dictionary. 
+        If params is not provided/edits you, by default, will get 10 randomly distributed gaussian place cells of std 0.2m
+
+        Args:
+            params (dict, optional): _description_. Defaults to {}.
+        """        
+        default_params = {
+            "Agent": None,
+            "n":10,
+            "cell_class":"place_cell",            
+            #default place cell params
+                'description':'gaussian',
+                'widths':0.20,
+                'place_cell_centres':None, #if given this will overwrite 'n',
+                'wall_geometry':'geodesic',
+            #default grid cell params
+                "gridscale":0.4,
+                "random_orientations":True,
+                "random_gridscales":True,
+            #default boundary vector cell params
+            "color": "C2", #just for plotting
+            "min_fr": 0,
+            "max_fr": 1,
+        }
+        update_class_params(self, default_params)
+        update_class_params(self, params)
+
+        self.history = {}
+        self.history["t"] = []
+        self.history["firingrate"] = []
+        self.history["spikes"] = []
+
+        #Initialise place cells 
+        if self.cell_class == 'place_cell':
+            if self.place_cell_centres is None:
+                self.place_cell_centres = self.Agent.Environment.sample_positions(n=self.n,method='uniform_jitter')
+            else: 
+                self.n = self.place_cell_centres.shape[0]
+            self.place_cell_widths = self.widths*np.ones(self.n)
+
+        #Initialise grid cells 
+        if self.cell_class == 'grid_cell':
+            assert self.Agent.Environment.dimensionality == '2D', 'grid cells only available in 2D'
+            self.phase_offsets = np.random.uniform(0,self.gridscale,size=(self.n,2))
+            w = []
+            for i in range(self.n):
+                w1 = np.array([1,0]) 
+                if self.random_orientations == True:
+                    w1 = rotate(w1,np.random.uniform(0,2*np.pi))
+                w2 = rotate(w1,np.pi/3)
+                w3 = rotate(w1,2*np.pi/3)
+                w.append(np.array([w1,w2,w3]))
+            self.w = np.array(w)
+            if self.random_gridscales == True: 
+                self.gridscales = np.random.uniform(2*self.gridscale/3,1.5*self.gridscale,size=self.n)
+
+        #Initialise velocity cells
+        if self.cell_class == 'velocity_cell':
+            if self.Agent.Environment.dimensionality=="2D":
+                self.n = 4 #one up, one down, one left, one right
+            if self.Agent.Environment.dimensionality=="1D":
+                self.n = 2 #one left, one right
+            self.one_sigma_speed = self.Agent.speed_mean + self.Agent.speed_std
+
+        #Initialise boundary vector cells 
+        if self.cell_class == 'boundary_vector_cell':
+            assert self.Agent.Environment.dimensionality == '2D', "boundary cells only possible in 2D"
+            assert self.Agent.Environment.boundary_conditions == 'solid', "boundary cells only possible with solid boundary conditions"
+            xi = 0.08 #as in de cothi and barry 2020
+            beta = 12
+            test_direction = np.array([1,0])
+            test_directions = [test_direction]
+            test_angles = [0]
+            self.n_test_angles = 360
+            self.dtheta = 2*np.pi/self.n_test_angles
+            for i in range(self.n_test_angles-1):
+                test_direction_ = rotate(test_direction,2*np.pi*i/360)
+                test_directions.append(test_direction_)
+                test_angles.append(2*np.pi*i/360)
+            self.test_directions = np.array(test_directions)
+            self.test_angles = np.array(test_angles)
+            self.sigma_angle = (11.25/360)*2*np.pi #11.25 degrees as in de Cothi and Barry 2020
+            self.tuning_angles = np.random.uniform(0,2*np.pi,size=self.n)
+            self.tuning_distances = np.maximum(0,np.random.normal(loc=0.2,
+                                                             scale=0.1,
+                                                             size=self.n))
+            self.sigma_distances = self.tuning_distances/beta + xi
+
+    def get_state(self,
+                  pos="from_agent",
+                  vel="from_agent"):
+        """
+        Returns the firing rate of the neurons. 
+        pos can be
+            • np.array(): an array of locations 
+            • 'from_agent': uses Agent.pos 
+            • 'all' : array of locations over entire environment (for rate map plotting) 
+        vel can be:
+            • np.array()
+        Returns the firing rate of the neuron at all positions shape (N_cells,N_pos)
+                """
+        
+        if self.cell_class == 'place_cell':
+            if pos == "from_agent":
+                pos = self.Agent.pos
+            elif pos == "all":
+                pos = self.Agent.Environment.flattened_discrete_coords
+
+            #place cell fr's depend only on how far the agent is from cell centres (and their widths)
+            dist = self.Agent.Environment.get_distances_between___accounting_for_environment(
+                self.place_cell_centres,
+                pos,wall_geometry=self.wall_geometry) #distances to place cell centres
+            widths = np.expand_dims(self.place_cell_widths,axis=-1)
+
+            if self.description == "gaussian":
+                firingrate = np.exp(-(dist ** 2) / (2 * (widths ** 2)))
+            if self.description == "gaussian_threshold":
+                firingrate = np.maximum(
+                    np.exp(-(dist ** 2) / (2 * (widths ** 2)))
+                    - np.exp(-1 / 2),0,) / (1 - np.exp(-1 / 2))
+            if self.description == "diff_of_gaussians":
+                ratio = 1.5
+                firingrate = np.exp(
+                    -(dist ** 2) / (2 * (widths ** 2))) - (1 / ratio ** 2) * np.exp(
+                    -(dist ** 2) / (2 * ((ratio * widths) ** 2)))
+                firingrate *= ratio ** 2 / (ratio ** 2 - 1)
+            if self.description == "one_hot":
+                closest_centres = np.argmin(np.abs(dist), axis=0)
+                firingrate = np.eye(self.n)[closest_centres].T
+            if self.description == "top_hat":
+                closest_centres = np.argmin(np.abs(dist), axis=0)
+                firingrate = 1*(dist < 1)
+        
+        elif self.cell_class == 'grid_cell':
+            """grid cells are modelled as the threwsholded sum of three cosines all at 60 degree offsets"""
+            if pos == "from_agent":
+                pos = self.Agent.pos
+            elif pos == "all":
+                pos = self.Agent.Environment.flattened_discrete_coords
+            pos = pos.reshape(-1,pos.shape[-1])
+
+            #vectors to grids cells "centred" at their (random) phase offsets 
+            vecs = get_vectors_between(self.phase_offsets,pos) #shape = (N_cells,N_pos2)
+            w1 = np.tile(np.expand_dims(self.w[:,0,:],axis=1),reps=(1,pos.shape[0],1))
+            w2 = np.tile(np.expand_dims(self.w[:,1,:],axis=1),reps=(1,pos.shape[0],1))
+            w3 = np.tile(np.expand_dims(self.w[:,2,:],axis=1),reps=(1,pos.shape[0],1))
+            gridscales = np.tile(np.expand_dims(self.gridscales,axis=1),reps=(1,pos.shape[0]))
+            phi_1 = ((2*np.pi)/gridscales)*(vecs*w1).sum(axis=-1)
+            phi_2 = ((2*np.pi)/gridscales)*(vecs*w2).sum(axis=-1)
+            phi_3 = ((2*np.pi)/gridscales)*(vecs*w3).sum(axis=-1)
+            firingrate = 0.5*((np.cos(phi_1) + np.cos(phi_2) + np.cos(phi_3)))
+            firingrate[firingrate<0] = 0
+
+        elif self.cell_class == 'velocity_cell':
+            """In 2D 4 velocity cells report, respectively, the thresholded leftward, rightward, upward and downwards velocity"""
+            if vel == 'from_agent':
+                vel = self.Agent.history['vel'][-1]
+            if self.Agent.Environment.dimensionality == '1D':
+                vleft_fr = max(0,vel[0])/self.one_sigma_speed
+                vright_fr = max(0,-vel[0])/self.one_sigma_speed
+                firingrate = np.array([vleft_fr,vright_fr])
+            if self.Agent.Environment.dimensionality == '2D':
+                vleft_fr = max(0,vel[0])/self.one_sigma_speed
+                vright_fr = max(0,-vel[0])/self.one_sigma_speed                    
+                vup_fr = max(0,vel[1])/self.one_sigma_speed
+                vdown_fr = max(0,-vel[1])/self.one_sigma_speed
+                firingrate = np.array([vleft_fr,vright_fr,vup_fr,vdown_fr])
+        
+        elif self.cell_class == 'boundary_vector_cell':
+            """Here we implement the same type if boundary vector cells as de Cothi et al. (2020), who follow Barry & Burgess, (2007). See equations there. 
+        
+            The way I do this is a little complex. I will describe how it works from a single position (but remember this can be called in a vectorised manner from an arary of positons in parallel)
+                1. An array of normalised "test vectors" span, in all directions at 1 degree increments, from the position
+                2. These define an array of line segments stretching from [pos, pos+test vector]
+                3. Where these line segments collide with all walls in the environment is established, this uses the function "vector_intercepts()"
+                4. This pays attention to only consider the first (closest) wall forawrd along a line segment. Walls behind other walls are "shaded" by closer walls. Its a little complex to do this and requires the function "boundary_vector_preference_function()"
+                5. Now that, for every test direction, the closest wall is established it is simple a process of finding the response of the neuron to that wall at that angle (multiple of two gaussians, see de Cothi (2020)) and then summing over all the test angles. 
+        """
+            if pos == "from_agent":
+                pos = self.Agent.pos
+            elif pos == "all":
+                pos = self.Agent.Environment.flattened_discrete_coords
+            N_cells = self.n
+            pos = pos.reshape(-1,pos.shape[-1]) #(N_pos,2)
+            N_pos = pos.shape[0]
+            N_test = self.test_angles.shape[0] 
+            pos_line_segments = np.tile(np.expand_dims(np.expand_dims(pos,axis=1),axis=1),reps=(1,N_test,2,1))#(N_pos,N_test,2,2) 
+            test_directions_tiled = np.tile(np.expand_dims(self.test_directions,axis=0),reps=(N_pos,1,1)) #(N_pos,N_test,2)
+            pos_line_segments[:,:,1,:] += test_directions_tiled #(N_pos,N_test,2,2)
+            pos_line_segments = pos_line_segments.reshape(-1,2,2) #(N_pos x N_test,2,2)
+            walls = self.Agent.Environment.walls #(N_walls,2,2)
+            N_walls = walls.shape[0] 
+            pos_lineseg_wall_intercepts = vector_intercepts(pos_line_segments,walls) #(N_pos x N_test,N_walls,2)
+            pos_lineseg_wall_intercepts = pos_lineseg_wall_intercepts.reshape((N_pos,N_test,N_walls,2))#(N_pos,N_test,N_walls,2)
+            dist_to_walls = pos_lineseg_wall_intercepts[:,:,:,0]#(N_pos,N_test,N_walls)
+            first_wall_for_each_direction = self.boundary_vector_preference_function(pos_lineseg_wall_intercepts)#(N_pos,N_test,N_walls)
+            first_wall_for_each_direction_id = np.expand_dims(np.argmax(first_wall_for_each_direction,axis=-1),axis=-1) #(N_pos,N_test,1)
+            dist_to_first_wall = np.take_along_axis(dist_to_walls,first_wall_for_each_direction_id,axis=-1).reshape((N_pos,N_test)) #(N_pos,N_test)
+            #reshape everything to have shape (N_cell,N_pos,N_test)
+
+            test_angles = np.tile(np.expand_dims(np.expand_dims(self.test_angles,axis=0),axis=0),reps=(N_cells,N_pos,1))#(N_cell,N_pos,N_test)
+            tuning_angles = np.tile(np.expand_dims(np.expand_dims(self.tuning_angles,axis=-1),axis=-1),reps=(1,N_pos,N_test))#(N_cell,N_pos,N_test)
+            sigma_angle = np.tile(np.expand_dims(np.expand_dims(np.expand_dims(np.array(self.sigma_angle),axis=0),axis=0),axis=0),reps=(N_cells,N_pos,N_test))#(N_cell,N_pos,N_test)
+            tuning_distances = np.tile(np.expand_dims(np.expand_dims(self.tuning_distances,axis=-1),axis=-1),reps=(1,N_pos,N_test))#(N_cell,N_pos,N_test)
+            sigma_distances = np.tile(np.expand_dims(np.expand_dims(self.sigma_distances,axis=-1),axis=-1),reps=(1,N_pos,N_test))#(N_cell,N_pos,N_test)
+            dist_to_first_wall = np.tile(np.expand_dims(dist_to_first_wall,axis=0),reps=(N_cells,1,1))#(N_cell,N_pos,N_test)
+
+            g = gaussian(dist_to_first_wall,tuning_distances,sigma_distances) * gaussian(test_angles,tuning_angles,sigma_angle) #(N_cell,N_pos,N_test)
+
+            firingrate = g.mean(axis=-1) #(N_cell,N_pos)
+                
+        firingrate = firingrate * (self.max_fr - self.min_fr) + self.min_fr #scales from being between [0,1] to [min_fr, max_fr]
+        return firingrate
+
+    def update(self):
+        """Updates the state of these state neurons using the Agents current position. Stores the current firing rate in self.phi_U
+        """
+        firingrate = self.get_state(pos="from_agent")
+        self.firingrate = firingrate.reshape(-1)
+        cell_spikes = (np.random.uniform(0,1,size=(self.n,)) < (self.Agent.dt*self.firingrate))
+
+        self.history["t"].append(self.Agent.t)
+        self.history["firingrate"].append(list(self.firingrate))
+        self.history["spikes"].append(list(cell_spikes))
+
+    def plot_rate_timeseries(self,
+                            t_start=0,
+                            t_end=60,
+                            chosen_neurons='10',
+                            plot_spikes=True,
+                            fig=None,
+                            ax=None,
+                            xlim=None):
+        """Plots a timeseries of the firing rate of the neurons between t_start and t_end
+
+        Args:
+            t_start (int, optional): _description_. Defaults to 0.
+            t_end (int, optional): _description_. Defaults to 60.
+            chosen_neurons (str, optional): Which neurons to plot. string "10" will plot 10 of them, "all" will plot all of them, a list like [1,4,5] will plot cells indexed 1, 4 and 5. Defaults to "10".
+            plot_spikes (bool, optional): If True, scatters exact spike times underneath each curve of firing rate. Defaults to True.
+            the below params I just added for help with animations
+            fig, ax: the figure, axis to plot on (can be None)
+            xlim: fix xlim of plot irrespective of how much time you're plotting 
+        Returns:
+            fig, ax
+        """        
+        t = np.array(self.history["t"])
+        #times to plot 
+        if t_end is None:
+            t_end = t[-1]
+        startid = np.argmin(np.abs(t - (t_start)))
+        endid = np.argmin(np.abs(t - (t_end)))
+        rate_timeseries = np.array(self.history['firingrate'])
+        spikes = np.array(self.history['spikes'])
+        t = t[startid:endid]
+        rate_timeseries = rate_timeseries[startid:endid]
+        spikes = spikes[startid:endid]
+        #neurons to plot
+        if chosen_neurons == "all":
+            chosen_neurons = np.arange(self.n)
+        if type(chosen_neurons) is str:
+            if chosen_neurons.isdigit():
+                chosen_neurons = np.linspace(0,self.n-1, int(chosen_neurons)).astype(int)
+
+        firingrates = rate_timeseries[:,chosen_neurons].T
+        fig, ax = mountain_plot(
+                X = t/60, 
+                NbyX = firingrates, 
+                color=self.color,
+                xlabel="Time / min",
+                ylabel="Neurons",
+                xlim=None,
+                fig=fig,
+                ax=ax,
+            )
+        
+        if plot_spikes == True: 
+            for i in range(len(chosen_neurons)):
+                time_when_spiked = t[spikes[:,chosen_neurons[i]]]/60
+                h = (i+1-0.1)*np.ones_like(time_when_spiked)
+                ax.scatter(time_when_spiked,h,color=self.color,alpha=0.5,s=1)
+
+        ax.set_xticks([t_start/60,t_end/60])
+        if xlim is not None: 
+            ax.set_xlim(right=xlim/60)
+            ax.set_xticks([0,xlim/60])
+        
+        return fig, ax
+
+    def plot_rate_map(self, 
+                      chosen_neurons="10", 
+                      plot_spikes=True,
+                      by_history=False,):
+        """Plots rate maps of neuronal firing rates across the environment
+        Args:
+            chosen_neurons (): Which neurons to plot. string "10" will plot 10 of them, "all" will plot all of them, a list like [1,4,5] will plot cells indexed 1, 4 and 5. Defaults to "10".
+            
+            plot_spikes: if True, also scatters points where the neuron spiked
+            
+            by_history: When True, instead of explicitly evaluating the firing rate of the neuron at all points on the environment this just uses the history of the past positions weighted by the firing rate to create an observed raster plot. This is a more robust way to plot the receptive field as it does not require the ability to analytically find firing rate at position x, rather it just needs historic data of [x0,x1,x2...] and [fr0,fr1,fr2...]
+
+        Returns:
+            fig, ax 
+        """        
+        rate_maps = self.get_state(pos="all")
+        rate_timeseries = np.array(self.history['firingrate']).T
+        spikes = np.array(self.history['spikes']).T
+
+        if chosen_neurons == "all":
+            chosen_neurons = np.arange(self.n)
+        if type(chosen_neurons) is str:
+            if chosen_neurons.isdigit():
+                chosen_neurons = np.linspace(0,self.n-1, int(chosen_neurons)).astype(int)
+
+        if self.Agent.Environment.dimensionality == "2D":
+            color = list(matplotlib.colors.to_rgba(self.color))
+            coloralpha = color; coloralpha[-1]=0.5 
             fig, ax = plt.subplots(
-                rows,
-                len(neuron_id),
-                figsize=(0.5 * len(neuron_id), 0.5 * 1),
-                facecolor=layer.color,
+                1,
+                len(chosen_neurons),
+                figsize=(3 * len(chosen_neurons), 3 * 1),
+                facecolor=coloralpha,
             )
             if not hasattr(ax, "__len__"):
                 ax = [ax]
             for (i, ax_) in enumerate(ax):
-                self.plot_maze_structure(fig, ax_)
+                self.Agent.Environment.plot_environment(fig, ax_)
+                if by_history == False: 
+                    rate_map = rate_maps[chosen_neurons[i], :].reshape(self.
+                    Agent.Environment.discrete_coords.shape[:2])
+                    im = ax_.imshow(rate_map, extent=self.Agent.Environment.extent)
+                elif by_history == True: 
+                    ex = self.Agent.Environment.extent
+                    pos = np.array(self.Agent.history['pos'])
+                    rate_timeseries_ = rate_timeseries[chosen_neurons[i], :]
+                    rate_map = bin_data_for_histogramming(
+                        data=pos,
+                        extent=ex,
+                        dx=0.05,
+                        weights=rate_timeseries_
+                    )
+                    im = ax_.imshow(rate_map, extent=ex,interpolation='bicubic')
+                if plot_spikes == True: 
+                    if len(spikes >= 1):
+                        pos = np.array(self.Agent.history['pos'])
+                        pos_where_spiked = pos[spikes[chosen_neurons[i], :]]
+                        ax_.scatter(pos_where_spiked[:,0],pos_where_spiked[:,1])
+                    else: 
+                        pass 
 
-                rate_map = rate_maps[i].reshape(
-                    self.Environment.discrete_coords.shape[:2]
-                )
-
-                rate_map[0, 0] = 0
-                rate_map[-1, -1] = 1
-                # vmin = layer.min_fr
-                # vmax = layer.max_fr
-                extent = self.Environment.extent
-                im = ax_.imshow(rate_map, extent=extent)
-                # im = ax_.imshow(rate_map, extent=extent, vmin=vmin, vmax=vmax)
-                if (i == len(ax) - 1) and (cbar is True):
-                    divider = mpl_toolkits.axes_grid1.make_axes_locatable(ax_)
-                    cax = divider.append_axes("right", size="5%", pad=0.05)
-                    cb = fig.colorbar(im, cax=cax, ticks=[0, np.max(rate_map)])
-                    cb.outline.set_visible(False)
             return fig, ax
 
-        if self.Environment.dimensionality == "1D":
-            if type(neuron_id) is str:
-                if neuron_id == "random":
-                    neuron_id = np.random.randint(0, rate_maps.shape[0])
-                    rate_maps = rate_maps[neuron_id, :].reshape(1, -1)
-                if neuron_id == "all":
-                    pass
-                if neuron_id.isdigit():
-                    neuron_ids = np.linspace(
-                        0, rate_maps.shape[0] - 1e-6, int(neuron_id)
-                    ).astype(int)
-                    rate_maps = rate_maps[list(neuron_ids), :]
-            if type(neuron_id) is int:
-                rate_maps = rate_maps[neuron_id, :].reshape(1, -1)
-            fig, ax = self.mountain_plot(
-                self.Environment.flattened_discrete_coords[:, 0], rate_maps, color=color
+        if self.Agent.Environment.dimensionality == "1D":
+            if by_history == False: 
+                rate_maps = rate_maps[chosen_neurons, :]
+                x = self.Agent.Environment.flattened_discrete_coords[:, 0]
+            elif by_history == True: 
+                ex = self.Agent.Environment.extent
+                pos = np.array(self.Agent.history['pos'])[:,0]
+                print(pos.shape)
+                rate_maps = []
+                for neuron_id in chosen_neurons:
+                    rate_map, x = (
+                        bin_data_for_histogramming(
+                            data=pos,
+                            extent=ex,
+                            dx=0.01,
+                            weights=rate_timeseries[neuron_id,:])
+                    )
+                    x, rate_map = interpolate_and_smooth(x,rate_map,sigma=0.03)
+                    rate_maps.append(rate_map)
+                rate_maps = np.array(rate_maps)
+            
+            fig, ax = self.Agent.Environment.plot_environment(height=len(chosen_neurons))
+            fig, ax = mountain_plot(
+                X = x, 
+                NbyX = rate_maps, 
+                color=self.color,
+                xlabel="Position / m",
+                ylabel="Neurons",
+                fig=fig,
+                ax=ax,
             )
+            
+            if plot_spikes == True: 
+                if len(spikes >= 1):
+                    for i in range(len(chosen_neurons)):
+                        pos = np.array(self.Agent.history['pos'])[:,0]
+                        pos_where_spiked = pos[spikes[chosen_neurons[i]]]
+                        h = (i-0.1)*np.ones_like(pos_where_spiked)
+                        ax.scatter(pos_where_spiked,h,color=self.color,alpha=0.5,s=1)
+                else: 
+                    pass 
 
         return fig, ax
-
-    def plot_training_curves(self, layer_names=["Layer1", "Layer2"], crop_last=0):
-        fig, ax = plt.subplots(figsize=(4, 2))
-        for layer_name in layer_names:
-            layer = self.Neurons[layer_name]
-            t = np.array(layer.history["time"]) / 60
-            endid = np.argmin(np.abs(t - (t[-1] - 60 * crop_last)))
-            W_hist = np.array(layer.history["W"])
-            W_last = W_hist[-1, :, :]
-            W_loss = np.linalg.norm(W_hist - W_last, axis=(1, 2))
-            ax.plot(t[:endid], W_loss[:endid] / max(W_loss))
-        tpl.xyAxes(ax)
-        ax.set_title("Loss")
-        return
-
-    def mountain_plot(
-        self, X, NbyX, gap_mm=3.2, overlap=0.75, color="C0", yaxis=False, scale=False
-    ):
-        shiftby = np.max(np.abs(NbyX)) / overlap
-        shiftby = 1 / overlap
-        NbyX = NbyX / shiftby
-        a = 1
-        if NbyX.shape[0] == 1:
-            a = 6
-        fig, ax = plt.subplots(figsize=(2, a * len(NbyX) * gap_mm / 18))
-        for i in range(len(NbyX)):
-            ax.plot(X, NbyX[i] + i + 1, c=color, linestyle="solid", alpha=1, zorder=100)
-            tpl.xyAxes(ax)
-            ax.fill_between(X, NbyX[i] + i + 1, i + 1, facecolor=color, alpha=0.3)
-        ax.spines["left"].set_bounds(1, len(NbyX))
-        ax.spines["bottom"].set_position(("outward", 1))
-        ax.spines["left"].set_position(("outward", 1))
-        ax.set_yticks([1, len(NbyX)])
-        ax.set_ylim(
-            1 - 0.5,
-            0.5 + np.max(NbyX + np.arange(1, len(NbyX) + 1).reshape(len(NbyX), -1)),
+        
+    def plot_place_cell_locations(self):
+        assert self.cell_class == 'place_cell', 'only place cells have well defined centres for plotting'
+        fig, ax = self.Agent.Environment.plot_environment()
+        place_cell_centres = self.place_cell_centres
+        ax.scatter(
+            place_cell_centres[:, 0], place_cell_centres[:, 1], c="C1", marker="x", s=15
         )
-        ax.set_xticks(np.arange(max(X + 0.1)))
-        if yaxis == False:
-            ax.spines["left"].set_color(None)
-            ax.set_yticks([])
-        if scale == True:
-            ax.plot(
-                [0.8 * np.max(X), 0.8 * np.max(X)],
-                [0.8 * len(NbyX), 0.8 * len(NbyX) + overlap],
-                alpha=0.5,
-                color=color,
-                zorder=111,
-            )
-            ax.fill_between(
-                [0.78 * np.max(X), 0.92 * np.max(X)],
-                [0.82 * len(NbyX) + overlap, 0.82 * len(NbyX) + overlap],
-                [0.78 * len(NbyX), 0.78 * len(NbyX)],
-                facecolor="w",
-                zorder=110,
-                alpha=0.8,
-            )
-            ax.text(
-                0.82 * np.max(X),
-                0.8 * len(NbyX) + 0.25 * overlap,
-                f"$=$ {overlap:.2f}",
-                {"fontsize": 4},
-                zorder=111,
-            )
         return fig, ax
+    
+    def animate_rate_timeseries(self,
+                                t_end=None,
+                                chosen_neurons='all'):
+        """Returns a real-speed-evolving animation (anim) of the firing rates, 25fps. 
+        Should be saved using comand like 
+        anim.save("./where_to_save/animations.gif",dpi=300)
 
-    def plot_loss(self, layers=["Layer1"]):
-        fig, ax = plt.subplots(figsize=(2, 2))
-        maximum = 0
-        for layer_name in layers:
-            layer = self.Neurons[layer_name]
-            t = np.array(layer.history["time"]) / 60
-            loss = layer.history["loss"]
-            start_loss = loss[0]
-            maximum = max(maximum, np.max(loss))
-            ax.plot(t, loss, color=layer.color, label=layer_name)
-            ax.set_ylim(bottom=0, top=maximum)
-            ax.legend()
-            tpl.xyAxes(ax)
-            ax.set_xlabel("Training time / min")
-            ax.set_ylabel("Loss")
-        return fig, ax
+        Args:
+            t_end (_type_, optional): _description_. Defaults to None.
+
+        Returns:
+            animation
+        """        
+
+        if t_end == None: 
+            t_end = self.history['t'][-1]
+
+        def animate(i,fig,ax,chosen_neurons,t_max):
+            t = self.history['t']
+            t_start = t[0]
+            t_end = t[0]+(i+1)*40e-3
+            ax.clear()
+            fig, ax = self.plot_rate_timeseries(t_start=t_start,t_end=t_end, chosen_neurons=chosen_neurons, plot_spikes=True, fig=fig, ax=ax,xlim=t_max)
+            plt.close()
+            return 
+
+        fig, ax = self.plot_rate_timeseries(t_start=0,t_end=10*self.Agent.dt,chosen_neurons=chosen_neurons,xlim=t_end)
+        # fig, ax = plt.subplots()
+        anim = matplotlib.animation.FuncAnimation(fig,animate,interval=40,frames=int(t_end/40e-3),blit=False,fargs=(fig,ax,chosen_neurons,t_end))
+        return anim
+
+    def boundary_vector_preference_function(self,x):
+        """This is a random function needed to efficiently produce boundary vector cells. x is any array of final dimension shape shape[-1]=2. As I use it here x has the form of the output of vector_intercepts. I.e. each point gives shape[-1]=2 lambda values (lam1,lam2) for where a pair of line segments intercept. This function gives a preference for each pair. Preference is -1 if lam1<0 (the collision occurs behind the first point) and if lam2>1 or lam2<0 (the collision occurs ahead of the first point but not on the second line segment). If neither of these are true it's 1/x (i.e. it prefers collisions which are closest).
+
+        Args:
+            x (array): shape=(any_shape...,2)
+
+        Returns:
+            the preferece values: shape=(any_shape)
+        """        
+        assert x.shape[-1] == 2
+        pref = np.piecewise(x=x,
+                            condlist=(
+                                x[...,0]>0,
+                                x[...,0]<0,
+                                x[...,1]<0,
+                                x[...,1]>1,
+                                ),
+                            funclist=(
+                                1/x[x[...,0]>0],
+                                -1,
+                                -1,
+                                -1,
+                            ))
+        return pref[...,0]
+
+
+    
+
+
+
+
+
 
 
 """
 OTHER USEFUL FUNCTIONS
 """
-
-
-def get_theta(time, other_args={}):
-    """Returns the theta value \in [0,1]
-
+def ornstein_uhlenbeck(dt,
+                       x, 
+                       drift=0.0, 
+                       noise_scale=0.2, 
+                       coherence_time=5.0):
+    """An ornstein uhlenbeck process in x.
+    x can be multidimensional 
     Args:
-        time (float): current time
-        other_args : dict of additional parameters (theta_freq, theta_phase etc...). Must contain 
-    """
-    try:
-        theta_model = other_args["theta_model"]
-    except KeyError:
-        theta_model = "square"
-
-    if theta_model == "square":
-        try:
-            theta_freq = other_args["theta_freq"]
-        except KeyError:
-            theta_freq = 10
-        try:
-            theta_phase = other_args["theta_phase"]
-        except KeyError:
-            theta_phase = 0
-        try:
-            theta_bias = other_args["theta_bias"]
-        except KeyError:
-            theta_bias = 0
-        T_theta = 1 / theta_freq
-        theta = 1 * (
-            (((time - theta_phase * T_theta / (2 * np.pi)) % T_theta) / T_theta)
-            < (0.5 * (theta_bias + 1))
-        )
-
-    return theta
-
-
-def activate(x, activation="sigmoid", deriv=False, other_args={}):
-    """Activation function function
-
-    Args:
-        x (the input (vector))
-        activation: which type of fucntion to use (this is overwritten by 'activation' key in other_args)
-        deriv (bool, optional): Whether it return f(x) or df(x)/dx. Defaults to False.
-        other_args: Dictionary of parameters including other_args["activation"] = str for what type of activation (sigmoid, linear) and other params e.g. sigmoid midpoi n, max firing rate... 
-
-    Returns:
-        f(x) or df(x)/dx : array same as x
-    """
-    try:
-        name = other_args["activation"]
-    except KeyError:
-        name = activation
-    if name == "linear":
-        if deriv == False:
-            return x
-        elif deriv == True:
-            return np.ones(x.shape)
-
-    if name == "sigmoid":
-        # default sigmoid parameters set so that
-        # max_f = max firing rate = 1
-        # mid_x = middle point on domain = 1
-        # width_x = distance from 5percent_x to 95percent_x = 1
-        try:
-            max_fr = other_args["max_fr"]
-        except KeyError:
-            max_fr = 1
-        try:
-            min_fr = other_args["min_fr"]
-        except KeyError:
-            min_fr = 0
-        try:
-            mid_x = other_args["mid_x"]  # neuronal input for half-max output
-        except KeyError:
-            mid_x = 1
-        try:
-            width_x = other_args["width_x"]
-        except KeyError:
-            width_x = 1
-        beta = np.log((1 - 0.05) / 0.05) / (0.5 * width_x)  # sigmoid width
-        if deriv == False:
-            exp = np.exp(-beta * (x - mid_x))
-            return ((max_fr - min_fr) / (1 + np.exp(-beta * (x - mid_x)))) + min_fr
-        elif deriv == True:
-            f = activate(x, deriv=False, other_args=other_args)
-            return beta * (f - min_fr) * (1 - (f - min_fr) / (max_fr - min_fr))
-
-    # if name == "threshold_linear":
-    #     try:
-    #         max_fr = other_args["max_fr"]
-    #     except KeyError:
-    #         max_fr = 1
-    #     try:
-    #         mid_x = other_args["mid_x"]  # neuronal input for half-max output
-    #     except KeyError:
-    #         mid_x = 1
-    #     try:
-    #         width_x = other_args["width_x"]
-    #     except KeyError:
-    #         width_x = 1
-    #     lin_con = (x < (mid_x + width_x / 2)) * (
-    #         x > (mid_x - width_x / 2)
-    #     )  # condition for middle linear component
-    #     if deriv == False:
-    #         f = np.zeros_like(x)
-    #         f[x < (mid_x - width_x / 2)] = 0
-    #         f[x > (mid_x + width_x / 2)] = max_fr
-    #         f[lin_con] = (max_fr / (width_x)) * (x[lin_con] - (mid_x - width_x / 2))
-    #         return f
-    #     elif deriv == True:
-    #         f = np.zeros_like(x)
-    #         f[lin_con] = max_fr / (width_x)
-    #         return f
-
-    # if name == "tanh":
-    #     if deriv == False:
-    #         return np.tanh(x)
-    #     elif deriv == True:
-    #         return 1 - np.tanh(x) ** 2
-
-
-def ornstein_uhlenbeck(dt, v, drift=0.0, noise_scale=0.16, decay_time=5.0):
-    """An ornstein uhlenbeck process in v.
-    v can be one or two dimensional 
-
-    Args:
-        dt
-        v (): [description]
-        drift_velocity (float, or same type as v, optional): [description]. Defaults to 0.
-        velocity_noise_scale (float, or same type as v, optional): Magnitude of velocity deviations from drift velocity. Defaults to 0.16 (16 cm s^-1).
-        velocity_decay_time (float, optional): Effectively over what time scale you expect veloctiy to change directions. Defaults to 5.
+        dt: update time step
+        x: the stochastic variable being updated
+        drift (float, or same type as x, optional): [description]. Defaults to 0.
+        noise_scale (float, or same type as v, optional): Magnitude of deviations from drift. Defaults to 0.16 (16 cm s^-1).
+        coherence_time (float, optional): Effectively over what time scale you expect x to change directions. Defaults to 5.
 
     Returns:
         dv (same type as v); the required update ot the velocity
     """
-    v = np.array(v)
-    drift = drift * np.ones_like(v)
-    noise_scale = noise_scale * np.ones_like(v)
-    decay_time = decay_time * np.ones_like(v)
-    sigma = np.sqrt((2 * noise_scale ** 2) / (decay_time * dt))
-    theta = 1 / decay_time
-    dv = theta * (drift - v) * dt + sigma * np.random.normal(size=v.shape, scale=dt)
-    return dv
+    x = np.array(x)
+    drift = drift * np.ones_like(x)
+    noise_scale = noise_scale * np.ones_like(x)
+    coherence_time = coherence_time * np.ones_like(x)
+    sigma = np.sqrt((2 * noise_scale ** 2) / (coherence_time * dt))
+    theta = 1 / coherence_time
+    dx = theta * (drift - x) * dt + sigma * np.random.normal(size=x.shape, scale=dt)
+    return dx
 
-    # if type(v) is not np.ndarray:
-
-    #     sigma = np.sqrt((2 * velocity_noise_scale ** 2) / (velocity_decay_time * dt))
-    #     theta = 1 / velocity_decay_time
-    #     dv = theta * (drift_velocity - v) * dt + sigma * np.random.normal(scale=dt)
-    #     return dv
-
-    # if type(v) is np.ndarray:
-    #     if type(drift_velocity) in (float, int):
-    #         drift_velocity = drift_velocity * np.ones(v.shape)
-    #     if type(velocity_noise_scale) in (float, int):
-    #         velocity_noise_scale = velocity_noise_scale * np.ones(v.shape)
-    #     if type(velocity_decay_time) in (float, int):
-    #         velocity_decay_time = velocity_decay_time * np.ones(v.shape)
-    #     sigma = np.diag(
-    #         np.sqrt((2 * velocity_noise_scale ** 2) / (velocity_decay_time * dt))
-    #     )
-    #     theta = np.diag(1 / velocity_decay_time)
-    #     dv = np.matmul(theta, (drift_velocity - v)) * dt + np.matmul(
-    #         sigma, np.random.normal(size=v.shape, scale=dt)
-    #     )
-
-    #     return dv
-
+def gaussian(x,
+             mu,
+             sigma):
+    """Gaussian function. x, mu and sigma can be any shape as long as they are all the same (or strictly, all broadcastabele) 
+    Args:
+        x
+        mu 
+        sigma
+    Returns gaussian(x;mu,sigma)
+    """    
+    g = -(x-mu)**2
+    g = g/(2*sigma**2)
+    g = np.exp(g)
+    g = g/np.sqrt(2*np.pi*sigma**2)
+    return g 
 
 def get_angle(segment):
     """Given a 'segment' (either 2x2 start and end positions or 2x1 direction bearing) 
@@ -1222,57 +1266,63 @@ def get_angle(segment):
             2 * np.pi,
         )
 
-
-def turn(current_direction, turn_angle):
-    """Turns the current direction by an amount turn_angle, modulus 2pi
+def rotate(vector,
+           theta):
+    """rotates a vector shape (2,) by angle theta. 
     Args:
-        current_direction (array): current direction 2-vector
-        turn_angle (float): angle ot turn in radians
-    Returns:
-        array: new direction
+        vector (array): the 2d vector
+        theta (flaot): the rotation angle
     """
-    angle_ = get_angle(current_direction)
-    angle_ += turn_angle
-    angle_ = np.mod(angle_, 2 * np.pi)
-    new_direction = np.array([np.cos(angle_), np.sin(angle_)])
-    return new_direction
+    R = np.array([[np.cos(theta),-np.sin(theta)],[np.sin(theta),np.cos(theta)]])
+    vector_new = np.matmul(R,vector)
+    return vector_new
 
-
-def wall_bounce_or_follow(current_velocity, wall, what_to_do="bounce"):
-    """Given current direction, and wall and an instruction returns a new direction which is the result of implementing that instruction on the current direction
-        wrt the wall. e.g. 'bounce' returns direction after elastic bounce off wall. 'follow' returns direction parallel to wall (closest to current heading)
+def wall_bounce(current_velocity,
+                wall):
+    """Given current direction and wall returns a new direction which is the result of reflecting off that wall 
     Args:
         current_direction (array): the current direction vector
         wall (array): start and end coordinates of the wall
-        what_to_do (str, optional): 'bounce' or 'follow'. Defaults to 'bounce'.
     Returns:
         array: new direction
     """
-    if what_to_do == "bounce":
-        wall_perp = get_perpendicular(wall[1] - wall[0])
-        if np.dot(wall_perp, current_velocity) <= 0:
-            wall_perp = (
-                -wall_perp
-            )  # it is now the get_perpendicular with smallest angle to dir
-        wall_par = wall[1] - wall[0]
-        if np.dot(wall_par, current_velocity) <= 0:
-            wall_par = -wall_par  # it is now the parallel with smallest angle to dir
-        wall_par, wall_perp = (
-            wall_par / np.linalg.norm(wall_par),
-            wall_perp / np.linalg.norm(wall_perp),
-        )  # normalise
-        new_velocity = wall_par * np.dot(
-            current_velocity, wall_par
-        ) - wall_perp * np.dot(current_velocity, wall_perp)
-    elif what_to_do == "follow":
-        wall_par = wall[1] - wall[0]
-        if np.dot(wall_par, current_velocity) <= 0:
-            wall_par = -wall_par  # it is now the parallel with smallest angle to dir
-        wall_par = wall_par / np.linalg.norm(wall_par)
-        new_velocity = wall_par * np.dot(current_velocity, wall_par)
+    wall_perp = get_perpendicular(wall[1] - wall[0])
+    if np.dot(wall_perp, current_velocity) <= 0:
+        wall_perp = (
+            -wall_perp
+        )  # it is now the get_perpendicular with smallest angle to dir
+    wall_par = wall[1] - wall[0]
+    if np.dot(wall_par, current_velocity) <= 0:
+        wall_par = -wall_par  # it is now the parallel with smallest angle to dir
+    wall_par, wall_perp = (
+        wall_par / np.linalg.norm(wall_par),
+        wall_perp / np.linalg.norm(wall_perp),
+    )  # normalise
+    new_velocity = wall_par * np.dot(
+        current_velocity, wall_par
+    ) - wall_perp * np.dot(current_velocity, wall_perp)
 
     return new_velocity
 
+def interpolate_and_smooth(x,
+                           y,
+                           sigma=0.03):
+    """Interpolates with cublic spline x and y to 10x resolution then smooths these with a gaussian kernel of width sigma. Currently this only works for 1-dimensional x.
+    Args:
+        x 
+        y 
+        sigma 
+    Returns (x_new,y_new)
+    """ 
+    from scipy.ndimage.filters import gaussian_filter1d
+    from scipy.interpolate import interp1d
+
+    y_cubic = interp1d(x, y, kind='cubic')
+    x_new = np.arange(x[0],x[-1],(x[1]-x[0])/10)
+    y_interpolated = y_cubic(x_new)
+    y_smoothed = gaussian_filter1d(y_interpolated,
+                        sigma=sigma/(x_new[1]-x_new[0]))
+    return x_new,y_smoothed
 
 def get_perpendicular(a=None):
     """Given 2-vector, a, returns its perpendicular
@@ -1286,42 +1336,171 @@ def get_perpendicular(a=None):
     b[1] = a[0]
     return b
 
-
-def intersect(a):
-    # a numpy array with dimension [n, 2, 2, 2]
-    # axis 0: line-pair, axis 1: two lines, axis 2: line delimiters axis 3: x and y coords
-    # for each of the n line pairs a boolean is returned stating of the two lines intersect
-    # Note: the edge case of a vertical line is not handled.
-    m = (a[:, :, 1, 1] - a[:, :, 0, 1]) / (a[:, :, 1, 0] - a[:, :, 0, 0] + 1e-8)
-    t = a[:, :, 0, 1] - m[:, :] * a[:, :, 0, 0]
-    x = (t[:, 0] - t[:, 1]) / (m[:, 1] - m[:, 0] + 1e-8)
-    y = m[:, 0] * x + t[:, 0]
-    r = a.min(axis=2).max(axis=1), a.max(axis=2).min(axis=1)
-    return (x >= r[0][:, 0]) & (x <= r[1][:, 0]) & (y >= r[0][:, 1]) & (y <= r[1][:, 1])
-
-
-def saveToFile(Class, name, directory="../savedObjects/"):
-    """Saves all attributes from a Class to file
-    Args:
-        Class: The class to save
-        name (string): Name to save as
-        directory (str, optional): [description]. Defaults to "../savedObjects/".
+def vector_intercepts(vector_list_a,
+                      vector_list_b,
+                      return_collisions=False):
     """
-    np.savez(directory + name + ".npz", Class.__dict__)
-    return
+    Each element of vector_list_a gives a line segment of the form [[x_a_0,y_a_0],[x_a_1,y_a_1]], or, in vector notation [p_a_0,p_a_1] (same goes for vector vector_list_b). Thus
+        vector_list_A.shape = (N_a,2,2)
+        vector_list_B.shape = (N_b,2,2)
+    where N_a is the number of vectors defined in vector_list_a
+
+    Each line segments define an (infinite) line, parameterised by line_a = p_a_0 + l_a.(p_a_1-p_a_0). We want to find the intersection between these lines in terms of the parameters l_a and l_b. Iff l_a and l_b are BOTH between 0 and 1 then the line segments intersect. Thus the goal is to return an array, I,  of shape 
+        I.shape = (N_a,N_b,2)
+    where, if I[n_a,n_b][0] and I[n_a,n_b][1] are both between 0 and 1 then it means line segments vector_list_a[n_a] and vector_list_b[n_b] intersect. 
+
+    To do this we consider solving the equation line_a = line_b. The solution to this is:
+        l_a = dot((p_b_0 - p_a_0) , (p_b_1 - p_b_0)_p) / dot((p_a_1 - p_a_0) , (p_b_1 - p_b_0)_p)
+        l_b = dot((p_a_0 - p_b_0) , (p_a_1 - p_a_0)_p) / dot((p_b_1 - p_b_0) , (p_a_1 - p_a_0)_p)
+    where "_p" denotes the perpendicular (in two-D [x,y]_p = [-y,x]). Using notation
+        l_a = dot(d0,sb_p) / dot(sa,sb_p)
+        l_b = dot(-d0,sa_p) / dot(sb,sa_p)
+    for 
+        d0 = p_b_0 - p_a_0
+        sa = p_a_1 - p_a_0 
+        sb = p_b_1 - p_b_0
+    We will calculate these first.
+
+    If return_collisions == True, the list of intercepts is used to assess whether each pair of segments actually collide (True) or not (False) and this bollean array (shape = (N_a,N_b)) is returned instead.
+    """
+    assert (vector_list_a.shape[-2:] == (2,2)) and (vector_list_b.shape[-2:] == (2,2)), "vector_list_a and vector_list_b must be shape (_,2,2), _ is optional"
+    vector_list_a = vector_list_a.reshape(-1,2,2)
+    vector_list_b = vector_list_b.reshape(-1,2,2)
+    vector_list_a = vector_list_a + np.random.normal(scale=1e-6,size=vector_list_a.shape)
+    vector_list_b = vector_list_b + np.random.normal(scale=1e-6,size=vector_list_b.shape)
+
+    N_a = vector_list_a.shape[0]
+    N_b = vector_list_b.shape[0]
+
+    d0 = np.expand_dims(vector_list_b[:,0,:],axis=0) - np.expand_dims(vector_list_a[:,0,:],axis=1) #d0.shape = (N_a,N_b,2)
+    sa = vector_list_a[:,1,:] - vector_list_a[:,0,:] #sa.shape = (N_a,2)
+    sb = vector_list_b[:,1,:] - vector_list_b[:,0,:]#sb.shape = (N_b,2)
+    sa_p = np.flip(sa.copy(),axis=1)
+    sa_p[:,0] = -sa_p[:,0] #sa_p.shape = (N_a,2)
+    sb_p = np.flip(sb.copy(),axis=1)
+    sb_p[:,0] = -sb_p[:,0] #sb.shape = (N_b,2)
+
+    """Now we can go ahead and solve for the line segments
+    since d0 has shape (N_a,N_b,2) in order to perform the dot product we must first reshape sa (etc.) by tiling to shape (N_a,N_b,2)
+    """
+    sa = np.tile(np.expand_dims(sa,axis=1),reps=(1,N_b,1)) #sa.shape = (N_a,N_b,2)
+    sb = np.tile(np.expand_dims(sb,axis=0),reps=(N_a,1,1)) #sb.shape = (N_a,N_b,2)
+    sa_p = np.tile(np.expand_dims(sa_p,axis=1),reps=(1,N_b,1)) #sa.shape = (N_a,N_b,2)
+    sb_p = np.tile(np.expand_dims(sb_p,axis=0),reps=(N_a,1,1)) #sb.shape = (N_a,N_b,2)
+    """The dot product can now be performed by broadcast multiplying the arraays then summing over the last axis"""
+    l_a = (d0*sb_p).sum(axis=-1) / (sa*sb_p).sum(axis=-1) #la.shape=(N_a,N_b)
+    l_b = (-d0*sa_p).sum(axis=-1) / (sb*sa_p).sum(axis=-1) #la.shape=(N_a,N_b)
+
+    intercepts = np.stack((l_a,l_b),axis=-1)
+    if return_collisions == True: 
+        direct_collision = ((intercepts[:,:,0] > 0) *
+                        (intercepts[:,:,0] < 1) *
+                        (intercepts[:,:,1] > 0) *
+                        (intercepts[:,:,1] < 1))
+        return direct_collision
+    else: 
+        return intercepts
+
+def shortest_vectors_from_points_to_lines(positions,
+                                          vectors): 
+    """
+    Takes a list of positions and a list of vectors (line segments) and returns the pairwise  vectors of shortest distance FROM the vector segments TO the positions. 
+    Suppose we have a list of N_p positions and a list of N_v line segments (or vectors). Each position is a point like [x_p,y_p], or p_p as a vector. Each vector is defined by two points [[x_v_0,y_v_0],[x_v_1,y_v_1]], or [p_v_0,p_v_1]. Thus 
+        positions.shape = (N_p,2)
+        vectors.shape = (N_v,2,2)
+    
+    Each vector defines an infinite line, parameterised by line_v = p_v_0 + l_v . (p_v_1 - p_v_0). We want to solve for the l_v defining the point on the line with the shortest distance to p_p. This is given by:
+        l_v = dot((p_p-p_v_0),(p_v_1-p_v_0)/dot((p_v_1-p_v_0),(p_v_1-p_v_0)). 
+    Or, using a diferrent notation
+        l_v = dot(d,s)/dot(s,s)
+    where 
+        d = p_p-p_v_0 
+        s = p_v_1-p_v_0"""
+    assert (positions.shape[-1] == 2) and (vectors.shape[-2:] == (2,2)), "positions and vectors must have shapes (_,2) and (_,2,2) respectively. _ is optional"
+    positions = positions.reshape(-1,2)
+    vectors = vectors.reshape(-1,2,2)
+    positions = positions + np.random.normal(scale=1e-6, size=positions.shape)
+    vectors = vectors + np.random.normal(scale=1e-6, size=vectors.shape)
+
+    N_p = positions.shape[0]
+    N_v = vectors.shape[0]
+
+    d = np.expand_dims(positions,axis=1) - np.expand_dims(vectors[:,0,:],axis=0) #d.shape = (N_p,N_v,2)
+    s = vectors[:,1,:]-vectors[:,0,:] #vectors.shape = (N_v,2)
 
 
-def loadFromFile(Class, name, directory="../savedObjects/"):
-    attributes_dictionary = np.load(directory + name + ".npz", allow_pickle=True)[
-        "arr_0"
-    ].item()
-    print("Loading attributes...", end="")
-    for key, value in attributes_dictionary.items():
-        setattr(Class, key, value)
-    print("done. use 'Class.__dict__.keys()'  to see avaiable attributes")
+    """in order to do the dot product we must reshaope s to be d's shape."""
+    s_ = np.tile(np.expand_dims(s.copy(),axis=0),reps=(N_p,1,1)) #s_.shape = (N_p,N_v,2)
+    """now do the dot product by broadcast multiplying the arraays then summing over the last axis"""
 
+    l_v = (d*s).sum(axis=-1)/(s*s).sum(axis=-1) #l_v.shape = (N_p,N_v)
 
-def update_params(Class, params: dict):
+    """
+    Now we can actually find the vector of shortest distance from the line segments to the points which is given by the size of the perpendicular
+        perp = p_p - (p_v_0 + l_v.s_)
+    
+    But notice that if l_v > 1 then the perpendicular drops onto a part of the line which doesn't exist. In fact the shortest distance is to the point on the line segment where l_v = 1. Likewise for l_v < 0. To fix this we should limit l_v to be between 1 and 0
+    """
+    l_v[l_v > 1] = 1
+    l_v[l_v < 0] = 0
+
+    """we must reshape p_p and p_v_0 to be shape (N_p,N_v,2), also reshape l_v to be shape (N_p, N_v,1) so we can broadcast multiply it wist s_"""
+    p_p = np.tile(np.expand_dims(positions,axis=1),reps=(1,N_v,1)) #p_p.shape = (N_p,N_v,2)
+    p_v_0 = np.tile(np.expand_dims(vectors[:,0,:],axis=0),reps=(N_p,1,1)) #p_v_0.shape = (N_p,N_v,2)
+    l_v = np.expand_dims(l_v,axis=-1)
+
+    perp = p_p - (p_v_0 + l_v*s_) #perp.shape = (N_p,N_v,2)
+    
+    return perp
+
+def get_line_segments_between(pos1, 
+                              pos2):
+    """Takes two position arrays and returns the array of pair-wise line segments between positions in each array (from pos1 to pos2).
+    Args:
+        pos1 (array): (N x dimensionality) array of positions
+        pos2 (array): (M x dimensionality) array of positions
+    Returns:
+        (N x M x 2 x dimensionality) array of vectors from pos1's to pos2's"""
+
+    pos1_ = pos1.reshape(-1, 1, pos1.shape[-1])
+    pos2_ = pos2.reshape(1, -1, pos2.shape[-1])
+    pos1 = np.repeat(pos1_, pos2_.shape[1], axis=1)
+    pos2 = np.repeat(pos2_, pos1_.shape[0], axis=0)
+    lines = np.stack((pos1, pos2), axis=-2)
+    return lines
+
+def get_vectors_between(pos1=None,
+                        pos2=None,
+                        line_segments=None):
+    """Takes two position arrays and returns the array of pair-wise vectors between positions in each array (from pos1 to pos2).
+    Args:
+        pos1 (array): (N x dimensionality) array of positions
+        pos2 (array): (M x dimensionality) array of positions
+        line_segments: if you already have th el line segments, just pass these 
+    Returns:
+            (N x M x dimensionality) array of vectors from pos1's to pos2's"""
+    if line_segments is None:
+        line_segments = get_line_segments_between(pos1,pos2)
+    vectors = line_segments[..., 0, :] - line_segments[..., 1, :]
+    return vectors
+
+def get_distances_between(pos1=None,
+                          pos2=None,
+                          vectors=None):
+    """Takes two position arrays and returns the array of pair-wise euclidean distances between positions in each array (from pos1 to pos2).
+    Args:
+        pos1 (array): (N x dimensionality) array of positions
+        pos2 (array): (M x dimensionality) array of positions
+        vectors: if you already have the pair-wise vectors between pos1 and pos2, just pass these 
+    Returns:
+            (N x M) array of distances from pos1's to pos2's"""
+    if vectors is None:
+        vectors = get_vectors_between(pos1,pos2)
+    distances = np.linalg.norm(vectors,axis=-1)
+    return distances
+
+def update_class_params(Class, 
+                        params: dict):
     """Updates parameters from a dictionary. 
     All parameters found in params will be updated to new value
     Args:
@@ -1331,123 +1510,85 @@ def update_params(Class, params: dict):
     for key, value in params.items():
         setattr(Class, key, value)
 
-
-def gridscore(grid):
-    """Takes an array (the same shape as the environment) or list of arrays and 
+def bin_data_for_histogramming(data,
+                               extent,
+                               dx,
+                               weights=None):
+    """Bins data ready for plotting. So for example if the data is 1D the extent is broken up into bins (leftmost edge = extent[0], rightmost edge = extent[1]) and then data is histogrammed into these bins. weights weights the histogramming process so the contribution of each data point to a bin count is the weight, not 1. 
 
     Args:
-        arr (np.array): The "grid" firing field
-    """
-    ac = scipy.signal.correlate2d(grid, grid)
-    ac_0 = ac.reshape(-1)
-    ac_30 = scipy.ndimage.rotate(ac, 30, reshape=False).reshape(-1)
-    ac_60 = scipy.ndimage.rotate(ac, 60, reshape=False).reshape(-1)
-    ac_90 = scipy.ndimage.rotate(ac, 90, reshape=False).reshape(-1)
-    ac_120 = scipy.ndimage.rotate(ac, 120, reshape=False).reshape(-1)
-    ac_150 = scipy.ndimage.rotate(ac, 150, reshape=False).reshape(-1)
+        data (array): (2,N) for 2D or (N,) for 1D)
+        extent (_type_): _description_
+        dx (_type_): _description_
+        weights (_type_, optional): _description_. Defaults to None.
 
-    C_30 = scipy.stats.pearsonr(ac_0, ac_30)[0]
-    C_60 = scipy.stats.pearsonr(ac_0, ac_60)[0]
-    C_90 = scipy.stats.pearsonr(ac_0, ac_90)[0]
-    C_120 = scipy.stats.pearsonr(ac_0, ac_120)[0]
-    C_150 = scipy.stats.pearsonr(ac_0, ac_150)[0]
+    Returns:
+        (heatmap,bin_centres): if 1D
+        (heatmap): if 2D
+    """    
+    if len(extent)==2: #dimensionality = "1D"
+        bins = np.arange(extent[0],extent[1]+dx,dx)
+        heatmap, xedges = np.histogram(data,bins=bins,weights=weights)
+        centres = (xedges[1:]+xedges[:-1])/2
+        return (heatmap,centres)
+        
+    elif len(extent)==4: #dimensionality = "2D"
+        bins_x = np.arange(extent[0],extent[1]+dx,dx)
+        bins_y = np.arange(extent[2],extent[3]+dx,dx)
+        heatmap, xedges, yedges = np.histogram2d(data[:, 0], data[:, 1], bins=[bins_x,bins_y], weights=weights)
+        heatmap = heatmap.T[::-1, :]
+        return heatmap
+     
+def mountain_plot(X, 
+                  NbyX, 
+                  color="C0",
+                  xlabel="",
+                  ylabel="",
+                  xlim=None,
+                  fig=None,
+                  ax=None,
+    ):
+    """Make a mountain plot. NbyX is an N by X array of all the plots to display. The nth plot is shown at height n, line are scaled so the maximum value across all of them is 0.7, then they are all seperated by 1 (sot they don't overlap)
 
-    GS = (1 / 2) * (C_60 + C_120) - (1 / 3) * (C_30 + C_90 + C_150)
+    Args:
+        X: independent variable to go on X axis 
+        NbyX: dependent variables to go on y axis
+        color: plot color. Defaults to "C0".
+        xlabel (str, optional): x axis label. Defaults to "".
+        ylabel (str, optional): y axis label. Defaults to "".
+        xlim (_type_, optional): fix xlim to this is desired. Defaults to None.
+        fig (_type_, optional): fig to plot over if desired. Defaults to None.
+        ax (_type_, optional): ax to plot on if desider. Defaults to None.
 
-    return GS
+    Returns:
+        fig, ax: _description_
+    """    
+    c = np.array(matplotlib.colors.to_rgb(color))
+    fc = 0.3*c + (1-0.3)*np.array([1,1,1]) #convert rgb+alpha to rgb
 
-
-if __name__ == "__main__":
-    Env = Environment({"maze_type": "loop", "scale": 2, "dx": 0.015})
-
-    Ag = Agent(
-        {"Environment": Env, "drift_velocity": 0.2, "velocity_noise_scale": 0.0,}
+    NbyX = 0.7* NbyX / np.max(np.abs(NbyX))
+    if fig is None and ax is None: 
+        fig, ax = plt.subplots(figsize=(3, len(NbyX)*5.5/25)) #~6mm gap between lines
+    for i in range(len(NbyX)):
+        ax.plot(X, NbyX[i] + i + 1, c=color)
+        ax.fill_between(X, NbyX[i] + i + 1, i + 1, facecolor=fc)
+    ax.spines["left"].set_bounds(1, len(NbyX))
+    ax.spines["bottom"].set_position(("outward", 1))
+    ax.spines["left"].set_position(("outward", 1))
+    ax.set_yticks([1, len(NbyX)])
+    ax.set_ylim(
+        1 - 0.5,
+        len(NbyX) + 1
     )
+    ax.set_xticks(np.arange(max(X + 0.1)))
+    ax.spines["left"].set_color(None)
+    ax.spines["right"].set_color(None)
+    ax.spines["top"].set_color(None)
+    ax.set_yticks([])
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.set_ylim()
+    if xlim is not None:
+        ax.set_xlim(right=xlim)
 
-    Features = StateNeurons(
-        {
-            "Environment": Env,
-            "Agent": Ag,
-            "locations": Env.scatter_feature_centres(n=200, jitter=False),
-            "widths": 0.1,
-            "type": "gaussian",
-            "name": "Features",
-        }
-    )
-
-    HPC = PyramidalNeurons(
-        {
-            "Environment": Env,
-            "Agent": Ag,
-            "name": "HPC",
-            "n": Features.n,
-            "color": "C4",
-        }
-    )
-
-    MEC = PyramidalNeurons(
-        {"Environment": Env, "Agent": Ag, "name": "MEC", "n": 200, "color": "C5",}
-    )
-
-    HPC.add_compartment(
-        params={
-            "name": "basal",
-            "input_layers": [Features],
-            "eta": 0,
-            "activation": "linear",
-            "use_bias": False,
-        }
-    )
-    HPC.add_compartment(
-        params={
-            "name": "apical",
-            "input_layers": [MEC],
-            # 'use_bias':True,
-            # 'activation':'linear'
-        }
-    )
-
-    MEC.add_compartment(
-        params={
-            "name": "basal",
-            "input_layers": [HPC],
-            # 'use_bias':True,
-            # 'activation':'linear'
-        }
-    )
-
-    MEC.add_compartment(
-        params={
-            "name": "apical",
-            "input_layers": [MEC],
-            # 'use_bias':True,
-            # 'activation':'linear'
-        }
-    )
-
-    MEC.top_layer = True
-    HPC.Compartments["basal"].W = np.identity(HPC.n)
-
-    Plotter = Visualiser(Agent=Ag, Environment=Env, Neurons=[Features, HPC, MEC])
-
-    N_plot = "10"
-    Plotter.plot_rate_map(
-        layer_name="Features", neuron_id=N_plot,
-    )
-    Plotter.plot_rate_map(layer_name="HPC", route="basal", neuron_id=N_plot)
-    Plotter.plot_rate_map(layer_name="HPC", route="apical", neuron_id=N_plot)
-    Plotter.plot_rate_map(layer_name="MEC", route="basal", neuron_id=N_plot)
-    Plotter.plot_rate_map(layer_name="MEC", route="apical", neuron_id=N_plot)
-
-    Tmax_min = 1
-    dt = (HPC.theta_params["theta_freq"] ** (-1)) / 10
-    steps = int(Tmax_min * 60 / dt)
-    for i in tqdm(range(steps)):
-        Ag.update_state(dt)
-        Features.update_state()
-        HPC.update_dendrite_states()
-        MEC.update_dendrite_states()
-        HPC.update_soma_states()
-        MEC.update_soma_states()
-        HPC.update_weights()
-        MEC.update_weights()
+    return fig, ax
