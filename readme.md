@@ -71,7 +71,7 @@ Env = Environment(
     params = {'boundary_conditions':'periodic'} #or 'solid' (default)
 ) 
 ```
-![](./figures/readme/boundary_conditions.png)
+![](./readme_figs/boundary_conditions.png)
 
 #### 1- or 2-dimensions 
 Most features work in both 1 and 2 dimensions. The following figure shows 1 min of exploration of an agent in a 1D environment with periodic boundary conditions spanned by 10 place cells. 
@@ -81,7 +81,7 @@ Env = Environment(
     params = {'dimensionality':'1D'} #or '2D' (default)
 ) 
 ```
-![](./figures/readme/one_dimension.png)
+![](./readme_figs/one_dimension.png)
 
 
 ### (ii) `Agent()` features
