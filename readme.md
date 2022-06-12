@@ -32,17 +32,31 @@ Here is a list of features loosely organised into three categories. Those pertai
 
 ### (i) `Environment()` features
 #### Walls 
-Arbitrarily add walls to the environment to replicate any desired maze structure
+Arbitrarily add walls to the environment to replicate any desired maze structure. The following code shows how to add walls to make a multicompartment environment like used in Carpenter et al. (2015). 
 ```
-Env.add_wall([])
+Env.add_wall([[0.3,0.0],[0.3,0.5]])
 ```
+![Walls](./figures/readme/walls.pdf)
 
 #### Boundary conditions 
+Boundary conditions can be "periodic" or "solid". Place cells and the Agent will respect boundaries accordingly.
+![Boundaries](./figures/readme/boundary_conditions.pdf)
+
 #### 1- or 2-dimensions 
+Most features work in both 1 and 2 dimensions. Some don't (e.g. walls, boundary_vector_cells aren't defined in 1D)
+![1D](./figures/readme/one_dimension.pdf)
 
 
 ### (ii) `Agent()` features
-#### 
+#### Wall repelling 
+Walls mildly repel the agents. Coupled with the finite turning speed this creates a combined effect that the agent is encourged over explore walls and corners (as shown in ...et al.). This can of course be turned off.
+```
+Αg.walls_repel = True #False
+```
+![Walls](./figures/readme/walls_repel.pdf)
+
+#### Policy control 
+By default the movement policy is an uncontrolled "smooth" random walk where the velocity is governed by an Ornstein-Uhlenbeck process. It is possible, however, to pass a "drift velocity" to the Agent, towards which it's velocity will drift. We envisage this being use, for example, by an Actor-Critic system to control the Agent. For demonstration here we set a radial drift velocity to encourage circular motion.   
 
 ### (iii) `Neuron()` features 
 
