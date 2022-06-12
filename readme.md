@@ -97,7 +97,7 @@ Walls in the environment mildly "repel" the agent. Coupled with the finite turni
 ```
 Αg.walls_repel = True #False
 ```
-![](./readme_figs/walls_repel.png)
+![](./readme_figs/wall_repel.png)
 
 #### Random motion model
 Motion is modelled stochastically. In 2D speed and rotational speed take constrained random walks governed by Ornstein-Uhlenbeck processes. You can change the variance and coherence times of these processes to control the shape of the trajectory.
