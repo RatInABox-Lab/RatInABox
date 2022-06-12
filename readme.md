@@ -1,5 +1,7 @@
 # RatInABox 🐀📦
 
+![](./readme_figs/whole_simulation.gif)
+
 RatInABox is a toolkit for simulating navigation and/or hippocampal-entorhinal cell types. Essentially it simulates a rat 🐀, with a brain🧠, in a box 📦. With it you can
 
 * Generate pseudo-realistic trajectories for rats foraging/exploring 1 and 2D environments
@@ -13,9 +15,25 @@ RatInABox is a toolkit for simulating navigation and/or hippocampal-entorhinal c
 2. `Agent()`: The agent (or "rat") moving around the Environment. 
 3. `Neurons()`: A population of neurons. Neurons have firing rates determined by the state of the Agent (e.g. its position). 
 
-Here's an animation of the kind of simulation you can run. It shows an agent randomly exploring a 2D environment with a wall. Four populations of cells (place cells, grid cells, boundary vector cells and velocity cells) "fire" as the agent explores. Below shows the code needed to replicate this exact simulation (13 lines).
+The above animation shows the kind of simulation you can easily run using this toolbox. It shows an agent randomly exploring a 2D environment with a wall. Four populations of cells (place cells, grid cells, boundary vector cells and velocity cells) "fire" as the agent explores. Below shows the code needed to replicate this exact simulation (13 lines).
 
-![](./readme_figs/whole_simulation.gif)
+```
+Env = Environment()
+Ag = Agent()
+PlaceCells = Neurons(params={'cell_class':'place_cells'})
+GridCells = Neurons(params={'cell_class':'grid_cells'})
+BoundaryVectorCells = Neurons(params={'cell_class':'boundary_vector_cells'})
+VelocityCells = Neurons(params={'cell_class':'velocity_cells'})
+
+Env.add_wall(np.array([[0.3,0.0],[0.3,0.4]])) #add wall to Environment
+
+while Ag.t < 60: #explore for 60 seconds
+    Ag.update()
+    PlaceCells.update()
+    GridCells.update()
+    BoundaryVectorCells.update()
+    VelocityCells.update()
+```
 
 ## Key features
 
