@@ -48,6 +48,9 @@ while Ag.t < 60: #explore for 60 seconds
 * **Visual** It's easy plot or animate trajectories, firing rate timeseries', spike rasters, receptive fields, heat maps and more using our plotting functions. 
 * **Easy**: sensible default parameters mean you can have realisitic simulation data to work with in ~10 lines of code. 
 
+## Get started 
+At the bottom of this readme we provide two scripts: one simple (10 lines of code to initialise and simulate and agnet in a 2D environment with 10 place cells) and one extensive (essentially the simulation animate at the top - a more complex environment with multiple cells types) which additionally demostrates how to use the plotting functions to visualise the data. 
+
 ## Requirements
 * Python 3.7+
 * NumPy
@@ -98,7 +101,8 @@ Walls in the environment mildly "repel" the agent. Coupled with the finite turni
 
 #### Random motion model
 Motion is stochastic but smooth. The speed (and rotational speed if in 2D) of an Agent take constrained random walks governed by Ornstein-Uhlenbeck processes. You can change the variance and coherence times of these processes to control the shape of the trajectory.
-```
+
+```python
 Agent.speed_mean = 0.2
 Agent.speed_std = 0.1
 Agent.speed_coherence_time = 3
@@ -166,3 +170,8 @@ A tutorial script can be found in scripts/ratinabox_tutorial.ipynb. This outline
 
 ## Contribute 
 RatInABox is an open source project, and we actively encourage community contributions. These can take various forms, such as new movement policies, new cells types, new geometries, bug fixes, documentation, citations of relevant work, or additional experiment notebooks. If there is a small contribution you would like to make, please feel free to open a pull request, and we can review it. If there is a larger contribution you are considering, please open a github issue. This way, the contribution can be discussed, and potential support can be provided if needed. 
+
+## Example Scripts
+
+
+
