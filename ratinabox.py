@@ -771,7 +771,7 @@ class Neurons:
                 "random_orientations":True,
                 "random_gridscales":True,
             #default boundary vector cell params
-            "color": "C2", #just for plotting
+            "color": None, #just for plotting
             "min_fr": 0,
             "max_fr": 1,
         }
@@ -783,6 +783,8 @@ class Neurons:
         self.history["firingrate"] = []
         self.history["spikes"] = []
 
+        allowed_cell_classes = ['place_cell','grid_cell','boundary_vector_cell','velocity_cell']
+        assert self.cell_class in allowed_cell_classes, f"cell class {self.cell_class} is not defined, must be in {allowed_cell_classes}"
         #Initialise place cells 
         if self.cell_class == 'place_cell':
             if self.place_cell_centres is None:
@@ -979,7 +981,7 @@ class Neurons:
 
     def plot_rate_timeseries(self,
                             t_start=0,
-                            t_end=60,
+                            t_end=None,
                             chosen_neurons='10',
                             plot_spikes=True,
                             fig=None,
@@ -1069,8 +1071,10 @@ class Neurons:
                 chosen_neurons = np.linspace(0,self.n-1, int(chosen_neurons)).astype(int)
 
         if self.Agent.Environment.dimensionality == "2D":
-            color = list(matplotlib.colors.to_rgba(self.color))
-            coloralpha = color; coloralpha[-1]=0.5 
+            if self.color is None: coloralpha = (1,1,1,0)
+            else:
+                color = list(matplotlib.colors.to_rgba(self.color))
+                coloralpha = color; coloralpha[-1]=0.5 
             if fig is None and ax is None: 
                 fig, ax = plt.subplots(
                     1,
@@ -1586,7 +1590,8 @@ def mountain_plot(X,
 
     Returns:
         fig, ax: _description_
-    """    
+    """  
+    c = (color or 'C1')  
     c = np.array(matplotlib.colors.to_rgb(color))
     fc = 0.3*c + (1-0.3)*np.array([1,1,1]) #convert rgb+alpha to rgb
 
