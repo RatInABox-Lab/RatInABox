@@ -142,9 +142,6 @@ Neurons.plot_rate_map(by_history=True) #plots rate map by firing-rate-weighted p
 #### More complex Neuron types
 We encourage more complex Neuron classes to be made with the Neuron() class as parent. Specifically by writing your own `update()` and `get_state()` you can create more complex neuron types. For example  you could write a Neuron() class to fire as a weighted sum inputs from another neuronal layers (for example George and de Cothi et al. (2022)). Or maybe implement a recurrent layer feeding into itself. By saving `firingrate` at each step plotting functions shown here should still be functional for downstream analysis.
 
-## Tutorial 
-A tutorial script can be found in scripts/ratinabox_tutorial.ipynb. This outlines most of the functionality. Nb. I haven't writen this yet. 
-
 ## Contribute 
 RatInABox is an open source project, and we actively encourage community contributions. These can take various forms, such as new movement policies, new cells types, new geometries, bug fixes, documentation, citations of relevant work, or additional experiment notebooks. If there is a small contribution you would like to make, please feel free to open a pull request, and we can review it. If there is a larger contribution you are considering, please open a github issue. This way, the contribution can be discussed, and potential support can be provided if needed. 
 
