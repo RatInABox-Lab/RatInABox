@@ -249,11 +249,12 @@ class Environment:
                 assert boundary_conditions == 'solid', "line of sight geometry not available for periodic boundary conditions"
                 #if a wall obstructs line-of-sight between two positions, distance is set to 1000
                 internal_walls = walls[4:] #only the internal walls (not room walls) are worth checking
-                mask = np.ones(vectors.shape[:2])
                 line_segments_ = line_segments.reshape(-1, *line_segments.shape[-2:])
                 wall_obstructs_view_of_cell = vector_intercepts(line_segments_,
                                                                internal_walls,
                                                                return_collisions=True)
+                wall_obstructs_view_of_cell = wall_obstructs_view_of_cell.sum(axis=-1) #sum over walls axis as we don't care which wall it collided with
+                wall_obstructs_view_of_cell = (wall_obstructs_view_of_cell != 0)
                 wall_obstructs_view_of_cell = wall_obstructs_view_of_cell.reshape(line_segments.shape[:2])
                 distances = get_distances_between(vectors=vectors)
                 distances[wall_obstructs_view_of_cell==True] = 1000
@@ -786,6 +787,7 @@ class Neurons:
         if self.cell_class == 'place_cell':
             if self.place_cell_centres is None:
                 self.place_cell_centres = self.Agent.Environment.sample_positions(n=self.n,method='uniform_jitter')
+                np.random.shuffle(self.place_cell_centres)
             else: 
                 self.n = self.place_cell_centres.shape[0]
             self.place_cell_widths = self.widths*np.ones(self.n)

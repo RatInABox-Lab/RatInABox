@@ -2,12 +2,10 @@
 
 ![](./readme_figs/whole_simulation.gif)
 
-RatInABox is a toolkit for simulating navigation and/or hippocampal-entorhinal cell types. With it you can:
+RatInABox is a toolkit for simulating navigation and/or hippocampal-entorhinal cell types. RatInABox represents a clean departure from pre-discretised "gridworld". Position and neuronal firing rates are calculated online with float precision. With it you can:
 
 * Generate pseudo-realistic trajectories for rats exploring 1 and 2D environments
 * Simulate spatially selective cells found in the Hippocampal-Entorhinal system (place cells, grid cells, boundary vector cells, and velocity cells). 
-
-RatInABox represents a clean departure from pre-discretised "gridworld". Position and neuronal firing rates are calculated online with float precision. 
 
 `RatInABox` contains three classes: 
 
@@ -15,41 +13,20 @@ RatInABox represents a clean departure from pre-discretised "gridworld". Positio
 2. `Agent()`: The agent (or "rat") moving around the Environment. 
 3. `Neurons()`: A population of neurons with firing rates determined by the state of the Agent. 
 
-The top animation shows the kind of simulation you can easily run using this toolbox. It shows an agent randomly exploring a 2D environment with a wall. Four populations of cells (place cells, grid cells, boundary vector cells and velocity cells) "fire" as the agent explores. Below shows the code needed to replicate this exact simulation using `RatInABox`(13 lines).
-
-```
-Env = Environment()
-Ag = Agent(params={'Environment':Env})
-PlaceCells = Neurons(params={'Agent':Ag,
-                             'cell_class':'place_cell'})
-GridCells = Neurons(params={'Agent':Ag,
-                            'cell_class':'grid_cell'})
-BoundaryVectorCells = Neurons(params={'Agent':Ag,
-                                      'cell_class':'boundary_vector_cell'})
-VelocityCells = Neurons(params={'Agent':Ag,
-                                'cell_class':'velocity_cell'})
-
-Env.add_wall(np.array([[0.3,0.0],[0.3,0.4]])) #add wall to Environment
-
-while Ag.t < 60: #explore for 60 seconds
-    Ag.update()
-    PlaceCells.update()
-    GridCells.update()
-    BoundaryVectorCells.update()
-    VelocityCells.update()
-```
+The top animation shows the kind of simulation you can easily run using this toolbox. It shows an agent randomly exploring a 2D environment with a wall. Four populations of cells (place cells, grid cells, boundary vector cells and velocity cells) "fire" as the agent explores. At the bottom we shows the code needed to replicate this exact simulation using `RatInABox`(13 lines).
 
 ## Key features
 
 * **Flexible**: Generate arbitrarily complex environments. 
-* **Realistic**: Simulate large populations of neuronal cell types known to be found in the brain. 
-* **Fast**: Simulating 1 minute exploration in a 2D environment with 100 place cells (dt=10 ms) take 2 seconds (but can be mush fast, e.g. in 1D mins on my laptop secs. 1 minutes exploration takes 3 seconds. Cells are rate based or Poisson spiking. 
+* **Biological**: Simulate large populations of spatially modulated cell type (place cells, grid cells, boundary vector cells, velocity cells). Cells are rate based or Poisson spiking. 
+* **Fast**: Simulating 1 minute exploration in a 2D environment with 100 place cells (dt=10 ms) take 2 seconds on a laptop (no GPU needed).
 * **Precise**: No more pre-discretised positions, tabular state spaces, or jerky movement policies. It's all continuous. 
-* **Visual** It's easy plot or animate trajectories, firing rate timeseries', spike rasters, receptive fields, heat maps and more using our plotting functions. 
-* **Easy**: sensible default parameters mean you can have realisitic simulation data to work with in ~10 lines of code. 
+* **Visual** Plot or animate trajectories, firing rate timeseries', spike rasters, receptive fields, heat maps and more using the plotting functions. 
+* **Easy**: Sensible default parameters mean you can have realisitic simulation data to work with in ~10 lines of code.
+
 
 ## Get started 
-At the bottom of this readme we provide two scripts: one simple (10 lines of code to initialise and simulate and agnet in a 2D environment with 10 place cells) and one extensive (essentially the simulation animate at the top - a more complex environment with multiple cells types) which additionally demostrates how to use the plotting functions to visualise the data. 
+At the bottom of this readme we provide Example scripts: one simple and one extensive. Reading through this section should be enough to get started. 
 
 ## Requirements
 * Python 3.7+
@@ -66,7 +43,7 @@ Here is a list of features loosely organised into three categories: those pertai
 ### (i) `Environment()` features
 #### Walls 
 Arbitrarily add walls to the environment to replicate any desired maze structure using command:
-```
+```python 
 Env.add_wall([[0.3,0.0],[0.3,0.5]])
 ```
 Here are some easy to make examples.
@@ -74,7 +51,7 @@ Here are some easy to make examples.
 
 #### Boundary conditions 
 Boundary conditions can be "periodic" or "solid". Place cells and the Agent will respect boundaries accordingly. 
-```
+```python
 Env = Environment(
     params = {'boundary_conditions':'periodic'} #or 'solid' (default)
 ) 
@@ -83,7 +60,7 @@ Env = Environment(
 
 #### 1- or 2-dimensions 
 Almost all features work in both 1 and 2 dimensions. The following figure shows 1 min of exploration of an agent in a 1D environment with periodic boundary conditions spanned by 10 place cells. 
-```
+```python 
 Env = Environment(
     params = {'dimensionality':'1D'} #or '2D' (default)
 ) 
@@ -94,7 +71,7 @@ Env = Environment(
 ### (ii) `Agent()` features
 #### Wall repelling 
 Walls in the environment mildly "repel" the agent. Coupled with the finite turning speed this creates, somewhat counterintuitively, an effect where the agent is biased to over-explore near walls and corners (as shown in these heatmaps) matching real rodent behaviour. It can also be turned off.
-```
+```python 
 Αg.walls_repel = True #False
 ```
 ![](./readme_figs/wall_repel.png)
@@ -173,5 +150,94 @@ RatInABox is an open source project, and we actively encourage community contrib
 
 ## Example Scripts
 
+### Simple example
+Initialise a 2D environment. Initialise an agent in the environment. Initialise some place cells. Simulate for 10 seconds. Print table of times, position and firing rates. 
 
+```python
+Env = Environment()
+Ag = Agent(params={'Environment':Env})
+PlaceCells = Neurons(params={'Agent':Ag,
+                             'cell_class':'place_cells'})
 
+for i in range(int(60/Ag.dt)):
+    Ag.update()
+    PlaceCells.update()
+
+print(Ag.history['t'])
+print(Ag.history['pos'])
+print(PlaceCells.history['firingrates'])
+```
+
+### Extensive example
+In this example we go a bit further. 
+# Initialise environment. A rectangular environment of size 2 x 1 meters. 
+# Add walls. Dividing the environment into two equal rooms. 
+# Add Agent. Place the Agent at coordinates (0.5,0.5). Set the speed of the agent to be 20+-5 cm/s.
+# Add place cells. 100 Gaussian threshold place cells. Set the radius to 40 cm. Set their wall geometry to "line_of_sight". Set the location of the 100th place cells to be right in the middle of the doorway at coordinates(1.1,0.5). Set the max firing rate of these place cells to 5 Hz and the min firing rate (e.g. baseline) of 0.1 Hz. 
+# Add boundary vector cells. 30 of them. 
+# Simulate. For 5 minutes of random motio with a timestep of dt=10 ms. 
+# Plot trajectory. Plot final 30 seconds from t=4min30 to t=5mins seconds overlayed onto a heatmap of the trajectory over the full period. 
+# Plot timeseries. For 12 randomly chosen boundary vector cells. From t_start = 0 s to t_end = 60 s. Include spikes. 
+# Plot place cells. Show a scatter plot of the centres of the place cells. 
+# Plot rate maps. For 3 randomly chosen place cells. Then, below this, plot a rate map of the same 5 place cells but as calculated using the firing-rate-weighted position historgram. Include spikes on the latter rate maps. 
+
+Despite the complexity of the above simulation it requires only 38 lines of code and takes ~1.5 minutes to run on a laptop (or only 5 seconds whith dt=200 ms which is still stable)
+
+```python 
+# 1 Initialise environment.
+Env = Environment(
+    params = {'aspect':2,
+               'scale':1})
+
+# 2 Add walls. 
+Env.add_wall([[1,0],[1,0.35]])
+Env.add_wall([[1,0.65],[1,1]])
+
+# 3 Add Agent.
+Ag = Agent(
+    params={'Environment':Env,})
+Ag.pos = np.array([0.5,0.5])
+Ag.speed_mean = 0.2
+Ag.speed_std = 0.05
+
+# 4 Add place cells. 
+PCs = Neurons(
+    params={'Agent':Ag,
+            'cell_class':'place_cell',
+            'n':100,
+            'description':'gaussian_threshold',
+            'widths':0.40,
+            'wall_geometry':'line_of_sight',
+            'max_fr':5,
+            'min_fr':0.1})
+PCs.place_cell_centres[99] = np.array([1.1,0.5])
+
+# 5 Add boundary vector cells.
+BVCs = Neurons(
+    params = {'Agent':Ag,
+              'cell_class':'boundary_vector_cell',
+              'n':30,})
+
+# 6 Simulate. 
+dt = 10e-3 
+T = 10*60
+from tqdm import tqdm #gives time bar
+for i in tqdm(range(int(T/dt))):
+    Ag.update(dt=dt)
+    PCs.update()
+    BVCs.update()
+
+# 7 Plot trajectory. 
+fig, ax = Ag.plot_position_heatmap()
+fig, ax = Ag.plot_trajectory(t_start=570,t_end=600,fig=fig,ax=ax)
+
+# 8 Plot timeseries. 
+BVCs.plot_rate_timeseries(t_start=0,t_end=60,chosen_neurons='12',plot_spikes=True)
+
+# 9 Plot place cells. 
+PCs.plot_place_cell_locations()
+
+# 10 Plot rate maps. 
+PCs.plot_rate_map(chosen_neurons='3',plot_spikes=False)
+PCs.plot_rate_map(chosen_neurons='3',by_history=True,plot_spikes=True)
+```
