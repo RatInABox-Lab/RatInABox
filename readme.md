@@ -2,10 +2,10 @@
 
 ![](./readme_figs/whole_simulation.gif)
 
-RatInABox is a toolkit for simulating navigation and/or hippocampal-entorhinal cell types. RatInABox represents a clean departure from pre-discretised "gridworld". Position and neuronal firing rates are calculated online with float precision. With it you can:
+RatInABox is a toolkit for simulating spatial navigation and/or hippocampal-entorhinal cell types. RatInABox represents a clean departure from pre-discretised "gridworld". Position and neuronal firing rates are calculated online with float precision. With it you can:
 
 * Generate pseudo-realistic trajectories for rats exploring 1 and 2D environments
-* Simulate spatially selective cells found in the Hippocampal-Entorhinal system (place cells, grid cells, boundary vector cells, and velocity cells). 
+* Simulate spatially selective cells found in the Hippocampal-Entorhinal system (place cells, grid cells, boundary vector cells and velocity cells). 
 
 `RatInABox` contains three classes: 
 
@@ -13,13 +13,13 @@ RatInABox is a toolkit for simulating navigation and/or hippocampal-entorhinal c
 2. `Agent()`: The agent (or "rat") moving around the Environment. 
 3. `Neurons()`: A population of neurons with firing rates determined by the state of the Agent. 
 
-The top animation shows the kind of simulation you can easily run using this toolbox. It shows an agent randomly exploring a 2D environment with a wall. Four populations of cells (place cells, grid cells, boundary vector cells and velocity cells) "fire" as the agent explores. At the bottom we shows the code needed to replicate this exact simulation using `RatInABox`(13 lines).
+The top animation shows the kind of simulation you can easily run using this toolbox. It shows an agent randomly exploring a 2D environment with a wall. Four populations of cells (place cells, grid cells, boundary vector cells and velocity cells) vary their activity and "fire" as the agent explores.
 
 ## Key features
 
 * **Flexible**: Generate arbitrarily complex environments. 
-* **Biological**: Simulate large populations of spatially modulated cell type (place cells, grid cells, boundary vector cells, velocity cells). Cells are rate based or Poisson spiking. 
-* **Fast**: Simulating 1 minute exploration in a 2D environment with 100 place cells (dt=10 ms) take 2 seconds on a laptop (no GPU needed).
+* **Biological**: Simulate large populations of spatially modulated cell type (place cells, grid cells, boundary vector cells, velocity cells). Use cells in rate based or spiking models. 
+* **Fast**: Simulating 1 minute exploration in a 2D environment with 100 place cells (dt=10 ms) take just 2 seconds on a laptop (no GPU needed).
 * **Precise**: No more pre-discretised positions, tabular state spaces, or jerky movement policies. It's all continuous. 
 * **Visual** Plot or animate trajectories, firing rate timeseries', spike rasters, receptive fields, heat maps and more using the plotting functions. 
 * **Easy**: Sensible default parameters mean you can have realisitic simulation data to work with in ~10 lines of code.
@@ -36,6 +36,7 @@ At the bottom of this readme we provide Example scripts: one simple and one exte
 * Jupyter (optional)
 
 ## Installation 
+I will sort this soon. For now just clone the directory.
 
 ## Feature run-down
 Here is a list of features loosely organised into three categories: those pertaining to (i) the Environment, (ii) the Agent and (iii) the Neurons. 
@@ -44,7 +45,7 @@ Here is a list of features loosely organised into three categories: those pertai
 #### Walls 
 Arbitrarily add walls to the environment to replicate any desired maze structure using command:
 ```python 
-Env.add_wall([[0.3,0.0],[0.3,0.5]])
+Environment.add_wall([[0.3,0.0],[0.3,0.5]])
 ```
 Here are some easy to make examples.
 ![](./readme_figs/walls.png)
@@ -72,7 +73,7 @@ Env = Environment(
 #### Wall repelling 
 Walls in the environment mildly "repel" the agent. Coupled with the finite turning speed this creates, somewhat counterintuitively, an effect where the agent is biased to over-explore near walls and corners (as shown in these heatmaps) matching real rodent behaviour. It can also be turned off.
 ```python 
-Αg.walls_repel = True #False
+Αgent.walls_repel = True #False
 ```
 ![](./readme_figs/wall_repel.png)
 
@@ -117,7 +118,7 @@ Place cells come in multiple types (give by `params['description']`):
 This last place cell type, `"one_hot"` is prticularly useful as it essentially rediscretises space and tabularises the state space (gridworld again). This can be used to effortlessly contrast and compare learning algorithms acting over continuous vs discrete state spaces. 
 
 #### Geometry
-Choose how you want place cells to interact with walls in the environment. We provide three types of geometries. 
+Choose how you want place cells to interact with walls in the environment. We provide three types of geometries. `'geodesic'` calculates the shortest possible walk (obeying walls and boundary conditions) to a place cells centre. 
 ![](./readme_figs/wall_geometry.png)
 
 #### Spiking 
@@ -140,7 +141,7 @@ Neurons.plot_rate_map(by_history=True) #plots rate map by firing-rate-weighted p
 ![](./readme_figs/rate_map.png)
 
 #### More complex Neuron types
-We encourage more complex Neuron classes to be made with the Neuron() class as parent. Specifically by writing your own `update()` and `get_state()` you can create more complex neuron types. For example  you could write a Neuron() class to fire as a weighted sum inputs from another neuronal layers (for example George and de Cothi et al. (2022)). Or maybe implement a recurrent layer feeding into itself. By saving `firingrate` at each step plotting functions shown here should still be functional for downstream analysis.
+We encourage more complex Neuron classes to be made with the `Neuron()` class as parent. Specifically by writing your own `update()` and `get_state()` you can create more complex neuron types. For example  you could write a `Neuron()` class to fire as a weighted sum inputs from another neuronal layers (for example George and de Cothi et al. (2022)). Or maybe implement a recurrent layer feeding into itself. By saving `firingrate` into `Neuron.history` at each step plotting functions shown here should still be functional for downstream analysis.
 
 ## Contribute 
 RatInABox is an open source project, and we actively encourage community contributions. These can take various forms, such as new movement policies, new cells types, new geometries, bug fixes, documentation, citations of relevant work, or additional experiment notebooks. If there is a small contribution you would like to make, please feel free to open a pull request, and we can review it. If there is a larger contribution you are considering, please open a github issue. This way, the contribution can be discussed, and potential support can be provided if needed. 
