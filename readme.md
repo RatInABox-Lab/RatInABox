@@ -58,7 +58,7 @@ Env = Environment(
 ) 
 ```
 <!-- ![](./readme_figs/boundary_conditions.png) -->
-<img src="./readme_figs/boundary_conditions.png" width="200">
+<img src="./readme_figs/boundary_conditions.png" height="200">
 #### 1- or 2-dimensions 
 Almost all features work in both 1 and 2 dimensions. The following figure shows 1 min of exploration of an agent in a 1D environment with periodic boundary conditions spanned by 10 place cells. 
 ```python 
