@@ -1232,126 +1232,14 @@ class Neurons:
 
 """
 OTHER USEFUL FUNCTIONS
+Split into the following catergories: 
+• Geometry-assistance functions
+• Stochasticic-assistance functions
+• Plotting-assistance functions 
+• Other
 """
-def ornstein_uhlenbeck(dt,
-                       x, 
-                       drift=0.0, 
-                       noise_scale=0.2, 
-                       coherence_time=5.0):
-    """An ornstein uhlenbeck process in x.
-    x can be multidimensional 
-    Args:
-        dt: update time step
-        x: the stochastic variable being updated
-        drift (float, or same type as x, optional): [description]. Defaults to 0.
-        noise_scale (float, or same type as v, optional): Magnitude of deviations from drift. Defaults to 0.16 (16 cm s^-1).
-        coherence_time (float, optional): Effectively over what time scale you expect x to change directions. Defaults to 5.
 
-    Returns:
-        dv (same type as v); the required update ot the velocity
-    """
-    x = np.array(x)
-    drift = drift * np.ones_like(x)
-    noise_scale = noise_scale * np.ones_like(x)
-    coherence_time = coherence_time * np.ones_like(x)
-    sigma = np.sqrt((2 * noise_scale ** 2) / (coherence_time * dt))
-    theta = 1 / coherence_time
-    dx = theta * (drift - x) * dt + sigma * np.random.normal(size=x.shape, scale=dt)
-    return dx
-
-def gaussian(x,
-             mu,
-             sigma):
-    """Gaussian function. x, mu and sigma can be any shape as long as they are all the same (or strictly, all broadcastabele) 
-    Args:
-        x
-        mu 
-        sigma
-    Returns gaussian(x;mu,sigma)
-    """    
-    g = -(x-mu)**2
-    g = g/(2*sigma**2)
-    g = np.exp(g)
-    g = g/np.sqrt(2*np.pi*sigma**2)
-    return g 
-
-def get_angle(segment):
-    """Given a 'segment' (either 2x2 start and end positions or 2x1 direction bearing) 
-         returns the 'angle' of this segment modulo 2pi
-    Args:
-        segment (array): The segment, (2,2) or (2,) array 
-    Returns:
-        float: angle of segment
-    """
-    eps = 1e-6
-    if segment.shape == (2,):
-        return np.mod(np.arctan2(segment[1], (segment[0] + eps)), 2 * np.pi)
-    elif segment.shape == (2, 2):
-        return np.mod(
-            np.arctan2(
-                (segment[1][1] - segment[0][1]), (segment[1][0] - segment[0][0] + eps)
-            ),
-            2 * np.pi,
-        )
-
-def rotate(vector,
-           theta):
-    """rotates a vector shape (2,) by angle theta. 
-    Args:
-        vector (array): the 2d vector
-        theta (flaot): the rotation angle
-    """
-    R = np.array([[np.cos(theta),-np.sin(theta)],[np.sin(theta),np.cos(theta)]])
-    vector_new = np.matmul(R,vector)
-    return vector_new
-
-def wall_bounce(current_velocity,
-                wall):
-    """Given current direction and wall returns a new direction which is the result of reflecting off that wall 
-    Args:
-        current_direction (array): the current direction vector
-        wall (array): start and end coordinates of the wall
-    Returns:
-        array: new direction
-    """
-    wall_perp = get_perpendicular(wall[1] - wall[0])
-    if np.dot(wall_perp, current_velocity) <= 0:
-        wall_perp = (
-            -wall_perp
-        )  # it is now the get_perpendicular with smallest angle to dir
-    wall_par = wall[1] - wall[0]
-    if np.dot(wall_par, current_velocity) <= 0:
-        wall_par = -wall_par  # it is now the parallel with smallest angle to dir
-    wall_par, wall_perp = (
-        wall_par / np.linalg.norm(wall_par),
-        wall_perp / np.linalg.norm(wall_perp),
-    )  # normalise
-    new_velocity = wall_par * np.dot(
-        current_velocity, wall_par
-    ) - wall_perp * np.dot(current_velocity, wall_perp)
-
-    return new_velocity
-
-def interpolate_and_smooth(x,
-                           y,
-                           sigma=0.03):
-    """Interpolates with cublic spline x and y to 10x resolution then smooths these with a gaussian kernel of width sigma. Currently this only works for 1-dimensional x.
-    Args:
-        x 
-        y 
-        sigma 
-    Returns (x_new,y_new)
-    """ 
-    from scipy.ndimage.filters import gaussian_filter1d
-    from scipy.interpolate import interp1d
-
-    y_cubic = interp1d(x, y, kind='cubic')
-    x_new = np.arange(x[0],x[-1],(x[1]-x[0])/10)
-    y_interpolated = y_cubic(x_new)
-    y_smoothed = gaussian_filter1d(y_interpolated,
-                        sigma=sigma/(x_new[1]-x_new[0]))
-    return x_new,y_smoothed
-
+"""Geometry functions"""
 def get_perpendicular(a=None):
     """Given 2-vector, a, returns its perpendicular
     Args:
@@ -1527,17 +1415,112 @@ def get_distances_between(pos1=None,
     distances = np.linalg.norm(vectors,axis=-1)
     return distances
 
-def update_class_params(Class, 
-                        params: dict):
-    """Updates parameters from a dictionary. 
-    All parameters found in params will be updated to new value
+def get_angle(segment):
+    """Given a 'segment' (either 2x2 start and end positions or 2x1 direction bearing) 
+         returns the 'angle' of this segment modulo 2pi
     Args:
-        params (dict): dictionary of parameters to change
-        initialise (bool, optional): [description]. Defaults to False.
+        segment (array): The segment, (2,2) or (2,) array 
+    Returns:
+        float: angle of segment
     """
-    for key, value in params.items():
-        setattr(Class, key, value)
+    eps = 1e-6
+    if segment.shape == (2,):
+        return np.mod(np.arctan2(segment[1], (segment[0] + eps)), 2 * np.pi)
+    elif segment.shape == (2, 2):
+        return np.mod(
+            np.arctan2(
+                (segment[1][1] - segment[0][1]), (segment[1][0] - segment[0][0] + eps)
+            ),
+            2 * np.pi,
+        )
 
+def rotate(vector,
+           theta):
+    """rotates a vector shape (2,) by angle theta. 
+    Args:
+        vector (array): the 2d vector
+        theta (flaot): the rotation angle
+    """
+    R = np.array([[np.cos(theta),-np.sin(theta)],[np.sin(theta),np.cos(theta)]])
+    vector_new = np.matmul(R,vector)
+    return vector_new
+
+def wall_bounce(current_velocity,
+                wall):
+    """Given current direction and wall returns a new direction which is the result of reflecting off that wall 
+    Args:
+        current_direction (array): the current direction vector
+        wall (array): start and end coordinates of the wall
+    Returns:
+        array: new direction
+    """
+    wall_perp = get_perpendicular(wall[1] - wall[0])
+    if np.dot(wall_perp, current_velocity) <= 0:
+        wall_perp = (
+            -wall_perp
+        )  # it is now the get_perpendicular with smallest angle to dir
+    wall_par = wall[1] - wall[0]
+    if np.dot(wall_par, current_velocity) <= 0:
+        wall_par = -wall_par  # it is now the parallel with smallest angle to dir
+    wall_par, wall_perp = (
+        wall_par / np.linalg.norm(wall_par),
+        wall_perp / np.linalg.norm(wall_perp),
+    )  # normalise
+    new_velocity = wall_par * np.dot(
+        current_velocity, wall_par
+    ) - wall_perp * np.dot(current_velocity, wall_perp)
+
+    return new_velocity
+
+"""Stochastic-assistance functions"""
+def ornstein_uhlenbeck(dt,
+                       x, 
+                       drift=0.0, 
+                       noise_scale=0.2, 
+                       coherence_time=5.0):
+    """An ornstein uhlenbeck process in x.
+    x can be multidimensional 
+    Args:
+        dt: update time step
+        x: the stochastic variable being updated
+        drift (float, or same type as x, optional): [description]. Defaults to 0.
+        noise_scale (float, or same type as v, optional): Magnitude of deviations from drift. Defaults to 0.16 (16 cm s^-1).
+        coherence_time (float, optional): Effectively over what time scale you expect x to change directions. Defaults to 5.
+
+    Returns:
+        dv (same type as v); the required update ot the velocity
+    """
+    x = np.array(x)
+    drift = drift * np.ones_like(x)
+    noise_scale = noise_scale * np.ones_like(x)
+    coherence_time = coherence_time * np.ones_like(x)
+    sigma = np.sqrt((2 * noise_scale ** 2) / (coherence_time * dt))
+    theta = 1 / coherence_time
+    dx = theta * (drift - x) * dt + sigma * np.random.normal(size=x.shape, scale=dt)
+    return dx
+
+def interpolate_and_smooth(x,
+                           y,
+                           sigma=0.03):
+    """Interpolates with cublic spline x and y to 10x resolution then smooths these with a gaussian kernel of width sigma. Currently this only works for 1-dimensional x.
+    Args:
+        x 
+        y 
+        sigma 
+    Returns (x_new,y_new)
+    """ 
+    from scipy.ndimage.filters import gaussian_filter1d
+    from scipy.interpolate import interp1d
+
+    y_cubic = interp1d(x, y, kind='cubic')
+    x_new = np.arange(x[0],x[-1],(x[1]-x[0])/10)
+    y_interpolated = y_cubic(x_new)
+    y_smoothed = gaussian_filter1d(y_interpolated,
+                        sigma=sigma/(x_new[1]-x_new[0]))
+    return x_new,y_smoothed
+
+
+"""Plotting functions"""    
 def bin_data_for_histogramming(data,
                                extent,
                                dx,
@@ -1566,7 +1549,7 @@ def bin_data_for_histogramming(data,
         heatmap, xedges, yedges = np.histogram2d(data[:, 0], data[:, 1], bins=[bins_x,bins_y], weights=weights)
         heatmap = heatmap.T[::-1, :]
         return heatmap
-     
+
 def mountain_plot(X, 
                   NbyX, 
                   color="C0",
@@ -1574,8 +1557,7 @@ def mountain_plot(X,
                   ylabel="",
                   xlim=None,
                   fig=None,
-                  ax=None,
-    ):
+                  ax=None,):
     """Make a mountain plot. NbyX is an N by X array of all the plots to display. The nth plot is shown at height n, line are scaled so the maximum value across all of them is 0.7, then they are all seperated by 1 (sot they don't overlap)
 
     Args:
@@ -1621,3 +1603,31 @@ def mountain_plot(X,
         ax.set_xlim(right=xlim)
 
     return fig, ax
+
+"""Other"""
+def update_class_params(Class, 
+                        params: dict):
+    """Updates parameters from a dictionary. 
+    All parameters found in params will be updated to new value
+    Args:
+        params (dict): dictionary of parameters to change
+        initialise (bool, optional): [description]. Defaults to False.
+    """
+    for key, value in params.items():
+        setattr(Class, key, value)
+
+def gaussian(x,
+             mu,
+             sigma):
+    """Gaussian function. x, mu and sigma can be any shape as long as they are all the same (or strictly, all broadcastabele) 
+    Args:
+        x
+        mu 
+        sigma
+    Returns gaussian(x;mu,sigma)
+    """    
+    g = -(x-mu)**2
+    g = g/(2*sigma**2)
+    g = np.exp(g)
+    g = g/np.sqrt(2*np.pi*sigma**2)
+    return g 

@@ -57,8 +57,8 @@ Env = Environment(
     params = {'boundary_conditions':'periodic'} #or 'solid' (default)
 ) 
 ```
-![](./readme_figs/boundary_conditions.png)
-
+<!-- ![](./readme_figs/boundary_conditions.png) -->
+<img src="./readme_figs/boundary_conditions.png" width="200">
 #### 1- or 2-dimensions 
 Almost all features work in both 1 and 2 dimensions. The following figure shows 1 min of exploration of an agent in a 1D environment with periodic boundary conditions spanned by 10 place cells. 
 ```python 
@@ -171,15 +171,15 @@ In this example we go a bit further.
 1. Initialise environment. A rectangular environment of size 2 x 1 meters. 
 2. Add walls. Dividing the environment into two equal rooms. 
 3. Add Agent. Place the Agent at coordinates (0.5,0.5). Set the speed of the agent to be 20+-5 cm/s.
-4. Add place cells. 100 Gaussian threshold place cells. Set the radius to 40 cm. Set their wall geometry to "line_of_sight". Set the location of the 100th place cells to be right in the middle of the doorway at coordinates(1.1,0.5). Set the max firing rate of these place cells to 3 Hz and the min firing rate (e.g. baseline) of 0.1 Hz. 
+4. Add place cells. 100 Gaussian threshold place cells. Set the radius to 40 cm. Set their wall geometry to "line_of_sight". Set the location of the 100th place cells to be near the middle of the doorway at coordinates(1.1,0.5). Set the max firing rate of these place cells to 3 Hz and the min firing rate (e.g. baseline) of 0.1 Hz. 
 5. Add boundary vector cells. 30 of them. 
-6. Simulate. For 5 minutes of random motio with a timestep of dt=10 ms. 
+6. Simulate. For 10 minutes of random motio with a timestep of dt=10 ms. 
 7. Plot trajectory. Plot final 30 seconds from t=4min30 to t=5mins seconds overlayed onto a heatmap of the trajectory over the full period. 
 8. Plot timeseries. For 12 randomly chosen boundary vector cells. From t_start = 0 s to t_end = 60 s. Include spikes. 
 9. Plot place cells. Show a scatter plot of the centres of the place cells. 
 10. Plot rate maps. For 3 randomly chosen place cells. Then, below this, plot a rate map of the same 5 place cells but as calculated using the firing-rate-weighted position historgram. Include spikes on the latter rate maps. 
 
-Despite the complexity of the above simulation it requires only ~40 lines of code and takes ~1.5 minutes to run on a laptop (or just 5 seconds whith dt=200 ms, which is still stable)
+Despite the complexity of the above simulation it requires only ~40 lines of code and takes ~1.5 minutes to run on a laptop (or just 5 seconds whith dt=200 ms, which is still stable).
 
 ``` python 
 # 1 Initialise environment.
@@ -239,3 +239,4 @@ PCs.plot_place_cell_locations()
 PCs.plot_rate_map(chosen_neurons='3',plot_spikes=False)
 PCs.plot_rate_map(chosen_neurons='3',by_history=True,plot_spikes=True)
 ```
+![](./readme_figs/extended_script.png)
