@@ -74,7 +74,7 @@ Walls in the environment mildly "repel" the agent. Coupled with the finite turni
 ```python 
 Αgent.walls_repel = True #False
 ```
-<img src="./readme_figs/wall_repel.png" height="200">
+<img src="./readme_figs/wall_repel.png" height="220">
 
 #### Random motion model
 Motion is stochastic but smooth. The speed (and rotational speed if in 2D) of an Agent take constrained random walks governed by Ornstein-Uhlenbeck processes. You can change the variance and coherence times of these processes to control the shape of the trajectory.
@@ -95,7 +95,7 @@ By default the movement policy is an uncontrolled (e.g. displayed above). It is 
 ```
 Agent.update(drift_velocity=drift_velocity)
 ```
-<img src="./readme_figs/policy_control.png" height="200">
+<img src="./readme_figs/policy_control.png" height="220">
 
 ### (iii) `Neuron()` features 
 
@@ -117,7 +117,7 @@ This last place cell type, `"one_hot"` is prticularly useful as it essentially r
 
 #### Geometry
 Choose how you want place cells to interact with walls in the environment. We provide three types of geometries. `'geodesic'` calculates the shortest possible walk (obeying walls and boundary conditions) to a place cells centre. 
-<img src="./readme_figs/wall_geometry.png" height="200">
+<img src="./readme_figs/wall_geometry.png" height="220">
 
 #### Spiking 
 All neurons are rate based. Concurrently spikes are sampled at each time step as though neurons were Poisson neurons. These are stored in `Neurons.history['spikes']`. The max and min firing rates can be set with `Neurons.max_fr` and  `Neurons.min_fr`.
@@ -136,7 +136,7 @@ An alternative, and ultimately more robust way to display the receptive field is
 Neurons.plot_rate_map() #attempted to plot analytic rate map 
 Neurons.plot_rate_map(by_history=True) #plots rate map by firing-rate-weighted position heatmap
 ``` 
-<img src="./readme_figs/rate_map.png" height="200">
+<img src="./readme_figs/rate_map.png" height="400">
 
 #### More complex Neuron types
 We encourage more complex Neuron classes to be made with the `Neuron()` class as parent. Specifically by writing your own `update()` and `get_state()` you can create more complex neuron types. For example  you could write a `Neuron()` class to fire as a weighted sum inputs from another neuronal layers (for example George and de Cothi et al. (2022)). Or maybe implement a recurrent layer feeding into itself. By saving `firingrate` into `Neuron.history` at each step plotting functions shown here should still be functional for downstream analysis.
@@ -238,4 +238,4 @@ PCs.plot_rate_map(chosen_neurons='3',plot_spikes=False)
 PCs.plot_rate_map(chosen_neurons='3',by_history=True,plot_spikes=True)
 ```
 The figures output by this script look like:
-<img src="./readme_figs/extended_script.png" height="200">
+<img src="./readme_figs/extended_script.png" height="300">
