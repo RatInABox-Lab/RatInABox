@@ -238,4 +238,4 @@ PCs.plot_rate_map(chosen_neurons='3',plot_spikes=False)
 PCs.plot_rate_map(chosen_neurons='3',by_history=True,plot_spikes=True)
 ```
 The figures output by this script look like:
-<img src="./readme_figs/extended_script.png" height="300">
+<img src="./readme_figs/extended_script.png" height="250">
