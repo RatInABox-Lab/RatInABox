@@ -1222,10 +1222,6 @@ class Neurons:
         return pref[...,0]
 
 
-    
-
-
-
 
 
 

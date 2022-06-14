@@ -2,9 +2,9 @@
 
 ![](./readme_figs/whole_simulation.gif)
 
-RatInABox is a toolkit for simulating spatial navigation and/or hippocampal-entorhinal cell types. RatInABox represents a clean departure from pre-discretised "gridworld". Position and neuronal firing rates are calculated online with float precision. With it you can:
+RatInABox is a toolkit for simulating motion and/or hippocampal-entorhinal cell types. RatInABox represents a clean departure from pre-discretised "gridworld" models. Position and neuronal firing rates are calculated online with float precision. With it you can:
 
-* Generate pseudo-realistic trajectories for rats exploring 1 and 2D environments
+* Generate pseudo-realistic trajectories for rats exploring complex 1- and 2-dimensional environments
 * Simulate spatially selective cells found in the Hippocampal-Entorhinal system (place cells, grid cells, boundary vector cells and velocity cells). 
 
 `RatInABox` contains three classes: 
@@ -26,7 +26,7 @@ The top animation shows the kind of simulation you can easily run using this too
 
 
 ## Get started 
-At the bottom of this readme we provide Example scripts: one simple and one extensive. Reading through this section should be enough to get started. 
+At the bottom of this readme we provide Example scripts: one simple and one extensive. Reading through this section should be enough to get started. The three classes listed above are all initilised with param dictionaries, summarised below as well. 
 
 ## Requirements
 * Python 3.7+
@@ -141,9 +141,6 @@ Neurons.plot_rate_map(by_history=True) #plots rate map by firing-rate-weighted p
 #### More complex Neuron types
 We encourage more complex Neuron classes to be made with the `Neuron()` class as parent. Specifically by writing your own `update()` and `get_state()` you can create more complex neuron types. For example  you could write a `Neuron()` class to fire as a weighted sum inputs from another neuronal layers (for example George and de Cothi et al. (2022)). Or maybe implement a recurrent layer feeding into itself. By saving `firingrate` into `Neuron.history` at each step plotting functions shown here should still be functional for downstream analysis.
 
-## Contribute 
-RatInABox is an open source project, and we actively encourage community contributions. These can take various forms, such as new movement policies, new cells types, new geometries, bug fixes, documentation, citations of relevant work, or additional experiment notebooks. If there is a small contribution you would like to make, please feel free to open a pull request, and we can review it. If there is a larger contribution you are considering, please open a github issue. This way, the contribution can be discussed, and potential support can be provided if needed. 
-
 ## Example Scripts
 
 ### Simple example
@@ -239,3 +236,59 @@ PCs.plot_rate_map(chosen_neurons='3',by_history=True,plot_spikes=True)
 ```
 The figures output by this script look like:
 <img src="./readme_figs/extended_script.png" height="250">
+
+### 
+Input parameter dictionaries. 
+All three classes are initialised with one input: a dictionary of parameters class `params`. The following default parameters are assumed whenever `params` is not passed or if `params` is passed but only a subset of keys are provided.
+
+```python
+#ENVIRONMENT params
+default_env_params = {
+            "dimensionality":'2D', #1D or 2D environment 
+            "boundary_conditions":"solid", #solid vs periodic
+            "scale": 1, #scale of environment
+            "aspect":1, #x/y aspect ratio 2D only
+        }
+
+
+#AGENT params
+default_ag_params = {
+            #the Environment class
+            "Environment": None,
+            # speed parameters
+            "speed_coherence_time": 3.0, 
+            "speed_mean":0.3,
+            "speed_std":0.1,
+            # rotational velocity parameters (relevant in 2D only)
+            "rotational_velocity_coherence_time":1, 
+            "rotational_velocity_std":np.pi/2,
+            # wall params 
+            "walls_repel":True,
+            "wall_repel_distance":0.1,
+        }
+
+#NEURON params
+default_neuron_params = {
+            "Agent": None, #the Agent()
+            "n":10, #number of cells
+            "cell_class":"place_cell",          
+            #default place params (if cell_class == place_cell)
+                'description':'gaussian',
+                'widths':0.20,
+                'place_cell_centres':None, #if given, the length of this will overwrite 'n',
+                'wall_geometry':'geodesic',
+            #default grid params (if cell_class == grid_cell)
+                "gridscale":0.45,
+                "random_orientations":True,
+                "random_gridscales":True,
+            #default boundary vector cell params
+            "color": None, #just for plotting
+            "min_fr": 0, 
+            "max_fr": 1,
+        }
+```
+
+## Contribute 
+RatInABox is an open source project, and we actively encourage community contributions. These can take various forms, such as new movement policies, new cells types, new geometries, bug fixes, documentation, citations of relevant work, or additional experiment notebooks. If there is a small contribution you would like to make, please feel free to open a pull request, and we can review it. If there is a larger contribution you are considering, please open a github issue. This way, the contribution can be discussed, and potential support can be provided if needed. 
+
+## Cite
