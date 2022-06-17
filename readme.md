@@ -13,7 +13,7 @@ RatInABox is a toolkit for simulating motion and/or hippocampal-entorhinal cell 
 2. `Agent()`: The agent (or "rat") moving around the Environment. 
 3. `Neurons()`: A population of neurons with firing rates determined by the state of the Agent. 
 
-The top animation shows the kind of simulation you can easily run using this toolbox. It shows an agent randomly exploring a 2D environment with a wall. Four populations of cells (place cells, grid cells, boundary vector cells and velocity cells) vary their activity and "fire" as the agent explores.
+The top animation shows the kind of simulation you can easily run using this toolbox. In it an agent randomly explores a 2D environment with a wall. Four populations of cells (place cells, grid cells, boundary vector cells and velocity cells) vary their activity and "fire" as the agent explores.
 
 ## Key features
 
@@ -21,7 +21,7 @@ The top animation shows the kind of simulation you can easily run using this too
 * **Biological**: Simulate large populations of spatially modulated cell type (place cells, grid cells, boundary vector cells, velocity cells). Use cells in rate based or spiking models. 
 * **Fast**: Simulating 1 minute exploration in a 2D environment with 100 place cells (dt=10 ms) take just 2 seconds on a laptop (no GPU needed).
 * **Precise**: No more pre-discretised positions, tabular state spaces, or jerky movement policies. It's all continuous. 
-* **Visual** Plot or animate trajectories, firing rate timeseries', spike rasters, receptive fields, heat maps and more using the plotting functions. 
+* **Visual** Plot or animate trajectories, firing rate timeseries', spike rasters, receptive fields, heat maps, velocity histograms...using the plotting functions. 
 * **Easy**: Sensible default parameters mean you can have realisitic simulation data to work with in ~10 lines of code.
 
 
@@ -36,10 +36,10 @@ At the bottom of this readme we provide Example scripts: one simple and one exte
 * Jupyter (optional)
 
 ## Installation 
-I will sort this soon. For now just clone the directory.
+I will streamline this soon. For now just clone the directory and get started.
 
 ## Feature run-down
-Here is a list of features loosely organised into three categories: those pertaining to (i) the Environment, (ii) the Agent and (iii) the Neurons. 
+Here is a list of features loosely organised into three categories: those pertaining to (i) the Environment, (ii) the Agent and (iii) the Neurons. Specific details can be found in the paper here. 
 
 ### (i) `Environment()` features
 #### Walls 
@@ -51,15 +51,16 @@ Here are some easy to make examples.
 ![](./readme_figs/walls.png)
 
 #### Boundary conditions 
-Boundary conditions can be "periodic" or "solid". Place cells and the Agent will respect boundaries accordingly. 
+Boundary conditions can be "periodic" or "solid". Place cells and the Agent will respect these boundaries accordingly. 
 ```python
 Env = Environment(
     params = {'boundary_conditions':'periodic'} #or 'solid' (default)
 ) 
 ```
 <img src="./readme_figs/boundary_conditions.png" height="200">
+
 #### 1- or 2-dimensions 
-Almost all features work in both 1 and 2 dimensions. The following figure shows 1 min of exploration of an agent in a 1D environment with periodic boundary conditions spanned by 10 place cells. 
+Environments can be fundamentally 1 or 2 dimensional. Almost all applicable features and plotting functions work in both. The following figure shows 1 minute of exploration of an agent in a 1D environment with periodic boundary conditions spanned by 10 place cells. 
 ```python 
 Env = Environment(
     params = {'dimensionality':'1D'} #or '2D' (default)
@@ -70,15 +71,14 @@ Env = Environment(
 
 ### (ii) `Agent()` features
 #### Wall repelling 
-Walls in the environment mildly "repel" the agent. Coupled with the finite turning speed this creates, somewhat counterintuitively, an effect where the agent is biased to over-explore near walls and corners (as shown in these heatmaps) matching real rodent behaviour. It can also be turned off.
+Walls in the environment mildly "repel" the agent. Coupled with the finite turning speed this creates, somewhat counterintuitively, an effect where the agent is biased to over-explore near walls and corners (as shown in these heatmaps) matching real rodent behaviour. It can also be turned off. If an agent does collides with a wall its direction is reflected. 
 ```python 
 Αgent.walls_repel = True #False
 ```
 <img src="./readme_figs/wall_repel.png" height="220">
 
 #### Random motion model
-Motion is stochastic but smooth. The speed (and rotational speed if in 2D) of an Agent take constrained random walks governed by Ornstein-Uhlenbeck processes. You can change the variance and coherence times of these processes to control the shape of the trajectory.
-
+Motion is stochastic but smooth. The speed (and rotational speed, if in 2D) of an Agent take constrained random walks governed by Ornstein-Uhlenbeck processes. You can change the means, variance and coherence times of these processes to control the shape of the trajectory. 
 ```python
 Agent.speed_mean = 0.2
 Agent.speed_std = 0.1
@@ -89,13 +89,15 @@ Agent.rotational_velocity_coherence_time = 3
 The following set of trajectories were generated by modifying the rotational_velocity_std
 <img src="./readme_figs/motion_model.png" height="200">
 
+<font size="4"> In more detail: Speeds and rotational speeds are sampled stochastically. In 1D speed follows Ornstein Uhlenbeck process with a mean=speed_mean, std=speed_std and coherence time=speed_cohernece_time. In 2D speed and rotational speed are sampled independently. To sample speed, a "normal" variable is sampled from an Ornstein Uhlenbeck process (mean=0, var=1, coherence time=speed_coherence_time) and then converted to a variable which has a Rayleigh distributing with sigma (~ the mode) as given below speed_mean. The rotatational speed follows Ornstein Uhlenbeck process with a mean=rotation_velocity_mean, std=rotation_velocity_std and coherence time=rotation_velocity_coherence_time. For full full details of the motion models please see the paper. </font>
 
 #### Policy control 
-By default the movement policy is an uncontrolled (e.g. displayed above). It is possible, however, to manually pass a "drift_velocity" to the Agent on each `update()` step. The agent velocity will drift towards drift velocity. We envisage this being use, for example, by an Actor-Critic system to control the Agent. The actor-critic system could take as input the firing rate of some Neurons(). As a demonstartion that this method can be used to control the agent's movement here we set a radial drift velocity to encourage circular motion.   
-```
+By default the movement policy is an random and uncontrolled (e.g. displayed above). It is possible, however, to manually pass a "drift_velocity" to the Agent on each `update()` step. The agent velocity will drift towards drift velocity. We envisage this being use, for example, by an Actor-Critic system to control the Agent. As a demonstration that this method can be used to control the agent's movement we set a radial drift velocity to encourage circular motion.   
+```python
 Agent.update(drift_velocity=drift_velocity)
 ```
 <img src="./readme_figs/policy_control.png" height="220">
+
 
 ### (iii) `Neuron()` features 
 

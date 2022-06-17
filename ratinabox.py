@@ -1,4 +1,5 @@
 import scipy
+from scipy import stats
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
@@ -20,6 +21,7 @@ class Environment:
             • get_distances_between___accounting_for_environment()
             • check_if_posision_is_in_environment()
             • check_walls()
+            • vectors_from_walls()
             • apply_boundary_conditions()
     Key variables:
             • walls
@@ -314,16 +316,15 @@ class Environment:
             else: 
                 return False
     
-    def check_walls(self,
+    def check_wall_collisions(self,
                     proposed_step):
-        """Given proposed step [current_pos, next_pos] it returns three lists 
+        """Given proposed step [current_pos, next_pos] it returns two lists 
         1. a list of all the walls in the environment #shape=(N_walls,2,2)
         2. a boolean list of whether the step directly crosses (collides with) any of these walls  #shape=(N_walls,)
-        3. a list of the vectors of shortest distance from all the walls to current_pos #shape=(N_walls,2)
         Args:
             proposed_step (array): The proposed step. np.array( [ [x_current, y_current] , [x_next, y_next] ] )
         Returns:
-            tuple: (1,2,3)
+            tuple: (1,2)
         """
         if self.dimensionality == '1D': 
             #no walls in 1D to collide with 
@@ -335,9 +336,17 @@ class Environment:
             elif self.walls is not None: 
                 walls = self.walls
                 wall_collisions = vector_intercepts(walls,proposed_step,return_collisions=True).reshape(-1)
-                walls_to_pos_vectors = shortest_vectors_from_points_to_lines(proposed_step[0],walls)
-                walls_to_pos_vectors = walls_to_pos_vectors.reshape(walls_to_pos_vectors.shape[-2:])
-                return (walls,wall_collisions,walls_to_pos_vectors)
+                return (walls,wall_collisions)
+
+    def vectors_from_walls(self,pos):
+        """Given a position, pos,it returns a list of the vectors of shortest distance from all the walls to current_pos #shape=(N_walls,2)
+        Args:
+            proposed_step (array): The position np.array[x,y]
+        Returns:
+            vector array: np.array(N_walls,2)
+        """
+        walls_to_pos_vectors = shortest_vectors_from_points_to_lines(pos,self.walls)[0]
+        return walls_to_pos_vectors
 
     def apply_boundary_conditions(self,
                                   pos):
@@ -391,16 +400,17 @@ class Agent:
         default_params = {
             #the Environment class
             "Environment": None,
-            # speed parameters
+            #speed params
             "speed_coherence_time": 3.0,
-            "speed_mean":0.3,
-            "speed_std":0.1,
-            # rotational velocity parameters (relevant in 2D only)
+            "speed_mean": 0.2, 
+            "speed_std":0.2, #meaningless in 2D  
             "rotational_velocity_coherence_time":1, 
-            "rotational_velocity_std":np.pi/2,
-            # do (if so from how wall) walls repel the agent 
+            "rotational_velocity_std":np.pi/2, 
+            # do (if so from how far) walls repel the agent 
             "walls_repel":True,
-            "wall_repel_distance":0.1,
+            "hug_walls" : True,
+            "wall_repel_distance":0.1
+
         }
 
         update_class_params(self, default_params)
@@ -421,10 +431,11 @@ class Agent:
         if self.Environment.dimensionality == "2D":
             self.pos = self.Environment.sample_positions(n=1,method='random')[0]
             direction = np.random.uniform(0, 2 * np.pi)
-            self.velocity = self.speed_mean * np.array(
+            self.velocity = self.speed_std * np.array(
                 [np.cos(direction), np.sin(direction)]
             )
             self.rotational_velocity = 0
+            
 
         if self.Environment.dimensionality == "1D":
             self.pos = self.Environment.sample_positions(n=1,method='random')[0]
@@ -437,73 +448,25 @@ class Agent:
         """Movement policy update. 
             In principle this does a very simple thing: 
             • updates time by dt
-            • updates position along the velocity direction 
             • updates velocity (speed and direction) according to a movement policy
+            • updates position along the velocity direction 
             In reality it's a complex function as the policy requires checking for immediate or upcoming collisions with all walls at each step as well as handling boundary conditions.
             Specifically the full loop looks like this:
             1) Update time by dt
-            2) Propose a new position (x_new =? x_old + v.dt)
+            2) Update velocity for the next time step. In 2D this is done by varying the agents heading direction and speed according to ornstein-uhlenbeck processes. In 1D, simply the velocity is varied according to ornstein-uhlenbeck. This includes, if turned on, being repelled by the walls.
+            3) Propose a new position (x_new =? x_old + velocity.dt)
             3.1) Check if this step collides with any walls (and act accordingly)
             3.2) Check you distance and direction from walls and be repelled by them is necessary
             4) Check position is still within maze and handle boundary conditions appropriately 
-            5) Update velocity for the next time step. In 2D this is done by varying the agents heading direction and speed according to ornstein-uhlenbeck processes. In 1D, simply the velocity is varied according to ornstein-uhlenbeck. 
             6) Store new position and time in history data frame
         """
         if dt == None: dt = self.dt
         self.dt = dt
         self.t += dt
-
-        #proposed position update
-        proposed_new_pos = self.pos + self.velocity * dt
         
         if self.Environment.dimensionality == '2D':
-            proposed_step = np.array([self.pos, proposed_new_pos])
-            wall_check = self.Environment.check_walls(proposed_step)
-            walls = wall_check[0] #shape=(N_walls,2,2)
-            wall_collisions = wall_check[1]  #shape=(N_walls,)
-            vectors_from_walls = wall_check[2]  #shape=(N_walls,2)
-
-            if (wall_collisions is None) or (True not in wall_collisions):
-                #it is safe to move to the new position
-                self.pos = self.pos + self.velocity * dt
-            
-            #Bounce off walls you collide with
-            elif True in wall_collisions:
-                colliding_wall = walls[np.argwhere(wall_collisions==True)[0][0]]
-                self.velocity = 1*wall_bounce(self.velocity,colliding_wall)
-                self.pos += self.velocity * dt
-
-            #Drift velocity set to move agent away from walls
-            if self.walls_repel == True: 
-                if walls is not None: 
-                    distance_to_walls = np.linalg.norm(vectors_from_walls,axis=-1)
-                    normalised_vectors_from_walls = vectors_from_walls / np.expand_dims(distance_to_walls,axis=-1)
-                    x, d = distance_to_walls, self.wall_repel_distance
-                    drift_speeds = np.piecewise(x=x,
-                            condlist=[
-                                        (x<=d),
-                                        (x>d), ],
-                            funclist=[
-                                        lambda x: (self.speed_mean+self.speed_std)*(1-x/d),
-                                        lambda x: 0,])
-                    drift_velocities =  np.expand_dims(drift_speeds,axis=-1)*normalised_vectors_from_walls
-                    wall_drift_velocity = drift_velocities.sum(axis=0)
-                    self.pos += wall_drift_velocity * dt
-
-
-            #handles instances when agent leaves environmnet 
-            if self.Environment.check_if_position_is_in_environment(self.pos) is False:
-                self.pos = self.Environment.apply_boundary_conditions(self.pos)
-
-            #note the REAL velocity may differ at this point foo mself.vel if, for example, the agent drifted from walls, or collided with a wall 
-            if len(self.history['vel'])>=1:
-                last_pos = np.array(self.history["pos"][-1])
-                shift = self.Environment.get_vectors_between___accounting_for_environment(pos1=self.pos,pos2=last_pos)
-                save_velocity = shift.reshape(-1)/self.dt #accounts for periodic 
-            else: save_velocity = self.velocity
-            
-            # UPDATE VELOCITY
-            #update angle
+            # UPDATE VELOCITY there are a number of contributing factors 
+            #1 Stochastically update the direction 
             direction = get_angle(self.velocity)
             self.rotational_velocity += ornstein_uhlenbeck(
                 dt=dt,
@@ -515,25 +478,92 @@ class Agent:
             dtheta = self.rotational_velocity*dt
             self.velocity = rotate(self.velocity,dtheta)
 
-            #update speed
+            #2 Stochastically update the speed
             speed = np.linalg.norm(self.velocity)
-            speed_new = np.abs(speed + ornstein_uhlenbeck(
+            normal_variable = rayleigh_to_normal(speed,sigma=self.speed_mean)
+            new_normal_variable = normal_variable + ornstein_uhlenbeck(
                 dt=dt,
-                x=speed,
-                drift=self.speed_mean,
-                noise_scale=self.speed_std,
-                coherence_time=self.speed_coherence_time))
+                x=normal_variable,
+                drift=0,
+                noise_scale=1,
+                coherence_time=self.speed_coherence_time)
+            speed_new = normal_to_rayleigh(new_normal_variable,sigma=self.speed_mean)
             self.velocity = (speed_new/speed)*self.velocity
 
-            #drift velocity towards the drift velocity which has been passed into the update function
+            # Deterministically drift velocity towards the drift_velocity which has been passed into the update function
             if drift_velocity is not None:
                 self.velocity += ornstein_uhlenbeck(
                     dt=dt,
                     x=self.velocity,
                     drift=drift_velocity,
                     noise_scale=0,
-                    coherence_time=0.3)
+                    coherence_time=0.3) #<--- this control how "powerful" this signal is
+            
+            #Deterministically drift the velocity away from any nearby walls
+            if self.walls_repel == True: 
+                vectors_from_walls = self.Environment.vectors_from_walls(self.pos) #shape=(N_walls,2)
+                if len(self.Environment.walls) > 0:
+                    distance_to_walls = np.linalg.norm(vectors_from_walls,axis=-1)
+                    normalised_vectors_from_walls = vectors_from_walls / np.expand_dims(distance_to_walls,axis=-1)
+                    x, d, v = distance_to_walls, self.wall_repel_distance , self.speed_mean                  
+                    if self.hug_walls == False:
+                        # Spring acceletation model: in this case this is done by applying an acceleration whenever the agent is near to a wall. this acceleration matches that of a spring with spring constant 3x that of a spring which would, if the agent arrived head on at v = self.speed_mean, turn around exactly at the wall. this is solved by letting d2x/dt2 = -k.x where k = v**2/d**2 (v=seld.speed_mean, d = self.wall_repel_distance)
+                        spring_constant = 3*v**2/d**2
+                        wall_accelerations = np.piecewise(x=x,
+                                condlist=[
+                                            (x<=d),
+                                            (x>d), ],
+                                funclist=[
+                                            lambda x: spring_constant*(d-x),
+                                            lambda x: 0,])
+                        wall_acceleration_vecs = np.expand_dims(wall_accelerations,axis=-1)*normalised_vectors_from_walls
+                        wall_acceleration = wall_acceleration_vecs.sum(axis=0)
+                        dv = wall_acceleration * dt
+                        self.velocity += dv
+                    elif self.hug_walls == True:
+                        # Conveyor belt drift model. Instead of a spring model this is like a converyor belt model. when < wall_repel_distance from the wall the agents position is updated as though it were on a conveyor belt which moves at the speed of spring mass attached to the wall with starting velocity 5*self.speed_mean. This has a similar effect effect  as the spring model above in that the agent moves away from the wall BUT, crucially the update is made directly to the agents positin, not it's speed, so the next time step will not reflect this update. As a result the agent which is walking into the wall will continue to barge hopelessly into the wall causing it the "hug" close to the wall. 
+                        wall_speeds = np.piecewise(x=x,
+                                condlist=[
+                                            (x<=d),
+                                            (x>d), ],
+                                funclist=[
+                                            lambda x: 5*v*(1 - np.sqrt(1-(d-x)**2/d**2)),
+                                            lambda x: 0,])
+                        wall_speed_vecs = np.expand_dims(wall_speeds,axis=-1)*normalised_vectors_from_walls
+                        wall_speed = wall_speed_vecs.sum(axis=0)
+                        dx = wall_speed*dt
+                        self.pos += dx
 
+
+            #proposed position update
+            proposed_new_pos = self.pos + self.velocity * dt
+            proposed_step = np.array([self.pos, proposed_new_pos])
+            wall_check = self.Environment.check_wall_collisions(proposed_step)
+            walls = wall_check[0] #shape=(N_walls,2,2)
+            wall_collisions = wall_check[1]  #shape=(N_walls,)
+
+            if (wall_collisions is None) or (True not in wall_collisions):
+                #it is safe to move to the new position
+                self.pos = self.pos + self.velocity * dt
+            
+            #Bounce off walls you collide with
+            elif True in wall_collisions:
+                colliding_wall = walls[np.argwhere(wall_collisions==True)[0][0]]
+                self.velocity = wall_bounce(self.velocity,colliding_wall)
+                self.velocity = (0.5*self.speed_mean/(np.linalg.norm(self.velocity)))*self.velocity
+                self.pos += self.velocity * dt
+
+            #handles instances when agent leaves environmnet 
+            if self.Environment.check_if_position_is_in_environment(self.pos) is False:
+                self.pos = self.Environment.apply_boundary_conditions(self.pos)
+
+            #calculate the velocity of the step that, after all that, was taken. 
+            if len(self.history['vel'])>=1:
+                last_pos = np.array(self.history["pos"][-1])
+                shift = self.Environment.get_vectors_between___accounting_for_environment(pos1=self.pos,pos2=last_pos)
+                save_velocity = shift.reshape(-1)/self.dt #accounts for periodic 
+            else: save_velocity = self.velocity
+            
 
         elif self.Environment.dimensionality == "1D":
             self.pos = self.pos + dt*self.velocity
@@ -635,13 +665,15 @@ class Agent:
         return fig, ax
     
     def animate_trajectory(self,
-                           t_end=None):
-        """Returns a real speed animation (anim) of the trajectory, 20fps. 
+                           t_end=None,
+                           speed_up=1):
+        """Returns an animation (anim) of the trajectory, 20fps. 
         Should be saved using comand like 
         anim.save("./where_to_save/animations.gif",dpi=300)
 
         Args:
             t_end (_type_, optional): _description_. Defaults to None.
+            speed_up: #times real speed animation should come out at 
 
         Returns:
             animation
@@ -649,10 +681,10 @@ class Agent:
         if t_end == None: 
             t_end = self.history['t'][-1]
 
-        def animate(i,fig,ax,t_max):
+        def animate(i,fig,ax,t_max,speed_up):
             t = self.history['t']
             t_start = t[0]
-            t_end = t[0]+(i+1)*50e-3
+            t_end = t[0]+(i+1)*speed_up*50e-3
             ax.clear()
             if self.Environment.dimensionality == '2D':
                 fig, ax = self.Environment.plot_environment(fig=fig,ax=ax)
@@ -664,7 +696,7 @@ class Agent:
             return 
 
         fig,ax=self.plot_trajectory(0,10*self.dt)
-        anim = matplotlib.animation.FuncAnimation(fig,animate,interval=50,frames=int(t_end/50e-3),blit=False,fargs=(fig,ax,t_end))
+        anim = matplotlib.animation.FuncAnimation(fig,animate,interval=50,frames=int(t_end/50e-3),blit=False,fargs=(fig,ax,t_end,speed_up))
         return anim
 
     def plot_position_heatmap(self,
@@ -702,6 +734,40 @@ class Agent:
             )
         return fig, ax
 
+    def plot_histogram_of_speeds(self,
+                                 fig = None,
+                                 ax = None,
+                                 color='C1'):
+        """Plots a histogram of the observed speeds of the agent. 
+        args:
+            fig, ax: not required. the ax object to be drawn onto.  
+            color: optional. the color.
+        Returns:
+            fig, ax: the figure
+        """     
+        velocities = np.array(self.history['vel'])
+        speeds = np.linalg.norm(velocities,axis=1)
+        if (fig is None) and (ax is None):
+            fig, ax = plt.subplots()
+        ax.hist(speeds,bins=50,color=color, alpha=0.8,density=True)
+        return fig, ax 
+
+    def plot_histogram_of_rotational_velocities(self,
+                                 fig = None,
+                                 ax = None,
+                                 color='C1'):
+        """Plots a histogram of the observed speeds of the agent. 
+        args:
+            fig, ax: not required. the ax object to be drawn onto.  
+            color: optional. the color.
+        Returns:
+            fig, ax: the figure
+        """        
+        rot_vels = np.array(self.history['rot_vel'])
+        if (fig is None) and (ax is None):
+            fig, ax = plt.subplots()
+        ax.hist(rot_vels,bins=50,color=color, alpha=0.8, density=True)
+        return fig, ax 
 
 class Neurons:
     """The Neuron class defines a population of Neurons. All Neurons have firing rates which depend explicity on (that is, they "encode" -- if I'm still allowed to say that) the state of the Agent. As the Agent moves the firing rate of the cells adjust accordingly. 
@@ -1118,7 +1184,6 @@ class Neurons:
             elif by_history == True: 
                 ex = self.Agent.Environment.extent
                 pos = np.array(self.Agent.history['pos'])[:,0]
-                print(pos.shape)
                 rate_maps = []
                 for neuron_id in chosen_neurons:
                     rate_map, x = (
@@ -1167,13 +1232,16 @@ class Neurons:
     
     def animate_rate_timeseries(self,
                                 t_end=None,
-                                chosen_neurons='all'):
-        """Returns a real-speed-evolving animation (anim) of the firing rates, 25fps. 
+                                chosen_neurons='all',
+                                speed_up=1):
+        """Returns an animation (anim) of the firing rates, 25fps. 
         Should be saved using comand like 
         anim.save("./where_to_save/animations.gif",dpi=300)
 
         Args:
             t_end (_type_, optional): _description_. Defaults to None.
+            chosen_neurons: neurons to plot (as define in, e.g., plot_rate_map())
+            speed_up: #times real speed animation should come out at. 
 
         Returns:
             animation
@@ -1182,18 +1250,17 @@ class Neurons:
         if t_end == None: 
             t_end = self.history['t'][-1]
 
-        def animate(i,fig,ax,chosen_neurons,t_max):
+        def animate(i,fig,ax,chosen_neurons,t_max,speed_up):
             t = self.history['t']
             t_start = t[0]
-            t_end = t[0]+(i+1)*50e-3
+            t_end = t[0]+(i+1)*speed_up*50e-3
             ax.clear()
             fig, ax = self.plot_rate_timeseries(t_start=t_start,t_end=t_end, chosen_neurons=chosen_neurons, plot_spikes=True, fig=fig, ax=ax,xlim=t_max)
             plt.close()
             return 
 
         fig, ax = self.plot_rate_timeseries(t_start=0,t_end=10*self.Agent.dt,chosen_neurons=chosen_neurons,xlim=t_end)
-        # fig, ax = plt.subplots()
-        anim = matplotlib.animation.FuncAnimation(fig,animate,interval=50,frames=int(t_end/50e-3),blit=False,fargs=(fig,ax,chosen_neurons,t_end))
+        anim = matplotlib.animation.FuncAnimation(fig,animate,interval=50,frames=int(t_end/50e-3),blit=False,fargs=(fig,ax,chosen_neurons,t_end,speed_up))
         return anim
 
     def boundary_vector_preference_function(self,x):
@@ -1515,6 +1582,21 @@ def interpolate_and_smooth(x,
                         sigma=sigma/(x_new[1]-x_new[0]))
     return x_new,y_smoothed
 
+def normal_to_rayleigh(x,sigma=1):
+    """Converts a normally distributed variable (mean 0, var 1) to a rayleigh distributed variable (sigma)
+    """    
+    x = scipy.stats.norm.cdf(x) #norm to uniform)
+    x = sigma * np.sqrt(-2*np.log(1-x)) #uniform to rayleigh
+    return x
+
+def rayleigh_to_normal(x,sigma=1):
+    """Converts a rayleigh distributed variable (sigma) to a normally distributed variable (mean 0, var 1)
+    """
+    if x<=0: x = 1e-6
+    if x >= 1: x = 1 - 1e-6  
+    x = 1 - np.exp(-x**2/(2*sigma**2)) #rayleigh to uniform
+    x = scipy.stats.norm.ppf(x) #uniform to normal
+    return x 
 
 """Plotting functions"""    
 def bin_data_for_histogramming(data,
