@@ -645,21 +645,43 @@ class Agent:
 
         return self.pos
     
-    def import_trajectory(self, times, positions):
-        """Import trajectory data into the agent by passing a list of timestamps and a list of positions. These will used for moting rather than the random motion model. The data is interpolated using cubic splines. This means imported data can be low resolution and smoothly upsampled (aka "augmented" with artificial data). 
+    def import_trajectory(self, times=None, positions=None,dataset=None):
+        """Import trajectory data into the agent by passing a list or array of timestamps and a list or array of positions. These will used for moting rather than the random motion model. The data is interpolated using cubic splines. This means imported data can be low resolution and smoothly upsampled (aka "augmented" with artificial data). 
         
         Note after importing trajectory data you still need to run a simulation using the Agent.update(dt=dt) function. Each update moves the agent by a time dt along its imported trajectory. If the simulation is run for longer than the time availble in the imported trajectory, it loops back to the start. Imported times are shifted so that time[0] = 0.
 
         Args:
             times (array-like): list or array of time stamps 
             positions (_type_): list or array of positions 
+            dataset: if `sargolini' will load `sargolini' trajectory data from './data/sargolini.npz'. Else you can pass a path to a .npz file which must contain time and trajectory data under keys 't' and 'pos'
         """        
         from scipy.interpolate import interp1d
-        assert len(positions) == len(times), "time and position arrays must have same length"
+
         assert self.Environment.boundary_conditions == 'solid', 'Only solid boundary conditions are supported'
 
-        time, positions = np.array(times), np.array(positions)
-        time = time - min(time)
+        if dataset is not None:
+            if dataset == 'sargolini':
+                import ratinabox
+                import os
+                print(os.getcwd())
+                dataset = os.path.join(
+                          os.path.join(
+                          os.path.abspath(
+                          os.path.join(ratinabox.__file__, os.pardir)),
+                          "data"),
+                          "sargolini.npz")
+            data = np.load(dataset)
+            times = data['t']
+            positions = data['pos']
+            print(f"Successfully imported dataset from {dataset}")
+        else:
+            times, positions = np.array(times), np.array(positions)
+            print(f"Successfully imported dataset from arrays passed")
+
+        
+        assert len(positions) == len(times), "time and position arrays must have same length"
+
+        times = times - min(times)
         self.use_imported_trajectory = True
 
         ex = self.Environment.extent
@@ -671,8 +693,8 @@ class Agent:
                 (max(positions[:,1])>ex[3]) or 
                 (min(positions[:,1])<ex[2])):
                 print(f"WARNING: the size of the trajectory is significantly larger than the environment you are using. Environment extent is [minx,maxx,miny,maxy]=[{ex[0]:.1f},{ex[1]:.1f},{ex[2]:.1f},{ex[3]:.1f}], whereas extreme coords are [{min(positions[:,0]):.1f},{max(positions[:,0]):.1f},{min(positions[:,1]):.1f},{max(positions[:,1]):.1f}]. Recommended to use larger environment.")
-            self.t_interp = time
-            self.pos_interp = interp1d(time,positions,
+            self.t_interp = times
+            self.pos_interp = interp1d(times,positions,
                                        axis=0,
                                        kind='cubic',
                                        fill_value='extrapolate')
@@ -682,8 +704,8 @@ class Agent:
             if ((max(positions)>ex[1]) or 
                 (min(positions)<ex[0])):
                 print(f"WARNING: the size of the trajectory is significantly larger than the environment you are using. Environment extent is [minx,maxx]=[{ex[0]:.1f},{ex[1]:.1f}], whereas extreme coords are [{min(positions[:,0]):.1f},{max(positions[:,0]):.1f}]. Recommended to use larger environment.")
-            self.t_interp = time
-            self.pos_interp = interp1d(time,positions,
+            self.t_interp = times
+            self.pos_interp = interp1d(times,positions,
                                        axis=0,
                                        kind='cubic',
                                        fill_value='extrapolate')
