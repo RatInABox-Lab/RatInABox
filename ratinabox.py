@@ -41,12 +41,12 @@ class Environment:
             "dimensionality":'2D', #1D or 2D environment 
             "boundary_conditions":"solid", #solid vs periodic
             "scale": 1, #scale of environment
-            "aspect":1, #x/y aspect ratio 2D only
+            "aspect":1, #x/y aspect ratio 2D onl
+            "dx":0.01, ##superficially discretises the environment for plotting purposes only
         }
         update_class_params(self, default_params)
         update_class_params(self, params)
 
-        self.dx=0.01 #superficially discretises the environment for plotting purposes only 
 
         if self.dimensionality == "1D":
             self.extent = np.array([0, self.scale])
@@ -401,20 +401,19 @@ class Agent:
             #the Environment class
             "Environment": None,
             #speed params
-            "speed_coherence_time": 3.0,
-            "speed_mean": 0.2, 
+            "speed_coherence_time": 0.7,
+            "speed_mean": 0.08, 
             "speed_std":0.2, #meaningless in 2D  
-            "rotational_velocity_coherence_time":1, 
-            "rotational_velocity_std":np.pi/2, 
-            # do (if so from how far) walls repel the agent 
-            "walls_repel":True,
-            "hug_walls" : True,
-            "wall_repel_distance":0.1
+            "rotational_velocity_coherence_time":0.08, 
+            "rotational_velocity_std":120*(np.pi/180), 
+            #wall following parameter
+            "anxiety":0.8, #tendency for agents to linger near walls [0 = not at all, 1 = max]
 
         }
 
         update_class_params(self, default_params)
         update_class_params(self, params)
+        assert self.Environment is not None, "No Environment() class given. Pass a parameters dictionary including an Environment like Agent(params={'Environment':Environment()})"
 
         # initialise history dataframes
         self.history = {}
@@ -426,6 +425,13 @@ class Agent:
         # time and runID
         self.t = 0
         self.dt=0.01 #defualt dt = 10 ms
+        self.use_imported_trajectory = False
+        
+        # motion model stufff
+        self.walls_repel = True #over ride to switch of wall repulsion
+        self.wall_repel_distance = 0.10
+
+
 
         # initialise starting positions and velocity
         if self.Environment.dimensionality == "2D":
@@ -463,52 +469,55 @@ class Agent:
         if dt == None: dt = self.dt
         self.dt = dt
         self.t += dt
-        
-        if self.Environment.dimensionality == '2D':
-            # UPDATE VELOCITY there are a number of contributing factors 
-            #1 Stochastically update the direction 
-            direction = get_angle(self.velocity)
-            self.rotational_velocity += ornstein_uhlenbeck(
-                dt=dt,
-                x=self.rotational_velocity,
-                drift=0,
-                noise_scale=self.rotational_velocity_std,
-                coherence_time=self.rotational_velocity_coherence_time,
-            )
-            dtheta = self.rotational_velocity*dt
-            self.velocity = rotate(self.velocity,dtheta)
 
-            #2 Stochastically update the speed
-            speed = np.linalg.norm(self.velocity)
-            normal_variable = rayleigh_to_normal(speed,sigma=self.speed_mean)
-            new_normal_variable = normal_variable + ornstein_uhlenbeck(
-                dt=dt,
-                x=normal_variable,
-                drift=0,
-                noise_scale=1,
-                coherence_time=self.speed_coherence_time)
-            speed_new = normal_to_rayleigh(new_normal_variable,sigma=self.speed_mean)
-            self.velocity = (speed_new/speed)*self.velocity
-
-            # Deterministically drift velocity towards the drift_velocity which has been passed into the update function
-            if drift_velocity is not None:
-                self.velocity += ornstein_uhlenbeck(
+        if self.use_imported_trajectory == False: #use random motion model
+            if self.Environment.dimensionality == '2D':
+                # UPDATE VELOCITY there are a number of contributing factors 
+                #1 Stochastically update the direction 
+                direction = get_angle(self.velocity)
+                self.rotational_velocity += ornstein_uhlenbeck(
                     dt=dt,
-                    x=self.velocity,
-                    drift=drift_velocity,
-                    noise_scale=0,
-                    coherence_time=0.3) #<--- this control how "powerful" this signal is
-            
-            #Deterministically drift the velocity away from any nearby walls
-            if self.walls_repel == True: 
-                vectors_from_walls = self.Environment.vectors_from_walls(self.pos) #shape=(N_walls,2)
-                if len(self.Environment.walls) > 0:
-                    distance_to_walls = np.linalg.norm(vectors_from_walls,axis=-1)
-                    normalised_vectors_from_walls = vectors_from_walls / np.expand_dims(distance_to_walls,axis=-1)
-                    x, d, v = distance_to_walls, self.wall_repel_distance , self.speed_mean                  
-                    if self.hug_walls == False:
+                    x=self.rotational_velocity,
+                    drift=0,
+                    noise_scale=self.rotational_velocity_std,
+                    coherence_time=self.rotational_velocity_coherence_time,
+                )
+                dtheta = self.rotational_velocity*dt
+                self.velocity = rotate(self.velocity,dtheta)
+
+                #2 Stochastically update the speed
+                speed = np.linalg.norm(self.velocity)
+                normal_variable = rayleigh_to_normal(speed,sigma=self.speed_mean)
+                new_normal_variable = normal_variable + ornstein_uhlenbeck(
+                    dt=dt,
+                    x=normal_variable,
+                    drift=0,
+                    noise_scale=1,
+                    coherence_time=self.speed_coherence_time)
+                speed_new = normal_to_rayleigh(new_normal_variable,sigma=self.speed_mean)
+                self.velocity = (speed_new/speed)*self.velocity
+
+                # Deterministically drift velocity towards the drift_velocity which has been passed into the update function
+                if drift_velocity is not None:
+                    self.velocity += ornstein_uhlenbeck(
+                        dt=dt,
+                        x=self.velocity,
+                        drift=drift_velocity,
+                        noise_scale=0,
+                        coherence_time=0.3) #<--- this control how "powerful" this signal is
+                
+                #Deterministically drift the velocity away from any nearby walls
+                if self.walls_repel == True: 
+                    vectors_from_walls = self.Environment.vectors_from_walls(self.pos) #shape=(N_walls,2)
+                    if len(self.Environment.walls) > 0:
+                        distance_to_walls = np.linalg.norm(vectors_from_walls,axis=-1)
+                        normalised_vectors_from_walls = vectors_from_walls / np.expand_dims(distance_to_walls,axis=-1)
+                        x, d, v = distance_to_walls, self.wall_repel_distance , self.speed_mean 
+
+                        #Wall repulsion and wall following works as follows. When an agent is near the wall, the acceleration and velocity of a hypothetical spring mass tied to a line self.wall_repel_distance away from the wall is calculated. The spring constant is calibrateed so taht if if starts with the Agent.speed_mean it will ~~just~~ not hit the wall. Now, either the acceleration can be used to update the velocity and guide the agent away from the wall OR the counteracting velocity can be used to update the agents position and shift it away from the wall. Both result in repulsive motion away from the wall. The difference is that the latter (and not the former) does not update the agents velocity vector to reflect this, in which case it continues to walk (unsuccessfully) in the same direction barging into the wall and 'following' it. The anxiety parameter allows us to divvy up which of these two dominate. If anxiety is low the acceleration-gives-velocity-update is most dominant and the agent will not linger near the wall. If anxiety is high the velocity-gives-position-update is most dominant and the agent will linger near the wall. 
+                        
                         # Spring acceletation model: in this case this is done by applying an acceleration whenever the agent is near to a wall. this acceleration matches that of a spring with spring constant 3x that of a spring which would, if the agent arrived head on at v = self.speed_mean, turn around exactly at the wall. this is solved by letting d2x/dt2 = -k.x where k = v**2/d**2 (v=seld.speed_mean, d = self.wall_repel_distance)
-                        spring_constant = 3*v**2/d**2
+                        spring_constant = v**2/d**2
                         wall_accelerations = np.piecewise(x=x,
                                 condlist=[
                                             (x<=d),
@@ -519,67 +528,113 @@ class Agent:
                         wall_acceleration_vecs = np.expand_dims(wall_accelerations,axis=-1)*normalised_vectors_from_walls
                         wall_acceleration = wall_acceleration_vecs.sum(axis=0)
                         dv = wall_acceleration * dt
-                        self.velocity += dv
-                    elif self.hug_walls == True:
+                        self.velocity += 3*((1-self.anxiety)**2)*dv
+                        
                         # Conveyor belt drift model. Instead of a spring model this is like a converyor belt model. when < wall_repel_distance from the wall the agents position is updated as though it were on a conveyor belt which moves at the speed of spring mass attached to the wall with starting velocity 5*self.speed_mean. This has a similar effect effect  as the spring model above in that the agent moves away from the wall BUT, crucially the update is made directly to the agents positin, not it's speed, so the next time step will not reflect this update. As a result the agent which is walking into the wall will continue to barge hopelessly into the wall causing it the "hug" close to the wall. 
                         wall_speeds = np.piecewise(x=x,
                                 condlist=[
                                             (x<=d),
                                             (x>d), ],
                                 funclist=[
-                                            lambda x: 5*v*(1 - np.sqrt(1-(d-x)**2/d**2)),
+                                            lambda x: v*(1 - np.sqrt(1-(d-x)**2/d**2)),
                                             lambda x: 0,])
                         wall_speed_vecs = np.expand_dims(wall_speeds,axis=-1)*normalised_vectors_from_walls
                         wall_speed = wall_speed_vecs.sum(axis=0)
                         dx = wall_speed*dt
-                        self.pos += dx
+                        self.pos += 6*(self.anxiety**2)*dx
 
 
-            #proposed position update
-            proposed_new_pos = self.pos + self.velocity * dt
-            proposed_step = np.array([self.pos, proposed_new_pos])
-            wall_check = self.Environment.check_wall_collisions(proposed_step)
-            walls = wall_check[0] #shape=(N_walls,2,2)
-            wall_collisions = wall_check[1]  #shape=(N_walls,)
 
-            if (wall_collisions is None) or (True not in wall_collisions):
-                #it is safe to move to the new position
-                self.pos = self.pos + self.velocity * dt
-            
-            #Bounce off walls you collide with
-            elif True in wall_collisions:
-                colliding_wall = walls[np.argwhere(wall_collisions==True)[0][0]]
-                self.velocity = wall_bounce(self.velocity,colliding_wall)
-                self.velocity = (0.5*self.speed_mean/(np.linalg.norm(self.velocity)))*self.velocity
-                self.pos += self.velocity * dt
 
-            #handles instances when agent leaves environmnet 
-            if self.Environment.check_if_position_is_in_environment(self.pos) is False:
-                self.pos = self.Environment.apply_boundary_conditions(self.pos)
+                #proposed position update
+                proposed_new_pos = self.pos + self.velocity * dt
+                proposed_step = np.array([self.pos, proposed_new_pos])
+                wall_check = self.Environment.check_wall_collisions(proposed_step)
+                walls = wall_check[0] #shape=(N_walls,2,2)
+                wall_collisions = wall_check[1]  #shape=(N_walls,)
 
-            #calculate the velocity of the step that, after all that, was taken. 
-            if len(self.history['vel'])>=1:
-                last_pos = np.array(self.history["pos"][-1])
-                shift = self.Environment.get_vectors_between___accounting_for_environment(pos1=self.pos,pos2=last_pos)
-                save_velocity = shift.reshape(-1)/self.dt #accounts for periodic 
-            else: save_velocity = self.velocity
-            
-
-        elif self.Environment.dimensionality == "1D":
-            self.pos = self.pos + dt*self.velocity
-            if self.Environment.check_if_position_is_in_environment(self.pos) is False:
-                if self.Environment.boundary_conditions == 'solid':
-                    self.velocity *= -1
-                self.pos = self.Environment.apply_boundary_conditions(self.pos)
+                if (wall_collisions is None) or (True not in wall_collisions):
+                    #it is safe to move to the new position
+                    self.pos = self.pos + self.velocity * dt
                 
-            self.velocity += ornstein_uhlenbeck(
-                dt=dt,
-                x=self.velocity,
-                drift=self.speed_mean,
-                noise_scale=self.speed_std,
-                coherence_time=self.speed_coherence_time,
-                )
-            save_velocity = self.velocity
+                #Bounce off walls you collide with
+                elif True in wall_collisions:
+                    colliding_wall = walls[np.argwhere(wall_collisions==True)[0][0]]
+                    self.velocity = wall_bounce(self.velocity,colliding_wall)
+                    self.velocity = (0.5*self.speed_mean/(np.linalg.norm(self.velocity)))*self.velocity
+                    self.pos += self.velocity * dt
+
+                #handles instances when agent leaves environmnet 
+                if self.Environment.check_if_position_is_in_environment(self.pos) is False:
+                    self.pos = self.Environment.apply_boundary_conditions(self.pos)
+
+                #calculate the velocity of the step that, after all that, was taken. 
+                if len(self.history['vel'])>=1:
+                    last_pos = np.array(self.history["pos"][-1])
+                    shift = self.Environment.get_vectors_between___accounting_for_environment(pos1=self.pos,pos2=last_pos)
+                    save_velocity = shift.reshape(-1)/self.dt #accounts for periodic 
+                else: save_velocity = self.velocity
+                
+
+            elif self.Environment.dimensionality == "1D":
+                self.pos = self.pos + dt*self.velocity
+                if self.Environment.check_if_position_is_in_environment(self.pos) is False:
+                    if self.Environment.boundary_conditions == 'solid':
+                        self.velocity *= -1
+                    self.pos = self.Environment.apply_boundary_conditions(self.pos)
+                    
+                self.velocity += ornstein_uhlenbeck(
+                    dt=dt,
+                    x=self.velocity,
+                    drift=self.speed_mean,
+                    noise_scale=self.speed_std,
+                    coherence_time=self.speed_coherence_time,
+                    )
+                save_velocity = self.velocity
+
+        elif self.use_imported_trajectory == True:
+            #use an imported trajectory to 
+            if self.Environment.dimensionality == '2D':       
+                interp_time = self.t % max(self.t_interp)          
+                pos = self.pos_interp(interp_time)
+                ex = self.Environment.extent
+                self.pos = np.array([
+                    min(max(pos[0],ex[0]),ex[1]),
+                    min(max(pos[1],ex[2]),ex[3])
+                ])
+
+                #calculate velocity and rotational velocity
+                if len(self.history['vel'])>=1:
+                    last_pos = np.array(self.history["pos"][-1])
+                    shift = self.Environment.get_vectors_between___accounting_for_environment(pos1=self.pos,pos2=last_pos)
+                    self.velocity = shift.reshape(-1)/self.dt #accounts for periodic 
+                else: self.velocity = np.array([0,0])
+                save_velocity = self.velocity 
+
+                angle_now = get_angle(self.velocity)
+                if len(self.history['vel'])>=1: 
+                    angle_before = get_angle(self.history["vel"][-1])
+                else: angle_before = angle_now
+                if abs(angle_now - angle_before) > np.pi:
+                    if angle_now > angle_before: angle_now -= 2*np.pi
+                    elif angle_now < angle_before: angle_before -= 2*np.pi
+                self.rotational_velocity = (angle_now - angle_before)/self.dt
+            
+            if self.Environment.dimensionality == '1D':
+                interp_time = self.t % max(self.t_interp)          
+                pos = self.pos_interp(interp_time)
+                ex = self.Environment.extent
+                self.pos = np.array([min(max(pos,ex[0]),ex[1])])
+                if len(self.history['vel'])>=1:
+                    self.velocity = (self.pos-self.history['pos'][-1])/self.dt
+                else: 
+                    self.velocity = np.array([0])
+                save_velocity = self.velocity
+
+
+
+
+
 
         # write to history
         self.history["t"].append(self.t)
@@ -590,6 +645,54 @@ class Agent:
 
         return self.pos
     
+    def import_trajectory(self, times, positions):
+        """Import trajectory data into the agent by passing a list of timestamps and a list of positions. These will used for moting rather than the random motion model. The data is interpolated using cubic splines. This means imported data can be low resolution and smoothly upsampled (aka "augmented" with artificial data). 
+        
+        Note after importing trajectory data you still need to run a simulation using the Agent.update(dt=dt) function. Each update moves the agent by a time dt along its imported trajectory. If the simulation is run for longer than the time availble in the imported trajectory, it loops back to the start. Imported times are shifted so that time[0] = 0.
+
+        Args:
+            times (array-like): list or array of time stamps 
+            positions (_type_): list or array of positions 
+        """        
+        from scipy.interpolate import interp1d
+        assert len(positions) == len(times), "time and position arrays must have same length"
+        assert self.Environment.boundary_conditions == 'solid', 'Only solid boundary conditions are supported'
+
+        time, positions = np.array(times), np.array(positions)
+        time = time - min(time)
+        self.use_imported_trajectory = True
+
+        ex = self.Environment.extent
+
+        if self.Environment.dimensionality == '2D':
+            positions = positions.reshape(-1,2)
+            if ((max(positions[:,0])>ex[1]) or 
+                (min(positions[:,0])<ex[0]) or 
+                (max(positions[:,1])>ex[3]) or 
+                (min(positions[:,1])<ex[2])):
+                print(f"WARNING: the size of the trajectory is significantly larger than the environment you are using. Environment extent is [minx,maxx,miny,maxy]=[{ex[0]:.1f},{ex[1]:.1f},{ex[2]:.1f},{ex[3]:.1f}], whereas extreme coords are [{min(positions[:,0]):.1f},{max(positions[:,0]):.1f},{min(positions[:,1]):.1f},{max(positions[:,1]):.1f}]. Recommended to use larger environment.")
+            self.t_interp = time
+            self.pos_interp = interp1d(time,positions,
+                                       axis=0,
+                                       kind='cubic',
+                                       fill_value='extrapolate')
+        
+        if self.Environment.dimensionality == '1D':
+            positions = positions.reshape(-1,1)
+            if ((max(positions)>ex[1]) or 
+                (min(positions)<ex[0])):
+                print(f"WARNING: the size of the trajectory is significantly larger than the environment you are using. Environment extent is [minx,maxx]=[{ex[0]:.1f},{ex[1]:.1f}], whereas extreme coords are [{min(positions[:,0]):.1f},{max(positions[:,0]):.1f}]. Recommended to use larger environment.")
+            self.t_interp = time
+            self.pos_interp = interp1d(time,positions,
+                                       axis=0,
+                                       kind='cubic',
+                                       fill_value='extrapolate')
+        
+        return 
+
+
+
+
     def plot_trajectory(self, 
                         t_start=0, 
                         t_end=None, 
@@ -650,7 +753,7 @@ class Agent:
             if fig is None and ax is None:
                 fig, ax = plt.subplots(figsize=(6, 3))
             ax.scatter(time/60, trajectory,alpha=0.7)
-            ax.spines["left"].set_position(("data", t[startid]))
+            ax.spines["left"].set_position(("data", t_start))
             ax.set_xlabel("Time / min")
             ax.set_ylabel("Position / m")
             if xlim is not None: 
@@ -660,7 +763,7 @@ class Agent:
             ax.spines["top"].set_color(None)
             ax.set_xticks([t_start/60,t_end/60])
             ex = self.Environment.extent
-            ax.set_yticks([ex[0],ex[1]])
+            ax.set_yticks([ex[1]])
 
         return fig, ax
     
@@ -730,14 +833,15 @@ class Agent:
                 fig, ax = self.Environment.plot_environment()
             vmin=0; vmax=np.max(heatmap)
             ax.imshow(heatmap, extent=ex, interpolation='bicubic',
-            vmin=vmin,vmax=vmax,
+            vmin=vmin,vmax=vmax
             )
         return fig, ax
 
     def plot_histogram_of_speeds(self,
                                  fig = None,
                                  ax = None,
-                                 color='C1'):
+                                 color='C1',
+                                 return_data=False):
         """Plots a histogram of the observed speeds of the agent. 
         args:
             fig, ax: not required. the ax object to be drawn onto.  
@@ -747,15 +851,23 @@ class Agent:
         """     
         velocities = np.array(self.history['vel'])
         speeds = np.linalg.norm(velocities,axis=1)
+        #exclude speeds above 3sigma
+        mu, std = np.mean(speeds), np.std(speeds)
+        speeds=speeds[speeds<mu+3*std]
         if (fig is None) and (ax is None):
             fig, ax = plt.subplots()
-        ax.hist(speeds,bins=50,color=color, alpha=0.8,density=True)
-        return fig, ax 
+        n, bins, patches = ax.hist(speeds,bins=np.linspace(0,1.2,100),color=color, alpha=0.8,density=True)
+        ax.set_xlabel("Speed  / (m / s)")
+        if return_data==True:
+            return fig, ax ,n, bins, patches
+        else: 
+            return fig, ax 
 
     def plot_histogram_of_rotational_velocities(self,
                                  fig = None,
                                  ax = None,
-                                 color='C1'):
+                                 color='C1',
+                                 return_data=False):
         """Plots a histogram of the observed speeds of the agent. 
         args:
             fig, ax: not required. the ax object to be drawn onto.  
@@ -763,10 +875,17 @@ class Agent:
         Returns:
             fig, ax: the figure
         """        
-        rot_vels = np.array(self.history['rot_vel'])
+        rot_vels = np.array(self.history['rot_vel']) * 180 / np.pi
+        #exclude rotational velocities above/below 3sigma
+        mu, std = np.mean(rot_vels), np.std(rot_vels)
+        rot_vels=rot_vels[rot_vels<mu+3*std]
+        rot_vels=rot_vels[rot_vels>mu-3*std]        
         if (fig is None) and (ax is None):
             fig, ax = plt.subplots()
-        ax.hist(rot_vels,bins=50,color=color, alpha=0.8, density=True)
+        n, bins, patches = ax.hist(rot_vels,bins=np.linspace(-2000,2000,100),color=color, alpha=0.8, density=False)
+        ax.set_xlabel("Rotational velocity / (deg / s)")
+        if return_data == True:
+            return fig, ax, n, bins, patches
         return fig, ax 
 
 class Neurons:
@@ -843,6 +962,8 @@ class Neurons:
         }
         update_class_params(self, default_params)
         update_class_params(self, params)
+        assert self.Agent is not None, "No Agent() class given. Pass a parameters dictionary including an Agent like Neurons(params={'Agent':Agent()})"
+
 
         self.history = {}
         self.history["t"] = []
@@ -914,7 +1035,7 @@ class Neurons:
         """
         Returns the firing rate of the neurons. 
         pos can be
-            • np.array(): an array of locations 
+            • list/array: an array or list of locations 
             • 'from_agent': uses Agent.pos 
             • 'all' : array of locations over entire environment (for rate map plotting) 
         vel can be:
@@ -922,6 +1043,9 @@ class Neurons:
         Returns the firing rate of the neuron at all positions shape (N_cells,N_pos)
                 """
         
+        if type(pos) is list: pos = np.array(pos)
+        if type(vel) is list: vel = np.array(vel)
+
         if self.cell_class == 'place_cell':
             if pos == "from_agent":
                 pos = self.Agent.pos
@@ -1048,7 +1172,7 @@ class Neurons:
     def plot_rate_timeseries(self,
                             t_start=0,
                             t_end=None,
-                            chosen_neurons='10',
+                            chosen_neurons='all',
                             plot_spikes=True,
                             fig=None,
                             ax=None,
@@ -1486,6 +1610,7 @@ def get_angle(segment):
     Returns:
         float: angle of segment
     """
+    segment=np.array(segment)
     eps = 1e-6
     if segment.shape == (2,):
         return np.mod(np.arctan2(segment[1], (segment[0] + eps)), 2 * np.pi)
@@ -1564,7 +1689,7 @@ def ornstein_uhlenbeck(dt,
 
 def interpolate_and_smooth(x,
                            y,
-                           sigma=0.03):
+                           sigma=None):
     """Interpolates with cublic spline x and y to 10x resolution then smooths these with a gaussian kernel of width sigma. Currently this only works for 1-dimensional x.
     Args:
         x 
@@ -1578,9 +1703,12 @@ def interpolate_and_smooth(x,
     y_cubic = interp1d(x, y, kind='cubic')
     x_new = np.arange(x[0],x[-1],(x[1]-x[0])/10)
     y_interpolated = y_cubic(x_new)
-    y_smoothed = gaussian_filter1d(y_interpolated,
+    if sigma is not None: 
+        y_smoothed = gaussian_filter1d(y_interpolated,
                         sigma=sigma/(x_new[1]-x_new[0]))
-    return x_new,y_smoothed
+        return x_new, y_smoothed
+    else: 
+        return x_new, y_interpolated
 
 def normal_to_rayleigh(x,sigma=1):
     """Converts a normally distributed variable (mean 0, var 1) to a rayleigh distributed variable (sigma)
@@ -1697,11 +1825,11 @@ def update_class_params(Class,
 def gaussian(x,
              mu,
              sigma):
-    """Gaussian function. x, mu and sigma can be any shape as long as they are all the same (or strictly, all broadcastabele) 
+    """Gaussian function. x, mu and sigma can be any shape as long as they are all the same (or strictly, all broadcastable) 
     Args:
-        x
-        mu 
-        sigma
+        x: input
+        mu ; mean
+        sigma; standard deviation
     Returns gaussian(x;mu,sigma)
     """    
     g = -(x-mu)**2
