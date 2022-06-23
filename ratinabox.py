@@ -998,7 +998,7 @@ class Neurons:
         if self.cell_class == 'place_cell':
             if self.place_cell_centres is None:
                 self.place_cell_centres = self.Agent.Environment.sample_positions(n=self.n,method='uniform_jitter')
-                np.random.shuffle(self.place_cell_centres)
+                # np.randoms.shuffle(self.place_cell_centres)
             else: 
                 self.n = self.place_cell_centres.shape[0]
             self.place_cell_widths = self.widths*np.ones(self.n)
@@ -1802,14 +1802,14 @@ def mountain_plot(X,
         fig, ax: _description_
     """  
     c = (color or 'C1')  
-    c = np.array(matplotlib.colors.to_rgb(color))
+    c = np.array(matplotlib.colors.to_rgb(c))
     fc = 0.3*c + (1-0.3)*np.array([1,1,1]) #convert rgb+alpha to rgb
 
     NbyX = 0.7* NbyX / np.max(np.abs(NbyX))
     if fig is None and ax is None: 
         fig, ax = plt.subplots(figsize=(4, len(NbyX)*5.5/25)) #~6mm gap between lines
     for i in range(len(NbyX)):
-        ax.plot(X, NbyX[i] + i + 1, c=color)
+        ax.plot(X, NbyX[i] + i + 1, c=c)
         ax.fill_between(X, NbyX[i] + i + 1, i + 1, facecolor=fc)
     ax.spines["left"].set_bounds(1, len(NbyX))
     ax.spines["bottom"].set_position(("outward", 1))
