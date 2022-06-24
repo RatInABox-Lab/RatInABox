@@ -774,7 +774,7 @@ class Agent:
         if self.Environment.dimensionality == "1D":
             if fig is None and ax is None:
                 fig, ax = plt.subplots(figsize=(6, 3))
-            ax.scatter(time/60, trajectory,alpha=0.7)
+            ax.scatter(time/60, trajectory,alpha=0.7,linewidth=0)
             ax.spines["left"].set_position(("data", t_start))
             ax.set_xlabel("Time / min")
             ax.set_ylabel("Position / m")
@@ -1247,7 +1247,7 @@ class Neurons:
             for i in range(len(chosen_neurons)):
                 time_when_spiked = t[spikes[:,chosen_neurons[i]]]/60
                 h = (i+1-0.1)*np.ones_like(time_when_spiked)
-                ax.scatter(time_when_spiked,h,color=self.color,alpha=0.5,s=1)
+                ax.scatter(time_when_spiked,h,color=self.color,alpha=0.5,s=1,linewidth=0)
 
         ax.set_xticks([t_start/60,t_end/60])
         if xlim is not None: 
@@ -1362,7 +1362,7 @@ class Neurons:
                         pos = np.array(self.Agent.history['pos'])[:,0]
                         pos_where_spiked = pos[spikes[chosen_neurons[i]]]
                         h = (i+1-0.1)*np.ones_like(pos_where_spiked)
-                        ax.scatter(pos_where_spiked,h,color=self.color,alpha=0.5,s=1)
+                        ax.scatter(pos_where_spiked,h,color=self.color,alpha=0.5,s=1,linewidth=0)
                 else: 
                     pass 
 
