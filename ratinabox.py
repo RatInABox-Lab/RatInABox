@@ -1185,6 +1185,7 @@ class Neurons:
         """
         firingrate = self.get_state(pos="from_agent")
         self.firingrate = firingrate.reshape(-1)
+        
         cell_spikes = (np.random.uniform(0,1,size=(self.n,)) < (self.Agent.dt*self.firingrate))
 
         self.history["t"].append(self.Agent.t)
@@ -1276,6 +1277,11 @@ class Neurons:
         rate_timeseries = np.array(self.history['firingrate']).T
         spikes = np.array(self.history['spikes']).T
 
+        if self.color is None: color = (1,1,1,0)
+        else:
+            color = list(matplotlib.colors.to_rgba(self.color))
+        coloralpha = color; coloralpha[-1]=0.5 
+
         if chosen_neurons == "all":
             chosen_neurons = np.arange(self.n)
         if type(chosen_neurons) is str:
@@ -1283,10 +1289,7 @@ class Neurons:
                 chosen_neurons = np.linspace(0,self.n-1, int(chosen_neurons)).astype(int)
 
         if self.Agent.Environment.dimensionality == "2D":
-            if self.color is None: coloralpha = (1,1,1,0)
-            else:
-                color = list(matplotlib.colors.to_rgba(self.color))
-                coloralpha = color; coloralpha[-1]=0.5 
+
             if fig is None and ax is None: 
                 fig, ax = plt.subplots(
                     1,
@@ -1348,7 +1351,7 @@ class Neurons:
             fig, ax = mountain_plot(
                 X = x, 
                 NbyX = rate_maps, 
-                color=self.color,
+                color=color,
                 xlabel="Position / m",
                 ylabel="Neurons",
                 fig=fig,
@@ -1360,8 +1363,8 @@ class Neurons:
                     for i in range(len(chosen_neurons)):
                         pos = np.array(self.Agent.history['pos'])[:,0]
                         pos_where_spiked = pos[spikes[chosen_neurons[i]]]
-                        h = (i-0.1)*np.ones_like(pos_where_spiked)
-                        ax.scatter(pos_where_spiked,h,color=self.color,alpha=0.5,s=1)
+                        h = (i+1-0.1)*np.ones_like(pos_where_spiked)
+                        ax.scatter(pos_where_spiked,h,color=color,alpha=0.5,s=1)
                 else: 
                     pass 
 
