@@ -1362,7 +1362,7 @@ class Neurons:
                         pos = np.array(self.Agent.history['pos'])[:,0]
                         pos_where_spiked = pos[spikes[chosen_neurons[i]]]
                         h = (i+1-0.1)*np.ones_like(pos_where_spiked)
-                        ax.scatter(pos_where_spiked,h,color=color,alpha=0.5,s=1)
+                        ax.scatter(pos_where_spiked,h,color=self.color,alpha=0.5,s=1)
                 else: 
                     pass 
 
