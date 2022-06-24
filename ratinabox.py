@@ -1277,7 +1277,7 @@ class Neurons:
         rate_timeseries = np.array(self.history['firingrate']).T
         spikes = np.array(self.history['spikes']).T
 
-        if self.color is None: color = [1,1,1,0]
+        if self.color is None: color = 'C1'
         else:
             color = list(matplotlib.colors.to_rgba(self.color))
         coloralpha = color; coloralpha[-1]=0.5 
