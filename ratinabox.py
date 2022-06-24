@@ -978,7 +978,7 @@ class Neurons:
                 "random_orientations":True,
                 "random_gridscales":True,
             #default boundary vector cell params
-            "color": None, #just for plotting
+            "color": 'C1', #just for plotting
             "min_fr": 0,
             "max_fr": 1,
         }
@@ -1277,10 +1277,8 @@ class Neurons:
         rate_timeseries = np.array(self.history['firingrate']).T
         spikes = np.array(self.history['spikes']).T
 
-        color = self.color
-        if color is None: color = 'C1'
-        color = list(matplotlib.colors.to_rgba(color))
-        coloralpha = color; coloralpha[-1]=0.5 
+        coloralpha = list(matplotlib.colors.to_rgba(self.color))
+        coloralpha[-1]=0.5 
 
         if chosen_neurons == "all":
             chosen_neurons = np.arange(self.n)
@@ -1351,7 +1349,7 @@ class Neurons:
             fig, ax = mountain_plot(
                 X = x, 
                 NbyX = rate_maps, 
-                color=color,
+                color=self.color,
                 xlabel="Position / m",
                 ylabel="Neurons",
                 fig=fig,
