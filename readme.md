@@ -144,7 +144,7 @@ Neurons.plot_rate_map(by_history=True) #plots rate map by firing-rate-weighted p
 <img src="./readme_figs/rate_map.png" height="400">
 
 #### More complex Neuron types
-We encourage more complex Neuron classes to be made with the `Neuron()` class as parent. Specifically by writing your own `update()` and `get_state()` you can create more complex neuron types. For example  you could write a `Neuron()` class to fire as a weighted sum inputs from another neuronal layers (for example George and de Cothi et al. (2022)). Or maybe implement a recurrent layer feeding into itself. By saving `firingrate` into `Neuron.history` at each step plotting functions shown here should still be functional for downstream analysis.
+We encourage more complex Neuron classes to be made with the `Neurons()` class as parent. Specifically by writing your own `update()` and `get_state()` you can create more complex neuron types. For example  you could write a `Neuron()` class to fire as a weighted sum inputs from another neuronal layers (for example George and de Cothi et al. (2022)). Or maybe implement a recurrent layer feeding into itself. By saving `firingrate` into `Neuron.history` at each step plotting functions shown here should still be functional for downstream analysis.
 
 ## Example Scripts
 
@@ -242,65 +242,30 @@ The figures output by this script look like:
 <img src="./readme_figs/extended_script.png" height="250">
 
 
-
-
-
+### BYO-Aglorithm: A reinforcement learning applciation of RatInABox.
 
 
 
 
 ### 
 Input parameter dictionaries. 
-All three classes are initialised with one input: a dictionary of parameters class `params`. The following default parameters are assumed whenever `params` is not passed or if `params` is passed but only a subset of keys are provided.
+All classes are initialised with one input: a dictionary of parameters class `params`. Default parameters are assumed whenever `params` is not passed or if `params` is passed but only a subset of keys are provided.
+To see the default params, try 
 
 ```python
-#ENVIRONMENT params
-default_env_params = {
-            "dimensionality":'2D', #1D or 2D environment 
-            "boundary_conditions":"solid", #solid vs periodic
-            "scale": 1, #scale of environment
-            "aspect":1, #x/y aspect ratio 2D only
-        }
-
-
-#AGENT params
-default_ag_params = {
-            #the Environment class
-            "Environment": None,
-            # speed parameters
-            "speed_coherence_time": 3.0, 
-            "speed_mean":0.3,
-            "speed_std":0.1,
-            # rotational velocity parameters (relevant in 2D only)
-            "rotational_velocity_coherence_time":1, 
-            "rotational_velocity_std":np.pi/2,
-            # wall params 
-            "walls_repel":True,
-            "wall_repel_distance":0.1,
-        }
-
-#NEURON params
-default_neuron_params = {
-            "Agent": None, #the Agent()
-            "n":10, #number of cells
-            "cell_class":"place_cell",          
-            #default place params (if cell_class == place_cell)
-                'description':'gaussian',
-                'widths':0.20,
-                'place_cell_centres':None, #if given, the length of this will overwrite 'n',
-                'wall_geometry':'geodesic',
-            #default grid params (if cell_class == grid_cell)
-                "gridscale":0.45,
-                "random_orientations":True,
-                "random_gridscales":True,
-            #default boundary vector cell params
-            "color": None, #just for plotting
-            "min_fr": 0, 
-            "max_fr": 1,
-        }
+print(Environment().params)
+print(Agent().params)
+print(PlaceCells().params)
+print(Environment().params)
+print(Environment().params)
 ```
+
 
 ## Contribute 
 RatInABox is an open source project, and we actively encourage community contributions. These can take various forms, such as new movement policies, new cells types, new geometries, bug fixes, documentation, citations of relevant work, or additional experiment notebooks. If there is a small contribution you would like to make, please feel free to open a pull request, and we can review it. If there is a larger contribution you are considering, please open a github issue. This way, the contribution can be discussed, and potential support can be provided if needed. 
 
 ## Cite
+
+## 
+<img src="./readme_figs/riab.png" height="400">
+RatInABox supports efforts towards reducing the number of rats in boxes. 
