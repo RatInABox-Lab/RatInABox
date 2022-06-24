@@ -1247,7 +1247,7 @@ class Neurons:
             for i in range(len(chosen_neurons)):
                 time_when_spiked = t[spikes[:,chosen_neurons[i]]]/60
                 h = (i+1-0.1)*np.ones_like(time_when_spiked)
-                ax.scatter(time_when_spiked,h,color=self.color,alpha=0.5,s=1,linewidth=0)
+                ax.scatter(time_when_spiked,h,color=self.color,alpha=0.5,s=2,linewidth=0)
 
         ax.set_xticks([t_start/60,t_end/60])
         if xlim is not None: 
@@ -1318,7 +1318,7 @@ class Neurons:
                     if len(spikes >= 1):
                         pos = np.array(self.Agent.history['pos'])
                         pos_where_spiked = pos[spikes[chosen_neurons[i], :]]
-                        ax_.scatter(pos_where_spiked[:,0],pos_where_spiked[:,1])
+                        ax_.scatter(pos_where_spiked[:,0],pos_where_spiked[:,1],s=2,linewidth=0,alpha=0.7)
                     else: 
                         pass 
 
@@ -1362,7 +1362,7 @@ class Neurons:
                         pos = np.array(self.Agent.history['pos'])[:,0]
                         pos_where_spiked = pos[spikes[chosen_neurons[i]]]
                         h = (i+1-0.1)*np.ones_like(pos_where_spiked)
-                        ax.scatter(pos_where_spiked,h,color=self.color,alpha=0.5,s=1,linewidth=0)
+                        ax.scatter(pos_where_spiked,h,color=self.color,alpha=0.5,s=2,linewidth=0)
                 else: 
                     pass 
 
