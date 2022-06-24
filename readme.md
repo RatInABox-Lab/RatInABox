@@ -265,6 +265,8 @@ print(Environment().params)
 RatInABox is an open source project, and we actively encourage community contributions. These can take various forms, such as new movement policies, new cells types, new geometries, bug fixes, documentation, citations of relevant work, or additional experiment notebooks. If there is a small contribution you would like to make, please feel free to open a pull request, and we can review it. If there is a larger contribution you are considering, please open a github issue. This way, the contribution can be discussed, and potential support can be provided if needed. 
 
 ## Cite
+If you use RatInABox in your research or educational material, please cite the work as follows: `my wicked bibtex citation`
+The research paper corresponding to the above citation can be found here.
 
 ## 
 <img src="./readme_figs/riab.png" height="400">
