@@ -778,8 +778,10 @@ class Agent:
             ax.spines["left"].set_position(("data", t_start))
             ax.set_xlabel("Time / min")
             ax.set_ylabel("Position / m")
+            ax.set_xlim([t_start/60,t_end/60])
             if xlim is not None: 
                 ax.set_xlim(right=xlim)
+            
             ax.set_ylim(bottom=0,top=self.Environment.extent[1])
             ax.spines["right"].set_color(None)
             ax.spines["top"].set_color(None)
