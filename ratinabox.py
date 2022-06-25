@@ -775,7 +775,7 @@ class Agent:
             if fig is None and ax is None:
                 fig, ax = plt.subplots(figsize=(4, 2))
             ax.scatter(time/60, trajectory,alpha=0.7,linewidth=0)
-            ax.spines["left"].set_position(("data", t_start))
+            ax.spines["left"].set_position(("data", t_start/60))
             ax.set_xlabel("Time / min")
             ax.set_ylabel("Position / m")
             ax.set_xlim([t_start/60,t_end/60])
