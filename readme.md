@@ -1,32 +1,40 @@
-# RatInABox 🐀📦
+# 🐀 RatInABox 📦
 
 ![](./readme_figs/whole_simulation.gif)
 
-RatInABox is a toolkit for simulating motion and/or hippocampal-entorhinal cell types. RatInABox represents a clean departure from pre-discretised "gridworld" models. Position and neuronal firing rates are calculated online with float precision. With it you can:
+`RatInABox` (paper here) is a toolkit for simulating motion and/or hippocampal-entorhinal cell types. `RatInABox` is fully continuous is space and time: position and neuronal firing rates are calculated online with float precision. With it you can:
 
-* Generate pseudo-realistic trajectories for rats exploring complex 1- and 2-dimensional environments
-* Simulate spatially selective cells found in the Hippocampal-Entorhinal system (place cells, grid cells, boundary vector cells and velocity cells). 
+* Generate pseudo-realistic trajectories for rats exploring complex 1- and 2-dimensional environments under a random or imported trajectory
+* Simulate spatially selective cells found in the Hippocampal-Entorhinal system. 
 
 `RatInABox` contains three classes: 
 
 1. `Environment()`: The environment/maze that the agent lives in. 1- or 2-dimensional.
 2. `Agent()`: The agent (or "rat") moving around the Environment. 
-3. `Neurons()`: A population of neurons with firing rates determined by the state of the Agent. 
+3. `Neurons()`: A population of neurons with firing rates determined by the state of the Agent. Make your own or use one of our premade cell types: 
+    * `PlaceCells()`
+    * `GridCells()`
+    * `BoundaryVectorCells()` (egocentric or allocentric)
+    * `VelocityCells()`
+    * `SpeedCells()`
+    * `HeadDirectionCells()`
+    * `FeedForwardLayer()`
 
-The top animation shows the kind of simulation you can easily run using this toolbox. In it an agent randomly explores a 2D environment with a wall. Four populations of cells (place cells, grid cells, boundary vector cells and velocity cells) vary their activity and "fire" as the agent explores.
+The top animation shows the kind of simulation you can easily run using this toolbox. In it an agent randomly explores a 2D environment with a wall. Three populations of cells (place cells, grid cells, boundary vector cells) vary their activity and "fire" as the agent explores.
 
 ## Key features
 
 * **Flexible**: Generate arbitrarily complex environments. 
-* **Biological**: Simulate large populations of spatially modulated cell type (place cells, grid cells, boundary vector cells, velocity cells). Use cells in rate based or spiking models. 
+* **Biological**: Simulate large populations of spatially and/or velocity modulated cell type. Use cells in rate based or spiking models. 
 * **Fast**: Simulating 1 minute exploration in a 2D environment with 100 place cells (dt=10 ms) take just 2 seconds on a laptop (no GPU needed).
 * **Precise**: No more pre-discretised positions, tabular state spaces, or jerky movement policies. It's all continuous. 
 * **Visual** Plot or animate trajectories, firing rate timeseries', spike rasters, receptive fields, heat maps, velocity histograms...using the plotting functions. 
 * **Easy**: Sensible default parameters mean you can have realisitic simulation data to work with in ~10 lines of code.
+* **General**: Build your own bespoke `Neuron()` classes and combine them into complex networks of neurons (example scripts given).
 
 
 ## Get started 
-At the bottom of this readme we provide Example scripts: one simple and one extensive. Reading through this section should be enough to get started. The three classes listed above are all initilised with param dictionaries, summarised below as well. 
+At the bottom of this readme we provide Example scripts: one simple and one extensive. Reading through this section should be enough to get started. We also provide two case studies where `RatInABox` is used in a reinforcement learning project and a path integration project. 
 
 ## Requirements
 * Python 3.7+
@@ -38,14 +46,15 @@ At the bottom of this readme we provide Example scripts: one simple and one exte
 ## Installation 
 I will streamline this soon. For now just clone the directory and get started.
 
+
 ## Feature run-down
-Here is a list of features loosely organised into three categories: those pertaining to (i) the Environment, (ii) the Agent and (iii) the Neurons. Specific details can be found in the paper here. 
+Here is a list of features loosely organised into three categories: those pertaining to (i) the `Environment()`, (ii) the `Agent()` and (iii) the `Neurons()`. Specific details can be found in the paper here. 
 
 ### (i) `Environment()` features
 #### Walls 
 Arbitrarily add walls to the environment to replicate any desired maze structure using command:
 ```python 
-Environment.add_wall([[0.3,0.0],[0.3,0.5]])
+Environment.add_wall([[x0,y0],[x1,y1]])
 ```
 Here are some easy to make examples.
 ![](./readme_figs/walls.png)
@@ -69,37 +78,46 @@ Env = Environment(
 ![](./readme_figs/one_dimension.png)
 
 
+
 ### (ii) `Agent()` features
-#### Wall repelling 
-Walls in the environment mildly "repel" the agent. Coupled with the finite turning speed this creates, somewhat counterintuitively, an effect where the agent is biased to over-explore near walls and corners (as shown in these heatmaps) matching real rodent behaviour. It can also be turned off. If an agent does collides with a wall its direction is reflected. 
-```python 
-Αgent.walls_repel = True #False
-```
-<img src="./readme_figs/wall_repel.png" height="220">
 
 #### Random motion model
-Motion is stochastic but smooth. The speed (and rotational speed, if in 2D) of an Agent take constrained random walks governed by Ornstein-Uhlenbeck processes. You can change the means, variance and coherence times of these processes to control the shape of the trajectory. 
+Random motion is stochastic but smooth. The speed (and rotational speed, if in 2D) of an Agent take constrained random walks governed by Ornstein-Uhlenbeck processes. You can change the means, variance and coherence times of these processes to control the shape of the trajectory. Default parameters are fit to real rat locomotion data from Sargolini et al. (2006). For more detail please see the paper.
+
 ```python
-Agent.speed_mean = 0.2
-Agent.speed_std = 0.1
-Agent.speed_coherence_time = 3
-Agent.rotation_velocity_std = 0.1
-Agent.rotational_velocity_coherence_time = 3
+Agent.speed_mean = 0.08 #m/s
+Agent.speed_coherence_time = 0.7
+Agent.rotation_velocity_std = 120 * np.pi/180 #radians 
+Agent.rotational_velocity_coherence_time = 0.08
 ```
-The following set of trajectories were generated by modifying the rotational_velocity_std
+The following set of trajectories were generated by modifying the rotational_velocity_coherence_time
 <img src="./readme_figs/motion_model.png" height="200">
 
-In more detail: Speeds and rotational speeds are sampled stochastically. In 1D speed follows Ornstein Uhlenbeck process with a mean=`Agent.speed_mean`, std=`Agent.speed_std` and coherence time=`Agent.speed_coherence_time`. In 2D speed and rotational speed are sampled independently. To sample speed, a "normal" variable is sampled from an Ornstein Uhlenbeck process (mean=`0`, var=`1`, coherence time=`Agent.speed_coherence_time`) and then converted to a variable which has a Rayleigh distributing with sigma (~ the mode) as given by `Agent.speed_mean`. The rotatational speed follows Ornstein Uhlenbeck process with a mean=`Agent.rotation_velocity_mean`, std=`Agent.rotation_velocity_std` and coherence time=`Agent.rotation_velocity_coherence_time`. For full mathematical details of the motion models please see the paper.
 
 #### Importing trajectories
+`RatInABox` supports importing external trajectory data (rather than using the in built random motion policy). Imported data can be of low temporal resolution. It will be smoothly upsampled using a cubic splines interpolation technique. We provide a 10 minute trajectory from the open-source data set of Sargolini et al. (2006) ready to import.
+```python
+Agent.import_trajectory(dataset='sargolini')
+#or 
+Agent.import_trajectory(times=array_of_times,
+                        positions=array_of_positions)
 
+```
+<img src="./readme_figs/importtrajectory.png" height="200">
 
 #### Policy control 
-By default the movement policy is an random and uncontrolled (e.g. displayed above). It is possible, however, to manually pass a "drift_velocity" to the Agent on each `update()` step. The agent velocity will drift towards drift velocity. We envisage this being use, for example, by an Actor-Critic system to control the Agent. As a demonstration that this method can be used to control the agent's movement we set a radial drift velocity to encourage circular motion.   
+By default the movement policy is an random and uncontrolled (e.g. displayed above). It is possible, however, to manually pass a "drift_velocity" to the Agent on each `update()` step. This 'closes the loop' allowing, for example, Actor-Critic systems to control the Agent policy. As a demonstration that this method can be used to control the agent's movement we set a radial drift velocity to encourage circular motion. We also show a simple actor critic system learning to find a reward hidden behind a neuron (script provided in [example_scripts](./example_scripts/))
 ```python
 Agent.update(drift_velocity=drift_velocity)
 ```
 <img src="./readme_figs/policy_control.png" height="220">
+
+#### Wall repelling 
+Under the random motion policy, walls in the environment mildly "repel" the agent. Coupled with the finite turning speed this replicates an effect (known as thigmotaxis and linked to anxiety) where the agent is biased to over-explore near walls and corners (as shown in these heatmaps) matching real rodent behaviour. It can be turned up or down with the `anxiety` parameter.
+```python 
+Αgent.anxiety = 0.8 #1 = high anxiety (left plot), 0 = low (right)
+```
+<img src="./readme_figs/wall_repel.png" height="220">
 
 
 ### (iii) `Neuron()` features 
@@ -120,23 +138,22 @@ Place cells come in multiple types (give by `params['description']`):
 
 This last place cell type, `"one_hot"` is prticularly useful as it essentially rediscretises space and tabularises the state space (gridworld again). This can be used to effortlessly contrast and compare learning algorithms acting over continuous vs discrete state spaces. 
 
-#### Geometry
-Choose how you want place cells to interact with walls in the environment. We provide three types of geometries. `'geodesic'` calculates the shortest possible walk (obeying walls and boundary conditions) to a place cells centre. 
+#### `PlaceCell()` geometry
+Choose how you want place cells to interact with walls in the environment. We provide three types of geometries.  
 <img src="./readme_figs/wall_geometry.png" height="220">
 
 #### Spiking 
 All neurons are rate based. Concurrently spikes are sampled at each time step as though neurons were Poisson neurons. These are stored in `Neurons.history['spikes']`. The max and min firing rates can be set with `Neurons.max_fr` and  `Neurons.min_fr`.
 ```
-Neurons.plot_rate_timeseries(spikes=True)
 Neurons.plot_ratemap(spikes=True)
 ```
 <img src="./readme_figs/spikes.png" height="200">
 
 
 #### Rate maps 
-Place cells, grid cells and boundary vector cells have analytic receptive fields. These can be displayed by querying their firing rate at an array of positions spanning the environment, then plotting. 
+`PlaceCells()`, `GridCells()` and allocentric `BoundaryVectorCells()` which depend only on the position of the agent. These rate maps can be displayed by querying their firing rate at an array of positions spanning the environment, then plotting. 
 
-An alternative, and ultimately more robust way to display the receptive field is to plot a heatmap of the positions of the Agent has visited where each positions contribution to a bin is weighted by the firing rate observed at that position. Over time, as coverage become complete, the firing fields become visible.  Velocity neurons provide an interesting  example; they have no predefined/analytic "receptive field" but the firing-rate-weighted position heatmap is still well defined and can be plotted. The velocity neuron shown (v_x^+) is most active near the north and south boundaries where the agent rushes along. 
+More generally, however, cells firing is not only determined by position but potentially other factors (e.g. velocity or historical effects if the layer is part of a recurrent network). In thiese cases the above method of plotting rate maps will fail. A more robust way to display the receptive field is to plot a heatmap of the positions of the Agent has visited where each positions contribution to a bin is weighted by the firing rate observed at that position. Over time, as coverage become complete, the firing fields become visible.  V
 ```
 Neurons.plot_rate_map() #attempted to plot analytic rate map 
 Neurons.plot_rate_map(by_history=True) #plots rate map by firing-rate-weighted position heatmap
@@ -144,29 +161,28 @@ Neurons.plot_rate_map(by_history=True) #plots rate map by firing-rate-weighted p
 <img src="./readme_figs/rate_map.png" height="400">
 
 #### More complex Neuron types
-We encourage more complex Neuron classes to be made with the `Neurons()` class as parent. Specifically by writing your own `update()` and `get_state()` you can create more complex neuron types. For example  you could write a `Neuron()` class to fire as a weighted sum inputs from another neuronal layers (for example George and de Cothi et al. (2022)). Or maybe implement a recurrent layer feeding into itself. By saving `firingrate` into `Neuron.history` at each step plotting functions shown here should still be functional for downstream analysis.
+We encourage users to create their own subclasses of `Neuron()`. See (code comments)[./ratinabox.py] for explanation. For example in the case study scripts we create bespoke `ValueNeuron(Neurons)` and `PyramidalNeurons(Neurons)` classes which perform key functions. By forming these classes from the parent `Neurons()` class, the plotting and analysis features described above remain available to these bespoke Neuron types. 
 
 ## Example Scripts
 
-### Simple example
+### Example 1: Simple
 Initialise a 2D environment. Initialise an agent in the environment. Initialise some place cells. Simulate for 10 seconds. Print table of times, position and firing rates. 
 
 ```python
 Env = Environment()
-Ag = Agent(params={'Environment':Env})
-PlaceCells = Neurons(params={'Agent':Ag,
-                             'cell_class':'place_cells'})
+Ag = Agent(Env)
+PCs = PlaceCells(Ag)
 
 for i in range(int(60/Ag.dt)):
     Ag.update()
-    PlaceCells.update()
+    PCs.update()
 
 print(Ag.history['t'])
 print(Ag.history['pos'])
-print(PlaceCells.history['firingrates'])
+print(PCs.history['firingrates'])
 ```
 
-### Extensive example
+### Example 2: Extensive
 In this example we go a bit further. 
 1. Initialise environment. A rectangular environment of size 2 x 1 meters. 
 2. Add walls. Dividing the environment into two equal rooms. 
@@ -242,7 +258,9 @@ The figures output by this script look like:
 <img src="./readme_figs/extended_script.png" height="250">
 
 
-### BYO-Aglorithm: A reinforcement learning applciation of RatInABox.
+### Example 3: `RatInABox` for reinforcement learning. 
+
+### Example 4: `RatInABox` for path integration
 
 
 
@@ -262,12 +280,11 @@ print(Environment().params)
 
 
 ## Contribute 
-RatInABox is an open source project, and we actively encourage community contributions. These can take various forms, such as new movement policies, new cells types, new geometries, bug fixes, documentation, citations of relevant work, or additional experiment notebooks. If there is a small contribution you would like to make, please feel free to open a pull request, and we can review it. If there is a larger contribution you are considering, please open a github issue. This way, the contribution can be discussed, and potential support can be provided if needed. 
+`RatInABox` is an open source project, and we actively encourage community contributions. These can take various forms, such as new movement policies, new cells types, new geometries, bug fixes, documentation, citations of relevant work, or additional experiment notebooks. If there is a small contribution you would like to make, please feel free to open a pull request, and we can review it. If there is a larger contribution you are considering please contact the correpnidng author at `tomgeorge1@btinternet.com`. 
 
 ## Cite
-If you use RatInABox in your research or educational material, please cite the work as follows: `my wicked bibtex citation`
+If you use `RatInABox` in your research or educational material, please cite the work as follows: `my wicked bibtex citation`
 The research paper corresponding to the above citation can be found here.
 
 ## 
-<img src="./readme_figs/riab.png" height="400">
-RatInABox supports efforts towards reducing the number of rats in boxes. 
+<img src="./readme_figs/riab.png" height="300">
