@@ -1,6 +1,6 @@
 # 🐀 RatInABox 📦
 
-![](./readme_figs/whole_simulation.gif)
+![](./readme_figs/riab.gif)
 
 `RatInABox` (paper here) is a toolkit for simulating motion and/or hippocampal-entorhinal cell types. `RatInABox` is fully continuous is space and time: position and neuronal firing rates are calculated online with float precision. With it you can:
 
@@ -120,14 +120,18 @@ Under the random motion policy, walls in the environment mildly "repel" the agen
 <img src="./readme_figs/wall_repel.png" height="220">
 
 
-### (iii) `Neuron()` features 
+### (iii) `Neurons()` features 
 
 #### Multiple cell types: 
-Currently supported cell types (`params['cell_class']`)  are: 
-* `"place_cell"`
-* `"grid_cell"`: rectified sum of three cosine plane waves
-* `"boundary_vector_cell"`: double exponential model matching de Cothi and Barry (2020)
-* `"velocity_cell"`: cells encode positive and negative x and y velocitys (2N cells in N-dimensions)
+We provide a list of premade `Neurons()` subclasses. These include: 
+
+* `PlaceCells(Neurons)` 
+* `GridCells(Neurons)`
+* `BoundaryVectorCells(Neurons)` (can be egocentric or allocentric)
+* `VelocityCells(Neurons)`
+* `SpeedCells(Neurons)`
+* `HeadDirectionCells(Neurons)`
+* `FeedForwardLayer(Neurons)` - sum and activates inputs from a provide list of input `Neuron()` layers.
 
 Place cells come in multiple types (give by `params['description']`):
 * `"gaussian"`: normal gaussian place cell 
@@ -136,7 +140,7 @@ Place cells come in multiple types (give by `params['description']`):
 * `"top_hat"`: circular receptive field, max firing rate within, min firing rate otherwise
 * `"one_hot"`: the closest palce cell to any given location is established. This and only this cell fires. 
 
-This last place cell type, `"one_hot"` is prticularly useful as it essentially rediscretises space and tabularises the state space (gridworld again). This can be used to effortlessly contrast and compare learning algorithms acting over continuous vs discrete state spaces. 
+This last place cell type, `"one_hot"` is particularly useful as it essentially rediscretises space and tabularises the state space (gridworld again). This can be used to effortlessly contrast and compare learning algorithms acting over continuous vs discrete state spaces. 
 
 #### `PlaceCell()` geometry
 Choose how you want place cells to interact with walls in the environment. We provide three types of geometries.  
@@ -161,29 +165,32 @@ Neurons.plot_rate_map(by_history=True) #plots rate map by firing-rate-weighted p
 <img src="./readme_figs/rate_map.png" height="400">
 
 #### More complex Neuron types
-We encourage users to create their own subclasses of `Neuron()`. See (code comments)[./ratinabox.py] for explanation. For example in the case study scripts we create bespoke `ValueNeuron(Neurons)` and `PyramidalNeurons(Neurons)` classes which perform key functions. By forming these classes from the parent `Neurons()` class, the plotting and analysis features described above remain available to these bespoke Neuron types. 
+We encourage users to create their own subclasses of `Neuron()`. See (code comments)[./ratinabox.py] for explanation. For example in the case study scripts we create bespoke `ValueNeuron(Neurons)` and `PyramidalNeurons(Neurons)` classes. By forming these classes from the parent `Neurons()` class, the plotting and analysis features described above remain available to these bespoke Neuron types. 
 
 ## Example Scripts
 
 ### Example 1: Simple
-Initialise a 2D environment. Initialise an agent in the environment. Initialise some place cells. Simulate for 10 seconds. Print table of times, position and firing rates. 
+Full script [here (./example_scripts/example_script_simple.ipynb)](./example_scripts/example_script_simple.ipynb). Initialise a 2D environment. Initialise an agent in the environment. Initialise some place cells. Simulate for 20 seconds. Print table of times, position and firing rates and plot trajectory and rate timeseries'. 
 
 ```python
 Env = Environment()
 Ag = Agent(Env)
 PCs = PlaceCells(Ag)
 
-for i in range(int(60/Ag.dt)):
+for i in range(int(20/Ag.dt)):
     Ag.update()
     PCs.update()
 
 print(Ag.history['t'])
 print(Ag.history['pos'])
 print(PCs.history['firingrates'])
+
+Ag.plot_trajectory()
+PCs.plot_rate_timeseries()
 ```
 
 ### Example 2: Extensive
-In this example we go a bit further. 
+In this example we go a bit further. it can be found [here (./example_scripts/example_script_extensive.ipynb)](./example_scripts/example_script_extensive.ipynb).
 1. Initialise environment. A rectangular environment of size 2 x 1 meters. 
 2. Add walls. Dividing the environment into two equal rooms. 
 3. Add Agent. Place the Agent at coordinates (0.5,0.5). Set the speed of the agent to be 20+-5 cm/s.
