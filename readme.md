@@ -1,13 +1,12 @@
-<!-- ![](./readme_figs/riab.gif) -->
-<img src="./readme_figs/riab.gif">
+#  RatInABox 
 
-
-# 🐀 RatInABox 📦
-
-`RatInABox` (paper here) is a toolkit for simulating motion and various spatially or velocity-modulated cell types found in the Hippocampla formation. `RatInABox` is fully continuous is space and time: position and neuronal firing rates are calculated online with float precision. With it you can:
+`RatInABox` 🐀📦 (paper here) is a toolkit for simulating motion and various cell types found in the Hippocampal formation. `RatInABox` is fully continuous is space and time: position and neuronal firing rates are calculated rapidly online with float precision. With it you can:
 
 * **Generate realistic trajectories** for rats exploring complex 1- and 2-dimensional environments under a random policy or using imported trajectory
 * **Generate artificial neuronal data** Simulate spatially selective cells found in the Hippocampal-Entorhinal system. 
+
+<img src="./readme_figs/riab.gif">
+
 
 `RatInABox` contains three classes: 
 
