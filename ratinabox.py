@@ -475,6 +475,8 @@ class Agent:
 
         # time and runID
         self.t = 0
+        self.distance_travelled = 0
+        self.average_measured_speed = max(self.speed_mean, self.speed_std)
         self.use_imported_trajectory = False
 
         # motion model stufff
@@ -563,7 +565,7 @@ class Agent:
                     )  # <--- this controls how "powerful" this signal is
 
                 # Deterministically drift the velocity away from any nearby walls
-                if ((self.walls_repel == True) and (len(self.Environment.walls > 0))):
+                if (self.walls_repel == True) and (len(self.Environment.walls > 0)):
                     vectors_from_walls = self.Environment.vectors_from_walls(
                         self.pos
                     )  # shape=(N_walls,2)
@@ -716,6 +718,17 @@ class Agent:
                     self.velocity = np.array([0])
                 save_velocity = self.velocity
 
+        if len(self.history["pos"]) >= 1:
+            self.distance_travelled += np.linalg.norm(
+                self.pos - self.history["pos"][-1]
+            )
+            tau_speed = 10
+            self.average_measured_speed = (
+                1 - dt / tau_speed
+            ) * self.average_measured_speed + (dt / tau_speed) * np.linalg.norm(
+                save_velocity
+            )
+
         # write to history
         self.history["t"].append(self.t)
         self.history["pos"].append(list(self.pos))
@@ -751,13 +764,14 @@ class Agent:
                 ),
                 dataset + ".npz",
             )
-
+            # data = np.load(dataset)
             try:
                 data = np.load(dataset)
             except FileNotFoundError:
                 print(
-                    f"Datafile not found at {dataset}. Please try a different one. For now the default inbuilt random policy will be used."
+                    f"IMPORT FAILED. No datafile found at {dataset}. Please try a different one. For now the default inbuilt random policy will be used."
                 )
+                return
             times = data["t"]
             positions = data["pos"]
             print(f"Successfully imported dataset from {dataset}")
@@ -824,24 +838,22 @@ class Agent:
             fig, ax
         """
         dt = self.dt
+        approx_speed = self.average_measured_speed
+        scatter_distance = 0.02  # on average how far betwen scatter points
         t, pos = np.array(self.history["t"]), np.array(self.history["pos"])
-        approx_speed = max(self.speed_std, self.speed_mean)
         if t_end == None:
             t_end = t[-1]
         startid = np.argmin(np.abs(t - (t_start)))
         endid = np.argmin(np.abs(t - (t_end)))
         if self.Environment.dimensionality == "2D":
-            scatter_distance = 0.015
             skiprate = max(1, int(scatter_distance / (approx_speed * dt)))
             trajectory = pos[startid:endid, :][::skiprate]
         if self.Environment.dimensionality == "1D":
-            scatter_distance = 0.015
             skiprate = max(1, int(scatter_distance / (approx_speed * dt)))
             trajectory = pos[startid:endid][::skiprate]
         time = t[startid:endid][::skiprate]
 
         if self.Environment.dimensionality == "2D":
-            # time = t[startid:endid][::skiprate]
             if fig is None and ax is None:
                 fig, ax = self.Environment.plot_environment()
             s = 15 * np.ones_like(time)
@@ -898,7 +910,7 @@ class Agent:
         def animate(i, fig, ax, t_max, speed_up):
             t = self.history["t"]
             t_start = t[0]
-            t_end = t[0] + (i + 1) * speed_up * 50e-3
+            t_end = t[0] + (i + 1) * speed_up * 40e-3
             ax.clear()
             if self.Environment.dimensionality == "2D":
                 fig, ax = self.Environment.plot_environment(fig=fig, ax=ax)
@@ -920,8 +932,8 @@ class Agent:
         anim = matplotlib.animation.FuncAnimation(
             fig,
             animate,
-            interval=50,
-            frames=int(t_end / 50e-3),
+            interval=40,
+            frames=int(t_end / (40e-3 * speed_up)),
             blit=False,
             fargs=(fig, ax, t_end, speed_up),
         )
@@ -2559,14 +2571,3 @@ def activate(x, activation="sigmoid", deriv=False, other_args={}):
             return other_args["gain"] * np.maximum(0, x - other_args["threshold"])
         elif deriv == True:
             return other_args["gain"] * ((x - other_args["threshold"]) > 0)
-
-
-def print_dictionary(dict):
-    """Prints a dictionary 
-
-    Args:
-        dict (_type_): _description_
-    """
-    # [print(key,':',value) for key, value in dict.items()]
-    print(dict)
-
