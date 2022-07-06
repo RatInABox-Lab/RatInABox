@@ -991,7 +991,13 @@ class Agent:
         n, bins, patches = ax.hist(
             speeds, bins=np.linspace(0, 1.2, 100), color=color, alpha=0.8, density=True
         )
-        ax.set_xlabel("Speed  / (m / s)")
+        ax.set_xlabel(r"Speed  / $ms^{-1}$")
+        ax.set_yticks([])
+        ax.set_xlim(left=0, right=8 * std)
+        ax.spines["left"].set_color(None)
+        ax.spines["right"].set_color(None)
+        ax.spines["top"].set_color(None)
+
         if return_data == True:
             return fig, ax, n, bins, patches
         else:
@@ -1021,7 +1027,12 @@ class Agent:
             alpha=0.8,
             density=False,
         )
-        ax.set_xlabel("Rotational velocity / (deg / s)")
+        ax.set_yticks([])
+        ax.set_xlim(-5 * std, 5 * std)
+        ax.spines["left"].set_color(None)
+        ax.spines["right"].set_color(None)
+        ax.spines["top"].set_color(None)
+        ax.set_xlabel(r"Rotational velocity / $^{\circ} s^{-1}$")
         if return_data == True:
             return fig, ax, n, bins, patches
         return fig, ax
@@ -1133,12 +1144,13 @@ class Neurons:
         """Plots a timeseries of the firing rate of the neurons between t_start and t_end
 
         Args:
-            t_start (int, optional): _description_. Defaults to 0.
-            t_end (int, optional): _description_. Defaults to 60.
+            • t_start (int, optional): _description_. Defaults to 0.
+            • t_end (int, optional): _description_. Defaults to 60.
+            • chosen_neurons: Which neurons to plot. string "10" or 10 will plot ten of them, "all" will plot all of them, "12rand" will plot 12 random ones. A list like [1,4,5] will plot cells indexed 1, 4 and 5. Defaults to "all".
             chosen_neurons (str, optional): Which neurons to plot. string "10" will plot 10 of them, "all" will plot all of them, a list like [1,4,5] will plot cells indexed 1, 4 and 5. Defaults to "10".
-            plot_spikes (bool, optional): If True, scatters exact spike times underneath each curve of firing rate. Defaults to True.
+            • plot_spikes (bool, optional): If True, scatters exact spike times underneath each curve of firing rate. Defaults to True.
             the below params I just added for help with animations
-            fig, ax: the figure, axis to plot on (can be None)
+            • fig, ax: the figure, axis to plot on (can be None)
             xlim: fix xlim of plot irrespective of how much time you're plotting 
         Returns:
             fig, ax
@@ -1154,14 +1166,9 @@ class Neurons:
         t = t[startid:endid]
         rate_timeseries = rate_timeseries[startid:endid]
         spikes = spikes[startid:endid]
+
         # neurons to plot
-        if chosen_neurons == "all":
-            chosen_neurons = np.arange(self.n)
-        if type(chosen_neurons) is str:
-            if chosen_neurons.isdigit():
-                chosen_neurons = np.linspace(0, self.n - 1, int(chosen_neurons)).astype(
-                    int
-                )
+        chosen_neurons = self.return_list_of_neurons(chosen_neurons)
 
         firingrates = rate_timeseries[:, chosen_neurons].T
         fig, ax = mountain_plot(
@@ -1191,46 +1198,47 @@ class Neurons:
         return fig, ax
 
     def plot_rate_map(
-        self,
-        chosen_neurons="all",
-        plot_spikes=False,
-        by_history=False,
-        fig=None,
-        ax=None,
+        self, chosen_neurons="all", method="analytic", spikes=False, fig=None, ax=None,
     ):
         """Plots rate maps of neuronal firing rates across the environment
         Args:
-            chosen_neurons (): Which neurons to plot. string "10" will plot 10 of them, "all" will plot all of them, a list like [1,4,5] will plot cells indexed 1, 4 and 5. Defaults to "10".
+            •chosen_neurons: Which neurons to plot. string "10" will plot 10 of them, "all" will plot all of them, a list like [1,4,5] will plot cells indexed 1, 4 and 5. Defaults to "10".
             
-            plot_spikes: if True, also scatters points where the neuron spiked
-            
-            by_history: When True, instead of explicitly evaluating the firing rate of the neuron at all points on the environment this just uses the history of the past positions weighted by the firing rate to create an observed raster plot. This is a more robust way to plot the receptive field as it does not require the ability to analytically find firing rate at position x, rather it just needs historic data of [x0,x1,x2...] and [fr0,fr1,fr2...]
+            • method: "analytic" "history" "neither": which method to use. If "analytic" (default) tries to calculate rate map by evaluating firing rate at all positions across the environment (note this isn't always well defined. in which case...). If "history", plots ratemap by a weighting a histogram of positions visited by the firingrate observed at that position. If "neither" (or anything else), then neither. 
 
+            • spikes: True or False. Whether to display the occurence of spikes. If False (default) no spikes are shown. If True both ratemap and spikes are shown.
+        
         Returns:
             fig, ax 
         """
-        if by_history == False:
+        if method == "analytic":
             try:
                 rate_maps = self.get_state(evaluate_at="all")
             except:
                 print(
                     "It was not possible to get the rate map by evaluating the firing rate at all positions across the Environment. This is probably because the Neuron class does not support, or it does not have an analytic receptive field. Instead, plotting rate map by weighted position histogram method"
                 )
-                by_history = True
-        if by_history == True:
+                method = "history"
+        if method == "history":
             rate_timeseries = np.array(self.history["firingrate"]).T
-            spikes = np.array(self.history["spikes"]).T
+            if len(rate_timeseries) == 0:
+                print("No historical data with which to calculate ratemap.")
+                return None, None
+        if spikes is True:
+            spike_data = self.history["spikes"]
+            if len(spike_data) == 0:
+                print("No spikes to plot")
+                spikes = False
+            else:
+                spike_data = np.array(spike_data).T
 
-        coloralpha = list(matplotlib.colors.to_rgba(self.color))
-        coloralpha[-1] = 0.5
+        if self.color == None:
+            coloralpha = [1, 1, 1, 0]
+        else:
+            coloralpha = list(matplotlib.colors.to_rgba(self.color))
+            coloralpha[-1] = 0.5
 
-        if chosen_neurons == "all":
-            chosen_neurons = np.arange(self.n)
-        if type(chosen_neurons) is str:
-            if chosen_neurons.isdigit():
-                chosen_neurons = np.linspace(0, self.n - 1, int(chosen_neurons)).astype(
-                    int
-                )
+        chosen_neurons = self.return_list_of_neurons(chosen_neurons=chosen_neurons)
 
         if self.Agent.Environment.dimensionality == "2D":
 
@@ -1243,14 +1251,16 @@ class Neurons:
                 )
             if not hasattr(ax, "__len__"):
                 ax = [ax]
+
             for (i, ax_) in enumerate(ax):
                 self.Agent.Environment.plot_environment(fig, ax_)
-                if by_history == False:
+
+                if method == "analytic":
                     rate_map = rate_maps[chosen_neurons[i], :].reshape(
                         self.Agent.Environment.discrete_coords.shape[:2]
                     )
                     im = ax_.imshow(rate_map, extent=self.Agent.Environment.extent)
-                elif by_history == True:
+                if method == "history":
                     ex = self.Agent.Environment.extent
                     pos = np.array(self.Agent.history["pos"])
                     rate_timeseries_ = rate_timeseries[chosen_neurons[i], :]
@@ -1258,27 +1268,23 @@ class Neurons:
                         data=pos, extent=ex, dx=0.05, weights=rate_timeseries_
                     )
                     im = ax_.imshow(rate_map, extent=ex, interpolation="bicubic")
-                if plot_spikes == True:
-                    if len(spikes >= 1):
-                        pos = np.array(self.Agent.history["pos"])
-                        pos_where_spiked = pos[spikes[chosen_neurons[i], :]]
-                        ax_.scatter(
-                            pos_where_spiked[:, 0],
-                            pos_where_spiked[:, 1],
-                            s=2,
-                            linewidth=0,
-                            alpha=0.7,
-                        )
-                    else:
-                        pass
-
+                if spikes is True:
+                    pos = np.array(self.Agent.history["pos"])
+                    pos_where_spiked = pos[spike_data[chosen_neurons[i], :]]
+                    ax_.scatter(
+                        pos_where_spiked[:, 0],
+                        pos_where_spiked[:, 1],
+                        s=2,
+                        linewidth=0,
+                        alpha=0.7,
+                    )
             return fig, ax
 
         if self.Agent.Environment.dimensionality == "1D":
-            if by_history == False:
+            if method == "analytic":
                 rate_maps = rate_maps[chosen_neurons, :]
                 x = self.Agent.Environment.flattened_discrete_coords[:, 0]
-            elif by_history == True:
+            if method == "history":
                 ex = self.Agent.Environment.extent
                 pos = np.array(self.Agent.history["pos"])[:, 0]
                 rate_maps = []
@@ -1297,32 +1303,27 @@ class Neurons:
                 fig, ax = self.Agent.Environment.plot_environment(
                     height=len(chosen_neurons)
                 )
-            fig, ax = mountain_plot(
-                X=x,
-                NbyX=rate_maps,
-                color=self.color,
-                xlabel="Position / m",
-                ylabel="Neurons",
-                fig=fig,
-                ax=ax,
-            )
 
-            if plot_spikes == True:
-                if len(spikes >= 1):
-                    for i in range(len(chosen_neurons)):
-                        pos = np.array(self.Agent.history["pos"])[:, 0]
-                        pos_where_spiked = pos[spikes[chosen_neurons[i]]]
-                        h = (i + 1 - 0.1) * np.ones_like(pos_where_spiked)
-                        ax.scatter(
-                            pos_where_spiked,
-                            h,
-                            color=self.color,
-                            alpha=0.5,
-                            s=2,
-                            linewidth=0,
-                        )
-                else:
-                    pass
+            if method != "neither":
+                fig, ax = mountain_plot(
+                    X=x, NbyX=rate_maps, color=self.color, fig=fig, ax=ax,
+                )
+
+            if spikes is True:
+                for i in range(len(chosen_neurons)):
+                    pos = np.array(self.Agent.history["pos"])[:, 0]
+                    pos_where_spiked = pos[spike_data[chosen_neurons[i]]]
+                    h = (i + 1 - 0.1) * np.ones_like(pos_where_spiked)
+                    ax.scatter(
+                        pos_where_spiked,
+                        h,
+                        color=self.color,
+                        alpha=0.5,
+                        s=2,
+                        linewidth=0,
+                    )
+            ax.set_xlabel("Position / m")
+            ax.set_ylabel("Neurons")
 
         return fig, ax
 
@@ -1340,9 +1341,10 @@ class Neurons:
         anim.save("./where_to_save/animations.gif",dpi=300)
 
         Args:
-            t_end (_type_, optional): _description_. Defaults to None.
-            chosen_neurons: neurons to plot (as define in, e.g., plot_rate_map())
-            speed_up: #times real speed animation should come out at. 
+            • t_end (_type_, optional): _description_. Defaults to None.
+            • chosen_neurons: Which neurons to plot. string "10" or 10 will plot ten of them, "all" will plot all of them, "12rand" will plot 12 random ones. A list like [1,4,5] will plot cells indexed 1, 4 and 5. Defaults to "all".
+
+            • speed_up: #times real speed animation should come out at. 
 
         Returns:
             animation
@@ -1383,6 +1385,39 @@ class Neurons:
             fargs=(fig, ax, chosen_neurons, t_end, speed_up),
         )
         return anim
+
+    def return_list_of_neurons(self, chosen_neurons="all"):
+        """Returns a list of indices corresponding to neurons. 
+
+        Args:
+            which (_type_, optional): _description_. Defaults to "all".
+                • "all": all neurons
+                • "15" or 15:  15 neurons even spread from index 0 to n
+                • "15rand": 15 randomly selected neurons
+                • [4,8,23,15]: this list is returned (convertde to integers in case)
+                • np.array([[4,8,23,15]]): the list [4,8,23,15] is returned 
+        """
+        if type(chosen_neurons) is str:
+            if chosen_neurons == "all":
+                chosen_neurons = np.arange(self.n)
+            elif chosen_neurons.isdigit():
+                chosen_neurons = np.linspace(0, self.n - 1, int(chosen_neurons)).astype(
+                    int
+                )
+            elif chosen_neuron[-4:] == "rand":
+                chosen_neurons = int(chosen_neurons[:-4])
+                chosen_neurons = np.random.choice(
+                    np.arange(self.n), size=chosen_neurons, replace=False
+                )
+        if type(chosen_neurons) is int:
+            chosen_neurons = np.linspace(0, self.n - 1, chosen_neurons)
+        if type(chosen_neurons) is list:
+            chosen_neurons = list(np.array(chosen_neurons).astype(int))
+            pass
+        if type(chosen_neurons) is np.ndarray:
+            chosen_neurons = list(chosen_neurons.astype(int))
+
+        return chosen_neurons
 
 
 """Specific subclasses """
@@ -1647,12 +1682,20 @@ class BoundaryVectorCells(Neurons):
             test_angles.append(2 * np.pi * i / 360)
         self.test_directions = np.array(test_directions)
         self.test_angles = np.array(test_angles)
-        self.sigma_angles = (self.angle_spread_degrees / 360) * 2 * np.pi
+        self.sigma_angles = np.array(
+            [(self.angle_spread_degrees / 360) * 2 * np.pi] * self.n
+        )
         self.tuning_angles = np.random.uniform(0, 2 * np.pi, size=self.n)
         self.tuning_distances = np.random.rayleigh(
             scale=self.prefered_wall_distance_mean, size=self.n,
         )
         self.sigma_distances = self.tuning_distances / beta + xi
+
+        # calculate normalising constants for BVS firing rates in the current environment. Any extra walls you add from here onwards you add will likely push the firingrate up further.
+        locs = self.Agent.Environment.discretise_environment(dx=0.04)
+        locs = locs.reshape(-1, locs.shape[-1])
+        self.cell_fr_norm = np.ones(self.n)
+        self.cell_fr_norm = np.max(self.get_state(evaluate_at=None, pos=locs), axis=1)
 
         if verbose is True:
             print(
@@ -1739,12 +1782,9 @@ class BoundaryVectorCells(Neurons):
         )  # (N_cell,N_pos,N_test)
         sigma_angles = np.tile(
             np.expand_dims(
-                np.expand_dims(
-                    np.expand_dims(np.array(self.sigma_angles), axis=0), axis=0
-                ),
-                axis=0,
+                np.expand_dims(np.array(self.sigma_angles), axis=-1), axis=-1,
             ),
-            reps=(N_cells, N_pos, N_test),
+            reps=(1, N_pos, N_test),
         )  # (N_cell,N_pos,N_test)
         tuning_distances = np.tile(
             np.expand_dims(np.expand_dims(self.tuning_distances, axis=-1), axis=-1),
@@ -1758,11 +1798,14 @@ class BoundaryVectorCells(Neurons):
             np.expand_dims(dist_to_first_wall, axis=0), reps=(N_cells, 1, 1)
         )  # (N_cell,N_pos,N_test)
 
-        g = gaussian(dist_to_first_wall, tuning_distances, sigma_distances) * gaussian(
-            test_angles, tuning_angles, sigma_angles
+        g = gaussian(
+            dist_to_first_wall, tuning_distances, sigma_distances, norm=1
+        ) * von_mises(
+            test_angles, tuning_angles, sigma_angles, norm=1
         )  # (N_cell,N_pos,N_test)
 
-        firingrate = g.mean(axis=-1)  # (N_cell,N_pos)
+        firingrate = g.sum(axis=-1)  # (N_cell,N_pos)
+        firingrate = firingrate / np.expand_dims(self.cell_fr_norm, axis=-1)
         firingrate = (
             firingrate * (self.max_fr - self.min_fr) + self.min_fr
         )  # scales from being between [0,1] to [min_fr, max_fr]
@@ -1784,6 +1827,55 @@ class BoundaryVectorCells(Neurons):
             funclist=(1 / x[x[..., 0] > 0], -1, -1, -1,),
         )
         return pref[..., 0]
+
+    def plot_BVC_receptive_field(self, chosen_neurons="all"):
+        """Plots the receptive field (in polar corrdinates) of the BVC cells. For allocentric BVCs "up" in this plot == "North", for egocentric BVCs, up == the head direction of the animals
+
+        Args:
+            chosen_neurons: Which neurons to plot. Can be int, list, array or "all". Defaults to "all".
+
+        Returns:
+            fig, ax
+        """
+
+        if chosen_neurons == "all":
+            chosen_neurons = np.arange(self.n)
+        if type(chosen_neurons) is str:
+            if chosen_neurons.isdigit():
+                chosen_neurons = np.linspace(0, self.n - 1, int(chosen_neurons)).astype(
+                    int
+                )
+
+        fig, ax = plt.subplots(
+            1,
+            len(chosen_neurons),
+            figsize=(3 * len(chosen_neurons), 3 * 1),
+            subplot_kw={"projection": "polar"},
+        )
+
+        r = np.linspace(0, self.Agent.Environment.scale, 100)
+        theta = np.linspace(0, 2 * np.pi, 360)
+        [theta_meshgrid, r_meshgrid] = np.meshgrid(theta, r)
+
+        def bvc_rf(theta, r, mu_r=0.5, sigma_r=0.2, mu_theta=0.5, sigma_theta=0.1):
+            theta = pi_domain(theta)
+            return gaussian(r, mu_r, sigma_r) * von_mises(theta, mu_theta, sigma_theta)
+
+        for i, n in enumerate(chosen_neurons):
+            mu_r = self.tuning_distances[n]
+            sigma_r = self.sigma_angles[n]
+            mu_theta = self.tuning_angles[n]
+            sigma_theta = self.sigma_angles[n]
+            receptive_field = bvc_rf(
+                theta_meshgrid, r_meshgrid, mu_r, sigma_r, mu_theta, sigma_theta
+            )
+            ax[i].pcolormesh(
+                theta, r, receptive_field, edgecolors="face", shading="nearest"
+            )
+            ax[i].set_xticks([])
+            ax[i].set_yticks([])
+
+        return fig, ax
 
 
 class VelocityCells(Neurons):
@@ -2502,19 +2594,38 @@ def update_class_params(Class, params: dict):
         setattr(Class, key, value)
 
 
-def gaussian(x, mu, sigma):
+def gaussian(x, mu, sigma, norm=None):
     """Gaussian function. x, mu and sigma can be any shape as long as they are all the same (or strictly, all broadcastable) 
     Args:
         x: input
         mu ; mean
         sigma; standard deviation
+        norm: if provided the maximum value will be the norm
     Returns gaussian(x;mu,sigma)
     """
     g = -((x - mu) ** 2)
     g = g / (2 * sigma ** 2)
     g = np.exp(g)
-    g = g / np.sqrt(2 * np.pi * sigma ** 2)
+    norm = norm or (1 / (np.sqrt(2 * np.pi * sigma ** 2)))
+    g = g * norm
     return g
+
+
+def von_mises(theta, mu, sigma, norm=None):
+    """Von Mises function. theta, mu and sigma can be any shape as long as they are all the same (or strictly, all broadcastable). sigma is the standard deviation (in radians) which is converted to the von mises spread parameter, kappa = 1 / sigma^2 (note this approximation is only true for small, sigma << 2pi, spreads). All quantities must be given in radians. 
+    Args:
+        x: input
+        mu ; mean
+        sigma; standard deviation
+        norm: if provided the maximum (i.e. in the centre) value will be the norm
+    Returns von_mises(x;mu,sigma)
+    """
+    kappa = 1 / (sigma ** 2)
+    v = np.exp(kappa * np.cos(theta - mu))
+    norm = norm or (np.exp(kappa) / (2 * np.pi * scipy.special.i0(kappa)))
+    norm = norm / np.exp(kappa)
+    v = v * norm
+    return v
 
 
 def activate(x, activation="sigmoid", deriv=False, other_args={}):

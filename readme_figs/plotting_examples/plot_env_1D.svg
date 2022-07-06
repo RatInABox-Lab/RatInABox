@@ -1,0 +1,376 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg height="15.84pt" version="1.1" viewBox="0 0 216 15.84" width="216pt" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+ <metadata>
+  <rdf:RDF xmlns:cc="http://creativecommons.org/ns#" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2022-07-07T02:50:32.565136</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.4.3, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linecap:butt;stroke-linejoin:round;}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 15.84 
+L 216 15.84 
+L 216 0 
+L 0 0 
+z
+" style="fill:none;"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 27 13.86 
+L 194.4 13.86 
+L 194.4 1.9008 
+L 27 1.9008 
+z
+" style="fill:none;"/>
+   </g>
+   <g id="matplotlib.axis_1">
+    <g id="xtick_1">
+     <g id="line2d_1">
+      <defs>
+       <path d="M 0 0 
+L 0 3.5 
+" id="m27d0a105d7" style="stroke:#4c4c4c;stroke-width:2;"/>
+      </defs>
+      <g>
+       <use style="fill:#4c4c4c;stroke:#4c4c4c;stroke-width:2;" x="27" xlink:href="#m27d0a105d7" y="13.86"/>
+      </g>
+     </g>
+     <g id="text_1">
+      <!-- 0 -->
+      <g style="fill:#4c4c4c;" transform="translate(24.775625 25.1025)scale(0.08 -0.08)">
+       <defs>
+        <path d="M 1778 -122 
+Q 1041 -122 639 478 
+Q 238 1078 238 2188 
+Q 238 3297 639 3898 
+Q 1041 4500 1778 4500 
+Q 2522 4500 2922 3898 
+Q 3322 3297 3322 2188 
+Q 3322 1078 2922 478 
+Q 2522 -122 1778 -122 
+L 1778 -122 
+z
+M 1778 384 
+Q 2253 384 2490 834 
+Q 2728 1284 2725 2188 
+Q 2728 3091 2490 3542 
+Q 2253 3994 1778 3994 
+Q 1306 3994 1072 3542 
+Q 838 3091 834 2188 
+Q 838 1284 1072 834 
+Q 1306 384 1778 384 
+L 1778 384 
+z
+" id="Helvetica-30" transform="scale(0.015625)"/>
+       </defs>
+       <use xlink:href="#Helvetica-30"/>
+      </g>
+     </g>
+    </g>
+    <g id="xtick_2">
+     <g id="line2d_2">
+      <g>
+       <use style="fill:#4c4c4c;stroke:#4c4c4c;stroke-width:2;" x="194.4" xlink:href="#m27d0a105d7" y="13.86"/>
+      </g>
+     </g>
+     <g id="text_2">
+      <!-- 1 -->
+      <g style="fill:#4c4c4c;" transform="translate(192.175625 25.1025)scale(0.08 -0.08)">
+       <defs>
+        <path d="M 1700 0 
+L 1700 3194 
+L 1700 3194 
+L 647 3194 
+L 647 3644 
+Q 1113 3634 1403 3844 
+Q 1697 4056 1838 4500 
+L 2297 4500 
+L 2297 4500 
+L 2297 0 
+L 2297 0 
+L 2000 0 
+L 1700 0 
+L 1700 0 
+z
+" id="Helvetica-31" transform="scale(0.015625)"/>
+       </defs>
+       <use xlink:href="#Helvetica-31"/>
+      </g>
+     </g>
+    </g>
+    <g id="text_3">
+     <!-- Position / m -->
+     <g transform="translate(89.804375 35.4975)scale(0.08 -0.08)">
+      <defs>
+       <path d="M 550 0 
+L 550 4594 
+L 550 4594 
+L 859 4594 
+L 859 4594 
+L 2559 4594 
+Q 3228 4594 3604 4258 
+Q 3981 3922 3981 3328 
+Q 3981 2675 3604 2306 
+Q 3228 1938 2559 1938 
+Q 1681 1941 1172 1931 
+L 1172 1931 
+L 1172 0 
+L 1172 0 
+L 863 0 
+L 550 0 
+L 550 0 
+z
+M 1172 2469 
+L 1172 2469 
+L 2406 2469 
+Q 2891 2469 3116 2673 
+Q 3341 2878 3341 3316 
+Q 3341 3703 3116 3883 
+Q 2891 4063 2406 4063 
+L 1172 4063 
+L 1172 4063 
+L 1172 2469 
+z
+" id="Helvetica-50" transform="scale(0.015625)"/>
+       <path d="M 1778 -91 
+Q 1084 -91 654 396 
+Q 225 884 225 1675 
+Q 225 2469 654 2956 
+Q 1084 3444 1778 3444 
+Q 2478 3444 2906 2956 
+Q 3334 2469 3334 1675 
+Q 3334 884 2906 396 
+Q 2478 -91 1778 -91 
+L 1778 -91 
+z
+M 1778 394 
+Q 2222 394 2484 741 
+Q 2747 1088 2747 1675 
+Q 2747 2263 2484 2611 
+Q 2222 2959 1778 2959 
+Q 1334 2959 1073 2611 
+Q 813 2263 813 1675 
+Q 813 1088 1073 741 
+Q 1334 394 1778 394 
+L 1778 394 
+z
+" id="Helvetica-6f" transform="scale(0.015625)"/>
+       <path d="M 2331 2375 
+L 2331 2375 
+Q 2306 2653 2104 2806 
+Q 1903 2959 1563 2959 
+Q 1213 2959 1030 2837 
+Q 847 2716 847 2481 
+Q 847 2303 975 2213 
+Q 1103 2122 1484 2031 
+L 2066 1894 
+Q 2553 1775 2763 1566 
+Q 2969 1359 2969 988 
+Q 2969 491 2611 200 
+Q 2253 -91 1644 -91 
+Q 938 -91 591 189 
+Q 244 469 206 1069 
+L 206 1069 
+L 747 1069 
+L 747 1069 
+Q 788 713 998 553 
+Q 1209 394 1644 394 
+Q 2022 394 2217 537 
+Q 2413 681 2413 956 
+Q 2413 1131 2284 1222 
+Q 2156 1313 1769 1403 
+L 1188 1541 
+Q 716 1653 516 1856 
+Q 316 2056 316 2419 
+Q 316 2891 652 3167 
+Q 988 3444 1563 3444 
+Q 2147 3444 2492 3159 
+Q 2838 2875 2859 2375 
+L 2859 2375 
+L 2331 2375 
+z
+" id="Helvetica-73" transform="scale(0.015625)"/>
+       <path d="M 434 0 
+L 434 3344 
+L 434 3344 
+L 716 3344 
+L 997 3344 
+L 997 3344 
+L 997 0 
+L 997 0 
+L 716 0 
+L 434 0 
+L 434 0 
+z
+M 428 4594 
+L 1003 4594 
+L 1003 3956 
+L 428 3956 
+L 428 4594 
+z
+" id="Helvetica-69" transform="scale(0.015625)"/>
+       <path d="M 1644 3 
+Q 1356 -41 1225 -41 
+Q 856 -41 704 121 
+Q 553 284 553 681 
+L 553 2884 
+L 553 2884 
+L 91 2884 
+L 91 3344 
+L 553 3344 
+L 553 3344 
+L 553 4281 
+L 1116 4281 
+L 1116 3344 
+L 1116 3344 
+L 1644 3344 
+L 1644 2884 
+L 1116 2884 
+L 1116 2884 
+L 1116 681 
+Q 1116 569 1205 503 
+Q 1294 438 1444 438 
+L 1644 438 
+L 1644 3 
+z
+" id="Helvetica-74" transform="scale(0.015625)"/>
+       <path d="M 416 0 
+L 416 3344 
+L 416 3344 
+L 681 3344 
+L 950 3344 
+L 950 3344 
+L 950 2850 
+L 950 2850 
+L 950 2850 
+L 1075 3016 
+Q 1441 3444 1991 3444 
+Q 2544 3444 2844 3144 
+Q 3144 2844 3144 2291 
+L 3144 0 
+L 3144 0 
+L 2863 0 
+L 2581 0 
+L 2581 0 
+L 2581 2100 
+Q 2581 2541 2411 2736 
+Q 2241 2931 1859 2931 
+Q 1453 2931 1215 2623 
+Q 978 2316 978 1791 
+L 978 1791 
+L 978 0 
+L 978 0 
+L 697 0 
+L 416 0 
+L 416 0 
+z
+" id="Helvetica-6e" transform="scale(0.015625)"/>
+       <path id="Helvetica-20" transform="scale(0.015625)"/>
+       <path d="M 1884 4713 
+L 322 -125 
+L -106 -125 
+L 1456 4713 
+L 1884 4713 
+z
+" id="Helvetica-2f" transform="scale(0.015625)"/>
+       <path d="M 416 0 
+L 416 3344 
+L 416 3344 
+L 681 3344 
+L 950 3344 
+L 950 3344 
+L 950 2847 
+L 950 2847 
+L 950 2847 
+L 1066 2997 
+Q 1444 3444 1969 3444 
+Q 2419 3444 2684 3178 
+Q 2803 3059 2869 2906 
+L 2869 2906 
+L 2959 3022 
+Q 3322 3444 3825 3444 
+Q 4350 3444 4636 3158 
+Q 4922 2872 4922 2347 
+L 4922 0 
+L 4922 0 
+L 4641 0 
+L 4359 0 
+L 4359 0 
+L 4359 2156 
+Q 4359 2538 4203 2734 
+Q 4047 2931 3747 2931 
+Q 3381 2931 3165 2647 
+Q 2950 2363 2950 1878 
+L 2950 1878 
+L 2950 0 
+L 2950 0 
+L 2669 0 
+L 2388 0 
+L 2388 0 
+L 2388 2291 
+Q 2388 2603 2245 2767 
+Q 2103 2931 1831 2931 
+Q 1456 2931 1217 2612 
+Q 978 2294 978 1791 
+L 978 1791 
+L 978 0 
+L 978 0 
+L 697 0 
+L 416 0 
+L 416 0 
+z
+" id="Helvetica-6d" transform="scale(0.015625)"/>
+      </defs>
+      <use xlink:href="#Helvetica-50"/>
+      <use x="66.699219" xlink:href="#Helvetica-6f"/>
+      <use x="122.314453" xlink:href="#Helvetica-73"/>
+      <use x="172.314453" xlink:href="#Helvetica-69"/>
+      <use x="194.53125" xlink:href="#Helvetica-74"/>
+      <use x="222.314453" xlink:href="#Helvetica-69"/>
+      <use x="244.53125" xlink:href="#Helvetica-6f"/>
+      <use x="300.146484" xlink:href="#Helvetica-6e"/>
+      <use x="355.761719" xlink:href="#Helvetica-20"/>
+      <use x="383.544922" xlink:href="#Helvetica-2f"/>
+      <use x="411.328125" xlink:href="#Helvetica-20"/>
+      <use x="439.111328" xlink:href="#Helvetica-6d"/>
+     </g>
+    </g>
+   </g>
+   <g id="matplotlib.axis_2"/>
+   <g id="patch_3">
+    <path d="M 27 13.86 
+L 27 1.9008 
+" style="fill:none;"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 194.4 13.86 
+L 194.4 1.9008 
+" style="fill:none;"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 27 13.86 
+L 194.4 13.86 
+" style="fill:none;stroke:#4c4c4c;stroke-linecap:square;stroke-linejoin:miter;stroke-width:2;"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 27 1.9008 
+L 194.4 1.9008 
+" style="fill:none;"/>
+   </g>
+  </g>
+ </g>
+</svg>

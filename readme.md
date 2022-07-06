@@ -29,10 +29,11 @@ The top animation shows the kind of simulation you can easily run using this too
 * **Biological**: Simulate large populations of spatially and/or velocity modulated cell type. Use cells in rate based or spiking models. 
 * **Fast**: Simulating 1 minute exploration in a 2D environment with 100 place cells (dt=10 ms) take just 2 seconds on a laptop (no GPU needed).
 * **Precise**: No more pre-discretised positions, tabular state spaces, or jerky movement policies. It's all continuous. 
-* **Visual** Plot or animate trajectories, firing rate timeseries', spike rasters, receptive fields, heat maps, velocity histograms...using the plotting functions. 
+* **Visual** Plot or animate trajectories, firing rate timeseries', spike rasters, receptive fields, heat maps, velocity histograms...using the plotting functions ([summarised here](./example_scripts/list_of_plotting_functions.md)). 
 * **Easy**: Sensible default parameters mean you can have realisitic simulation data to work with in ~10 lines of code.
 * **General**: Build your own bespoke `Neurons()` classes and combine them into complex networks of neurons (example scripts given).
 
+(a)[./here]
 
 ## Get started 
 At the bottom of this readme we provide Example scripts: one simple and one extensive. Reading through this section should be enough to get started. We also provide two case studies where `RatInABox` is used in a reinforcement learning project and a path integration project. 
@@ -287,7 +288,7 @@ print(Environment().params)
 
 
 ## Contribute 
-`RatInABox` is an open source project, and we actively encourage community contributions. These can take various forms, such as new movement policies, new cells types, new geometries, bug fixes, documentation, citations of relevant work, or additional experiment notebooks. If there is a small contribution you would like to make, please feel free to open a pull request, and we can review it. If there is a larger contribution you are considering please contact the correpnidng author at `tomgeorge1@btinternet.com`. 
+`RatInABox` is an open source project, and we actively encourage community contributions. These can take various forms, such as new movement policies, new cells types, new plotting functions, new geometries, bug fixes, documentation, citations of relevant work, or additional experiment notebooks. If there is a small contribution you would like to make, please feel free to open a pull request, and we can review it. If you would like to add a new `Neurons` class please pull request it into the [`contribs`](./contribs) directory. If there is a larger contribution you are considering please contact the correponding author at `tomgeorge1@btinternet.com`. 
 
 ## Cite
 If you use `RatInABox` in your research or educational material, please cite the work as follows: `my wicked bibtex citation`
