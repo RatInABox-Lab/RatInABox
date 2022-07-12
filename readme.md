@@ -111,11 +111,11 @@ Agent.import_trajectory(times=array_of_times,
 <img src="./readme_figs/imported_trajectory.png" height="200">
 
 #### Policy control 
-By default the movement policy is an random and uncontrolled (e.g. displayed above). It is possible, however, to manually pass a "drift_velocity" to the Agent on each `update()` step. This 'closes the loop' allowing, for example, Actor-Critic systems to control the Agent policy. As a demonstration that this method can be used to control the agent's movement we set a radial drift velocity to encourage circular motion. We also show a simple actor critic system learning to find a reward hidden behind a neuron (script provided in [example_scripts](./example_scripts/))
+By default the movement policy is an random and uncontrolled (e.g. displayed above). It is possible, however, to manually pass a "drift_velocity" to the Agent on each `update()` step. This 'closes the loop' allowing, for example, Actor-Critic systems to control the Agent policy. As a demonstration that this method can be used to control the agent's movement we set a radial drift velocity to encourage circular motion. We also use RatInABox to perform a simple model-free RL task and find a reward hidden behind a wall (the full script is given as an example script [here](./example_scripts/example_script_reinforcement_lerning.ipynb))
 ```python
 Agent.update(drift_velocity=drift_velocity)
 ```
-<img src="./readme_figs/policy_control.png" height="220">
+<img src="./readme_figs/motion.gif">
 
 #### Wall repelling 
 Under the random motion policy, walls in the environment mildly "repel" the agent. Coupled with the finite turning speed this replicates an effect (known as thigmotaxis and linked to anxiety) where the agent is biased to over-explore near walls and corners (as shown in these heatmaps) matching real rodent behaviour. It can be turned up or down with the `anxiety` parameter.

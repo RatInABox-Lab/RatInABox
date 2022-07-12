@@ -459,7 +459,7 @@ class Agent:
             "rotational_velocity_coherence_time": 0.08,  # time over which speed decoheres
             "rotational_velocity_std": 120 * (np.pi / 180),  # std of rotational speed
             # wall following parameter
-            "anxiety": 0.8,  # tendency for agents to linger near walls [0 = not at all, 1 = max]
+            "anxiety": 0.5,  # tendency for agents to linger near walls [0 = not at all, 1 = max]
         }
         self.Environment = Environment
         default_params.update(params)
@@ -824,6 +824,7 @@ class Agent:
         fig=None,
         ax=None,
         decay_point_size=False,
+        plot_agent=True,
         xlim=None,
     ):
 
@@ -833,7 +834,9 @@ class Agent:
             • t_end: end time in seconds (default = self.history["t"][-1])
             • fig, ax: the fig, ax to plot on top of, optional, if not provided used self.Environment.plot_Environment(). This can be used to plot trajectory on top of receptive fields etc. 
             • decay_point_size: decay trajectory point size over time (recent times = largest)
-            xlim: In 1D, force the xlim to be a certain time (useful if animating this function)
+            • plot_agent: dedicated point show agent current position
+            • xlim: In 1D, force the xlim to be a certain time (useful if animating this function)
+
         Returns:
             fig, ax
         """
@@ -861,8 +864,9 @@ class Agent:
                 s = 15 * np.exp((time - time[-1]) / 10)
                 s[(time[-1] - time) > 15] *= 0
             c = ["C0"] * len(time)
-            s[-1] = 40
-            c[-1] = "r"
+            if plot_agent == True:
+                s[-1] = 40
+                c[-1] = "r"
             ax.scatter(
                 trajectory[:, 0],
                 trajectory[:, 1],
@@ -892,25 +896,30 @@ class Agent:
 
         return fig, ax
 
-    def animate_trajectory(self, t_end=None, speed_up=1):
+    def animate_trajectory(self, t_start=None, t_end=None, speed_up=1):
         """Returns an animation (anim) of the trajectory, 20fps. 
         Should be saved using comand like 
         anim.save("./where_to_save/animations.gif",dpi=300)
 
         Args:
+            t_start: Agent time at which to start animation
             t_end (_type_, optional): _description_. Defaults to None.
             speed_up: #times real speed animation should come out at 
 
         Returns:
             animation
         """
+
+        if t_start == None:
+            t_start = self.history["t"][0]
         if t_end == None:
             t_end = self.history["t"][-1]
 
-        def animate(i, fig, ax, t_max, speed_up):
+        def animate(i, fig, ax, t_start, t_max, speed_up):
             t = self.history["t"]
-            t_start = t[0]
-            t_end = t[0] + (i + 1) * speed_up * 40e-3
+            # t_start = t[np.argmin(np.abs(np.array(t) - t_start))]
+            # print(t_start)
+            t_end = t_start + (i + 1) * speed_up * 40e-3
             ax.clear()
             if self.Environment.dimensionality == "2D":
                 fig, ax = self.Environment.plot_environment(fig=fig, ax=ax)
@@ -933,9 +942,9 @@ class Agent:
             fig,
             animate,
             interval=40,
-            frames=int(t_end / (40e-3 * speed_up)),
+            frames=int((t_end - t_start) / (40e-3 * speed_up)),
             blit=False,
-            fargs=(fig, ax, t_end, speed_up),
+            fargs=(fig, ax, t_start, t_end, speed_up),
         )
         return anim
 
@@ -1107,15 +1116,14 @@ class Neurons:
         default_params = {
             "n": 10,
             "name": "Neurons",
-            "color": "C1",  # just for plotting
-            "min_fr": 0,
-            "max_fr": 1,
+            "color": None,  # just for plotting
         }
         self.Agent = Agent
         default_params.update(params)
         self.params = default_params
         update_class_params(self, self.params)
 
+        self.firingrate = np.zeros(self.n)
         self.history = {}
         self.history["t"] = []
         self.history["firingrate"] = []
@@ -1130,13 +1138,14 @@ class Neurons:
         firingrate = self.get_state()
         self.firingrate = firingrate.reshape(-1)
         self.save_to_history()
+        return
 
     def plot_rate_timeseries(
         self,
         t_start=0,
         t_end=None,
         chosen_neurons="all",
-        plot_spikes=True,
+        spikes=True,
         fig=None,
         ax=None,
         xlim=None,
@@ -1162,10 +1171,10 @@ class Neurons:
         startid = np.argmin(np.abs(t - (t_start)))
         endid = np.argmin(np.abs(t - (t_end)))
         rate_timeseries = np.array(self.history["firingrate"])
-        spikes = np.array(self.history["spikes"])
+        spike_data = np.array(self.history["spikes"])
         t = t[startid:endid]
         rate_timeseries = rate_timeseries[startid:endid]
-        spikes = spikes[startid:endid]
+        spike_data = spike_data[startid:endid]
 
         # neurons to plot
         chosen_neurons = self.return_list_of_neurons(chosen_neurons)
@@ -1182,9 +1191,9 @@ class Neurons:
             ax=ax,
         )
 
-        if plot_spikes == True:
+        if spikes == True:
             for i in range(len(chosen_neurons)):
-                time_when_spiked = t[spikes[:, chosen_neurons[i]]] / 60
+                time_when_spiked = t[spike_data[:, chosen_neurons[i]]] / 60
                 h = (i + 1 - 0.1) * np.ones_like(time_when_spiked)
                 ax.scatter(
                     time_when_spiked, h, color=self.color, alpha=0.5, s=2, linewidth=0
@@ -1198,7 +1207,13 @@ class Neurons:
         return fig, ax
 
     def plot_rate_map(
-        self, chosen_neurons="all", method="analytic", spikes=False, fig=None, ax=None,
+        self,
+        chosen_neurons="all",
+        method="analytic",
+        spikes=False,
+        fig=None,
+        ax=None,
+        shape=None,
     ):
         """Plots rate maps of neuronal firing rates across the environment
         Args:
@@ -1214,10 +1229,12 @@ class Neurons:
         if method == "analytic":
             try:
                 rate_maps = self.get_state(evaluate_at="all")
-            except:
+            except Exception as e:
                 print(
-                    "It was not possible to get the rate map by evaluating the firing rate at all positions across the Environment. This is probably because the Neuron class does not support, or it does not have an analytic receptive field. Instead, plotting rate map by weighted position histogram method"
+                    "It was not possible to get the rate map by evaluating the firing rate at all positions across the Environment. This is probably because the Neuron class does not support, or it does not have an analytic receptive field. Instead, plotting rate map by weighted position histogram method. Here is the error:"
                 )
+                print("Error: ", e)
+                print("yeet")
                 method = "history"
         if method == "history":
             rate_timeseries = np.array(self.history["firingrate"]).T
@@ -1233,7 +1250,7 @@ class Neurons:
                 spike_data = np.array(spike_data).T
 
         if self.color == None:
-            coloralpha = [1, 1, 1, 0]
+            coloralpha = None
         else:
             coloralpha = list(matplotlib.colors.to_rgba(self.color))
             coloralpha[-1] = 0.5
@@ -1243,16 +1260,17 @@ class Neurons:
         if self.Agent.Environment.dimensionality == "2D":
 
             if fig is None and ax is None:
+                if shape is None:
+                    Nx, Ny = 1, len(chosen_neurons)
+                else:
+                    Nx, Ny = shape[0], shape[1]
                 fig, ax = plt.subplots(
-                    1,
-                    len(chosen_neurons),
-                    figsize=(3 * len(chosen_neurons), 3 * 1),
-                    facecolor=coloralpha,
+                    Nx, Ny, figsize=(3 * Ny, 3 * Nx), facecolor=coloralpha,
                 )
             if not hasattr(ax, "__len__"):
-                ax = [ax]
+                ax = np.array([ax])
 
-            for (i, ax_) in enumerate(ax):
+            for (i, ax_) in enumerate(ax.flatten()):
                 self.Agent.Environment.plot_environment(fig, ax_)
 
                 if method == "analytic":
@@ -1513,8 +1531,7 @@ class PlaceCells(Neurons):
             closest_centres = np.argmin(np.abs(dist), axis=0)
             firingrate = np.eye(self.n)[closest_centres].T
         if self.description == "top_hat":
-            closest_centres = np.argmin(np.abs(dist), axis=0)
-            firingrate = 1 * (dist < 1)
+            firingrate = 1 * (dist < self.widths)
 
         firingrate = (
             firingrate * (self.max_fr - self.min_fr) + self.min_fr
@@ -1921,7 +1938,10 @@ class VelocityCells(Neurons):
         if evaluate_at == "agent":
             vel = self.Agent.history["vel"][-1]
         else:
-            vel = np.array(kwargs["vel"])
+            try:
+                vel = np.array(kwargs["vel"])
+            except KeyError:
+                vel = np.zeros_like(self.Agent.velocity)
 
         if self.Agent.Environment.dimensionality == "1D":
             vleft_fr = max(0, vel[0]) / self.one_sigma_speed
@@ -2093,7 +2113,6 @@ class FeedForwardLayer(Neurons):
         self.params = default_params
         super().__init__(Agent, self.params)
 
-        self.firingrate = np.zeros
         self.inputs = {}
         for input_layer in self.input_layers:
             name = input_layer.name
