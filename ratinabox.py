@@ -1233,7 +1233,7 @@ class Neurons:
         """
         if method == "analytic":
             try:
-                rate_maps = self.get_state(evaluate_at="all", kwargs=kwargs)
+                rate_maps = self.get_state(evaluate_at="all", **kwargs=kwargs)
             except Exception as e:
                 print(
                     "It was not possible to get the rate map by evaluating the firing rate at all positions across the Environment. This is probably because the Neuron class does not support, or it does not have an analytic receptive field. Instead, plotting rate map by weighted position histogram method. Here is the error:"
