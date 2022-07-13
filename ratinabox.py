@@ -1214,7 +1214,7 @@ class Neurons:
         fig=None,
         ax=None,
         shape=None,
-        **kwargs=None,
+        **kwargs,
     ):
         """Plots rate maps of neuronal firing rates across the environment
         Args:
