@@ -1214,6 +1214,7 @@ class Neurons:
         fig=None,
         ax=None,
         shape=None,
+        kwargs=None
     ):
         """Plots rate maps of neuronal firing rates across the environment
         Args:
@@ -1222,13 +1223,17 @@ class Neurons:
             • method: "analytic" "history" "neither": which method to use. If "analytic" (default) tries to calculate rate map by evaluating firing rate at all positions across the environment (note this isn't always well defined. in which case...). If "history", plots ratemap by a weighting a histogram of positions visited by the firingrate observed at that position. If "neither" (or anything else), then neither. 
 
             • spikes: True or False. Whether to display the occurence of spikes. If False (default) no spikes are shown. If True both ratemap and spikes are shown.
+
+            • shape is the shape of the multiplanlle figure, must be compatible with chosen neurons
+
+            • kwargs are sent to get_state and can be ignore if you don't need to use them
         
         Returns:
             fig, ax 
         """
         if method == "analytic":
             try:
-                rate_maps = self.get_state(evaluate_at="all")
+                rate_maps = self.get_state(evaluate_at="all",kwargs=kwargs)
             except Exception as e:
                 print(
                     "It was not possible to get the rate map by evaluating the firing rate at all positions across the Environment. This is probably because the Neuron class does not support, or it does not have an analytic receptive field. Instead, plotting rate map by weighted position histogram method. Here is the error:"
