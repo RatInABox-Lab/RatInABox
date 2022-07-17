@@ -459,7 +459,7 @@ class Agent:
             "rotational_velocity_coherence_time": 0.08,  # time over which speed decoheres
             "rotational_velocity_std": 120 * (np.pi / 180),  # std of rotational speed
             # wall following parameter
-            "anxiety": 0.5,  # tendency for agents to linger near walls [0 = not at all, 1 = max]
+            "thigmotaxis": 0.5,  # tendency for agents to linger near walls [0 = not at all, 1 = max]
         }
         self.Environment = Environment
         default_params.update(params)
@@ -581,7 +581,7 @@ class Agent:
                             self.speed_mean,
                         )
 
-                        # Wall repulsion and wall following works as follows. When an agent is near the wall, the acceleration and velocity of a hypothetical spring mass tied to a line self.wall_repel_distance away from the wall is calculated. The spring constant is calibrateed so taht if if starts with the Agent.speed_mean it will ~~just~~ not hit the wall. Now, either the acceleration can be used to update the velocity and guide the agent away from the wall OR the counteracting velocity can be used to update the agents position and shift it away from the wall. Both result in repulsive motion away from the wall. The difference is that the latter (and not the former) does not update the agents velocity vector to reflect this, in which case it continues to walk (unsuccessfully) in the same direction barging into the wall and 'following' it. The anxiety parameter allows us to divvy up which of these two dominate. If anxiety is low the acceleration-gives-velocity-update is most dominant and the agent will not linger near the wall. If anxiety is high the velocity-gives-position-update is most dominant and the agent will linger near the wall.
+                        # Wall repulsion and wall following works as follows. When an agent is near the wall, the acceleration and velocity of a hypothetical spring mass tied to a line self.wall_repel_distance away from the wall is calculated. The spring constant is calibrateed so taht if if starts with the Agent.speed_mean it will ~~just~~ not hit the wall. Now, either the acceleration can be used to update the velocity and guide the agent away from the wall OR the counteracting velocity can be used to update the agents position and shift it away from the wall. Both result in repulsive motion away from the wall. The difference is that the latter (and not the former) does not update the agents velocity vector to reflect this, in which case it continues to walk (unsuccessfully) in the same direction barging into the wall and 'following' it. The thigmotaxis parameter allows us to divvy up which of these two dominate. If thigmotaxis is low the acceleration-gives-velocity-update is most dominant and the agent will not linger near the wall. If thigmotaxis is high the velocity-gives-position-update is most dominant and the agent will linger near the wall.
 
                         # Spring acceletation model: in this case this is done by applying an acceleration whenever the agent is near to a wall. this acceleration matches that of a spring with spring constant 3x that of a spring which would, if the agent arrived head on at v = self.speed_mean, turn around exactly at the wall. this is solved by letting d2x/dt2 = -k.x where k = v**2/d**2 (v=seld.speed_mean, d = self.wall_repel_distance)
                         spring_constant = v ** 2 / d ** 2
@@ -599,7 +599,7 @@ class Agent:
                         )
                         wall_acceleration = wall_acceleration_vecs.sum(axis=0)
                         dv = wall_acceleration * dt
-                        self.velocity += 3 * ((1 - self.anxiety) ** 2) * dv
+                        self.velocity += 3 * ((1 - self.thigmotaxis) ** 2) * dv
 
                         # Conveyor belt drift model. Instead of a spring model this is like a converyor belt model. when < wall_repel_distance from the wall the agents position is updated as though it were on a conveyor belt which moves at the speed of spring mass attached to the wall with starting velocity 5*self.speed_mean. This has a similar effect effect  as the spring model above in that the agent moves away from the wall BUT, crucially the update is made directly to the agents positin, not it's speed, so the next time step will not reflect this update. As a result the agent which is walking into the wall will continue to barge hopelessly into the wall causing it the "hug" close to the wall.
                         wall_speeds = np.piecewise(
@@ -616,7 +616,7 @@ class Agent:
                         )
                         wall_speed = wall_speed_vecs.sum(axis=0)
                         dx = wall_speed * dt
-                        self.pos += 6 * (self.anxiety ** 2) * dx
+                        self.pos += 6 * (self.thigmotaxis ** 2) * dx
 
                 # proposed position update
                 proposed_new_pos = self.pos + self.velocity * dt
@@ -1196,7 +1196,7 @@ class Neurons:
                 time_when_spiked = t[spike_data[:, chosen_neurons[i]]] / 60
                 h = (i + 1 - 0.1) * np.ones_like(time_when_spiked)
                 ax.scatter(
-                    time_when_spiked, h, color=self.color, alpha=0.5, s=2, linewidth=0
+                    time_when_spiked, h, color=(self.color or 'C1'), alpha=0.5, s=2, linewidth=0
                 )
 
         ax.set_xticks([t_start / 60, t_end / 60])
@@ -1340,7 +1340,7 @@ class Neurons:
                     ax.scatter(
                         pos_where_spiked,
                         h,
-                        color=self.color,
+                        color=(self.color or 'C1'),
                         alpha=0.5,
                         s=2,
                         linewidth=0,
@@ -2094,7 +2094,7 @@ class FeedForwardLayer(Neurons):
     Check that the input layers are all named differently. 
     List of functions: 
         • get_state()
-        • add_input_layer()
+        • add_input()
         """
 
     def __init__(self, Agent, params={}):
@@ -2120,23 +2120,25 @@ class FeedForwardLayer(Neurons):
 
         self.inputs = {}
         for input_layer in self.input_layers:
-            name = input_layer.name
-            self.add_input_layer(name, input_layer)
+            self.add_input(input_layer)
 
         if verbose is True:
             print(
                 f"FeedForwardLayer initialised with {len(self.inputs.keys())} layers ({self.inputs.keys()}). To add another layer use FeedForwardLayer.add_input_layer().\nTo set the weights manual edit them by changing self.inputs['key']['W']"
             )
 
-    def add_input_layer(self, input_layer_name, input_layer):
+    def add_input(self, input_layer):
         """Adds an input layer to the class. Each input layer is stored in a dictionary of self.inputs. Each has an associated matrix of weights which are initialised randomly. 
+
+        Note the inputs are stored in a dictionary. The keys are taken to be the name of each layer passed (input_layer.name). Make sure you set this correctly (and uniquely). 
 
         Args:
             input_layer_name (_type_): key (the name of the layer)
             input_layer (_type_): the layer intself. Must be a Neurons() class object (e.g. can be PlaceCells(), etc...). 
         """
         n_in = input_layer.n
-        W = np.random.normal(
+        input_layer_name = input_layer.name
+        w = np.random.normal(
             loc=0, scale=self.weight_init_scale / np.sqrt(n_in), size=(self.n, n_in)
         )
         I = np.zeros(n_in)
@@ -2145,8 +2147,9 @@ class FeedForwardLayer(Neurons):
                 f"There already exists a layer called {input_layer_name}. Overwriting it now."
             )
         self.inputs[input_layer_name] = {}
-        self.inputs[input_layer_name]["Neurons"] = input_layer
-        self.inputs[input_layer_name]["W"] = W
+        self.inputs[input_layer_name]["layer"] = input_layer
+        self.inputs[input_layer_name]["w"] = w
+        self.inputs[input_layer_name]["w_init"] = w.copy()
         self.inputs[input_layer_name]["I"] = I
 
     def get_state(self, evaluate_at="last", **kwargs):
@@ -2161,18 +2164,18 @@ class FeedForwardLayer(Neurons):
 
         if evaluate_at == "last":
             for key in self.inputs.keys():
-                self.inputs[key]["I"] = self.inputs[key]["Neurons"].firingrate
+                self.inputs[key]["I"] = self.inputs[key]["layer"].firingrate
         else:  # kick the can down the road let the input layer decide how to evaluate the firing rates
             for key in self.inputs.keys():
-                self.inputs[key]["I"] = self.inputs[key]["Neurons"].get_state(
+                self.inputs[key]["I"] = self.inputs[key]["layer"].get_state(
                     evaluate_at, **kwargs
                 )
 
         V = []
         for key in self.inputs.keys():
-            W = self.inputs[key]["W"]
+            w = self.inputs[key]["w"]
             I = self.inputs[key]["I"]
-            V.append(np.matmul(W, I))
+            V.append(np.matmul(w, I))
         V = np.sum(np.array(V), axis=0)
         firingrate = activate(V, other_args=self.activation_params)
         firingrate_prime = activate(
