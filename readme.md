@@ -313,5 +313,4 @@ Script (and more detailed description) can be found here [./example_scripts/path
 If you use `RatInABox` in your research or educational material, please cite the work as follows: `my wicked bibtex citation`
 The research paper corresponding to the above citation can be found [here](link/to/my/paper).
 
-## 
-<img src="./readme_figs/riab.png" height="200">
+
