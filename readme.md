@@ -36,7 +36,7 @@ The top animation shows the kind of simulation you can easily run using this too
 (a)[./here]
 
 ## Get started 
-At the bottom of this readme we provide [example scripts](./example_scripts/): one simple and one extensive. Reading through this section should be enough to get started. We also provide two case studies where `RatInABox` is used in a [reinforcement learning project](./example_scripts/reinforcement_learning_example.ipynb) and a [path integration](./example_scripts/path_integration_example.ipynb) project. Jupyter scripts reproducing all figures in the paper and readme are also provided.
+At the bottom of this readme we provide [example scripts](./example_scripts/): one simple and one extensive. Reading through this section should be enough to get started. We also provide two case studies where `RatInABox` is used in a [reinforcement learning project](./example_scripts/reinforcement_learning_example.ipynb) and a [path integration](./example_scripts/path_integration_example.ipynb) project. Jupyter scripts reproducing all figures in the [paper](./example_scripts/paper_figures.ipynb) and [readme](./example_scripts/readme_figures.ipynb) are also provided.
 
 In addition 
 
