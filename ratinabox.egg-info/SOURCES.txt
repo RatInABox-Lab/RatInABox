@@ -1,6 +1,0 @@
-ratinabox.py
-setup.py
-ratinabox.egg-info/PKG-INFO
-ratinabox.egg-info/SOURCES.txt
-ratinabox.egg-info/dependency_links.txt
-ratinabox.egg-info/top_level.txt
