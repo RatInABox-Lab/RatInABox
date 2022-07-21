@@ -364,7 +364,7 @@ class Agent:
                     f"IMPORT FAILED. No datafile found at {dataset}. Please try a different one. For now the default inbuilt random policy will be used."
                 )
                 return
-            times = data["t"]
+            times = data["t"] 
             positions = data["pos"]
             print(f"Successfully imported dataset from {dataset}")
         else:

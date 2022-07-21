@@ -362,7 +362,7 @@ class Neurons:
                 t_start=t_start,
                 t_end=t_end,
                 chosen_neurons=chosen_neurons,
-                plot_spikes=True,
+                spikes=True,
                 fig=fig,
                 ax=ax,
                 xlim=t_max,

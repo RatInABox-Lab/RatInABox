@@ -5,6 +5,7 @@ In this markdown we describe teh plotting functions available with `RatInABox`. 
 * `Env1D`: a 1D `Environment()` class with periodic boundary conditions
 
 
+# `Environment`
 
 ## `Environment.plot_environment()`
 Displays the environment. Works for both 1 or 2D environments. 
@@ -13,6 +14,9 @@ Examples:
 
 <img src="../readme_figs/plotting_examples/plot_env.svg" height="150">
 
+
+
+# `Agent`
 
 
 ## `Agent.plot_trajectory()`
@@ -27,6 +31,10 @@ Plots the agent trajectory. Works for 1 or 2D.
 <img src="../readme_figs/plotting_examples/plot_traj_1D.svg" height="150">
 
 
+## `Agent.animate_trajectory()`
+Makes an animation of the agents trajectory. 
+<img src="../readme_figs/plotting_examples/trajectory_animation.gif" height="150">
+
 
 ## `Agent.plot_position_heatmap()`
 Plots a heatmap of the Agents past locations (2D and 1D example shown)
@@ -40,16 +48,25 @@ Plots a heatmap of the Agents past locations (2D and 1D example shown)
 
 
 ## `Agent.plot_histogram_of_speeds()` 
-
 <img src="../readme_figs/plotting_examples/plot_histogram_speed.svg" height="150">
 
 
 
 
 ## `Agent.plot_histogram_of_rotational_velocities()` 
-
 <img src="../readme_figs/plotting_examples/plot_histogram_rotvel.svg" height="150">
 
+
+# `Neurons`
+
+
+## `Neurons.plot_rate_timeseries()`
+Plots a timeseries of the firing rates
+<img src="../readme_figs/plotting_examples/gc_plotrts.svg" height="150">
+
+## `Neurons.animate_rate_timeseries()`
+Makes an animation of the firing rates timeseries
+<img src="../readme_figs/plotting_examples/animate_rate_timeseries.gif" height="150">
 
 
 ## `Neurons.plot_ratemap()`
@@ -80,14 +97,14 @@ As an example here we show this function for a set of 3 (two dimensional) grid c
 
 
 
-## PlaceCells.plot_place_cell_centres()
+## `PlaceCells.plot_place_cell_centres()`
 
 Scatters where the place cells are centres 
 
 <img src="../readme_figs/plotting_examples/pc_locations.svg" height="150">
 
 
-## BoundaryVectorCells.plot_BVC_receptive_field()
+## `BoundaryVectorCells.plot_BVC_receptive_field()`
 
 <img src="../readme_figs/plotting_examples/bvc_rfs.svg" height="150">
 
@@ -95,12 +112,24 @@ Scatters where the place cells are centres
 # Other details: 
 
 * All plotting functions return a tuple (`fig`, `ax`) of `matplotlib` figure objects. 
-* The `Ag.plot_trajectory()` can be passed `fig` and `ax` and will plot the trajectory on top. For example:
+* Most plotting functions support being passed `fig` and `ax` and will plot whatever it is they plot ontop of that. This means we can make: 
+1. Layered figures (e.g. plot a trajectory on top of a rate map): 
 ```python
 fig, ax = Neurons.plot_rate_map(chosen_neuron="1")
 fig, ax = Ag.plot_trajectory(fig=fig, ax=ax)
 ```
+
 <img src="../readme_figs/plotting_examples/trajectory_on_ratemap.svg" height="150">
+
+2. Multipanel figures: 
+```python 
+fig, axes = plt.subplots(1,5,figsize=(20,4))
+Ag.plot_trajectory(fig=fig,ax=axes[0])
+Neurons.plot_rate_map(fig=fig,ax=[axes[1],axes[2],axes[3]],chosen_neurons='1') #<-- to plot more than 1 neuron pass an array of axes
+Neurons.plot_rate_timeseries(fig=fig,ax=axes[4]) 
+```
+
+<img src="../readme_figs/plotting_examples/multipanel_riab.svg" height="150">
 
 * For rate maps and timeseries' by default **all** the cells will be plotted. This may take a long time if the number of cells is large. Control this with the `chosen_neurons` argument
 
