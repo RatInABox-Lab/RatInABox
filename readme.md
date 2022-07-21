@@ -6,7 +6,7 @@
 * **Generate artificial neuronal data** Simulate various location or velocity selective cells found in the Hippocampal-Entorhinal system, or build your own more complex cell type. 
 * **Build complex networks** Build, train and analyse complex networks of cells, powered by `RatInABox`. 
 
-<img src="./readme_figs/riab.gif" width=1200>
+<img src="./readme_figs/riab.gif" width=1000>
 
 `RatInABox` contains three classes: 
 
@@ -54,7 +54,7 @@ python setup.py install
 ```
 or just point your code to this directory directly (recommended if you want to meddle with the code)
 ```python
-sys.path.append("path/from.you/code/to/ratinabox")
+sys.path.append("path/from/your/code/to/ratinabox/")
 ```
 
 `RatInABox` also support pip installion
