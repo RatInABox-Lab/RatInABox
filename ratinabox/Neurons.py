@@ -12,9 +12,9 @@ from matplotlib import pyplot as plt
 
 
 class Neurons:
-    """The Neuron class defines a population of Neurons. All Neurons have firing rates which depend explicity on (that is, they "encode") the state of the Agent. As the Agent moves the firing rate of the cells adjust accordingly. 
+    """The Neuron class defines a population of Neurons. All Neurons have firing rates which depend on the state of the Agent. As the Agent moves the firing rate of the cells adjust accordingly. 
 
-    All Neuron classes must be initalised with the Agent (to whom these cells belong) since the Agent determines teh firingrates through its position and velocity. The Agent class will itself contain the Environment. Both the Agent (position/velocity) and the Environment (geometry, walls etc.) determine the firing rates. Optionally (but likely) an input dictionary 'params' specifying other params will be given.
+    All Neuron classes must be initalised with the Agent (to whom these cells belong) since the Agent determines the firingrates through its position and velocity. The Agent class will itself contain the Environment. Both the Agent (position/velocity) and the Environment (geometry, walls etc.) determine the firing rates. Optionally (but likely) an input dictionary 'params' specifying other params will be given.
     
     This is a generic Parent class. We provide several SubClasses of it. These include: 
     • PlaceCells()
@@ -27,6 +27,7 @@ class Neurons:
 
     The unique function in each child classes is get_state(). Whenever Neurons.update() is called Neurons.get_state() is then called to calculate and returns the firing rate of the cells at the current moment in time. This is then saved. In order to make your own Neuron subclass you will need to write a class with the following mandatory structure: 
 
+    ============================================================================================
     MyNeuronClass(Neurons):
         def __init__(self, 
                      Agent,
@@ -47,13 +48,15 @@ class Neurons:
                 Insert here code which calculates the firing rate.
                 This may work differently depending on what you set evaluate_at as. For example, evaluate_at == 'agent' should means that the position or velocity (or whatever determines the firing rate) will by evaluated using the agents current state. You might also like to have an option like evaluate_at == "all" (all positions across an environment are tested simultaneously - plot_rate_map() tries to call this, for example) or evaluate_at == "last" (in a feedforward layer just look at the last firing rate saved in the input layers saves time over recalculating them.). **kwargs allows you to pass position or velocity in manually.  
 
-                By default, the Neurons.update() calls Neurons.get_state() raw. So write the default behaviour of get_state to be what you want it to do in the main training loop. 
+                By default, the Neurons.update() calls Neurons.get_state() rwithout passing any arguments. So write the default behaviour of get_state() to be what you want it to do in the main training loop. 
             ###
 
             return firingrate 
-            
-    As we have written them, Neuron subclasses which have well defined ground truth receptive fields (PlaceCells, GridCells but not VelocityCells etc.) can also be queried for any arbitrary pos/velocity (i.e. not just the Agents current state) by passing these in directly to the function "get_state(evaluate_at='all') or get_state(evaluate_at=None, pos=my_array_of_positons)". This calculation is vectorised and relatively fast, returning an array of firing rates one for each position. It is what is used when you try Neuron.plot_rate_map(). 
-    
+        
+        def any_other_functions_you_might_want(self):...
+    ============================================================================================
+
+    As we have written them, Neuron subclasses which have well defined ground truth spatial receptive fields (PlaceCells, GridCells but not VelocityCells etc.) can also be queried for any arbitrary pos/velocity (i.e. not just the Agents current state) by passing these in directly to the function "get_state(evaluate_at='all') or get_state(evaluate_at=None, pos=my_array_of_positons)". This calculation is vectorised and relatively fast, returning an array of firing rates one for each position. It is what is used when you try Neuron.plot_rate_map(). 
 
     List of key functions...
         ..that you're likely to use: 
@@ -286,7 +289,7 @@ class Neurons:
                 x = self.Agent.Environment.flattened_discrete_coords[:, 0]
             if method == "history":
                 ex = self.Agent.Environment.extent
-                pos_ = pos[:,0]
+                pos_ = pos[:, 0]
                 rate_maps = []
                 for neuron_id in chosen_neurons:
                     rate_map, x = bin_data_for_histogramming(
