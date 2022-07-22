@@ -65,6 +65,12 @@ class Neurons:
         ...that you might not use but could be useful:
             • save_to_history()
             • boundary_vector_preference_function()   
+        
+    default_params = {
+            "n": 10,
+            "name": "Neurons",
+            "color": None,  # just for plotting
+        }
     """
 
     def __init__(self, Agent, params={}):
@@ -440,6 +446,18 @@ class PlaceCells(Neurons):
     List of functions: 
         • get_state()
         • plot_place_cell_locations()
+    
+    default_params = {
+            "n": 10,
+            "name": "PlaceCells",
+            "description": "gaussian",
+            "widths": 0.20,
+            "place_cell_centres": None,  # if given this will overwrite 'n',
+            "wall_geometry": "geodesic",
+            "min_fr": 0,
+            "max_fr": 1,
+            "name": "PlaceCells",
+        }
     """
 
     def __init__(self, Agent, params={}):
@@ -556,6 +574,16 @@ class GridCells(Neurons):
 
     List of functions: 
         • get_state()
+    
+    default_params = {
+            "n": 10,
+            "gridscale": 0.45,
+            "random_orientations": True,
+            "random_gridscales": True,
+            "min_fr": 0,
+            "max_fr": 1,
+            "name": "GridCells",
+        }
     """
 
     def __init__(self, Agent, params={}):
@@ -651,6 +679,18 @@ class BoundaryVectorCells(Neurons):
     List of functions: 
         • get_state()
         • boundary_vector_preference_function()
+
+    default_params = {
+            "n": 10,
+            "reference_frame": "allocentric",
+            "prefered_wall_distance_mean": 0.15,
+            "angle_spread_degrees": 11.25,
+            "xi": 0.08,  # as in de cothi and barry 2020
+            "beta": 12,
+            "min_fr": 0,
+            "max_fr": 1,
+            "name": "BoundaryVectorCells",
+        }
     """
 
     def __init__(self, Agent, params={}):
@@ -900,6 +940,12 @@ class VelocityCells(Neurons):
 
     List of functions: 
         • get_state()
+    
+    default_params = {
+            "min_fr": 0,
+            "max_fr": 1,
+            "name": "VelocityCells",
+        }
     """
 
     def __init__(self, Agent, params={}):
@@ -966,7 +1012,13 @@ class HeadDirectionCells(Neurons):
 
     List of functions: 
         • get_state()
-        """
+    
+    default_params = {
+            "min_fr": 0,
+            "max_fr": 1,
+            "name": "HeadDirectionCells",
+        }
+    """
 
     def __init__(self, Agent, params={}):
         """Initialise HeadDirectionCells(), takes as input a parameter dictionary. Any values not provided by the params dictionary are taken from a default dictionary below.
@@ -1028,6 +1080,12 @@ class SpeedCell(Neurons):
 
     List of functions: 
         • get_state()
+    
+    default_params = {
+            "min_fr": 0,
+            "max_fr": 1,
+            "name": "SpeedCell",
+        }
         """
 
     def __init__(self, Agent, params={}):
@@ -1093,6 +1151,19 @@ class FeedForwardLayer(Neurons):
     List of functions: 
         • get_state()
         • add_input()
+    
+    default_params = {
+            "n": 10,
+            "input_layers": [],  # a list of input layers, or add one by one using self.adD_inout
+            "activation_params": {
+                "activation": "sigmoid",
+                "max_fr": 1,
+                "min_fr": 0,
+                "mid_x": 1,
+                "width_x": 2,
+            },
+            "name": "FeedForwardLayer",
+        }
         """
 
     def __init__(self, Agent, params={}):

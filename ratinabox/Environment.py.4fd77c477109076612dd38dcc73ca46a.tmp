@@ -33,7 +33,7 @@ class Environment:
             "boundary_conditions": "solid", 
             "scale": 1,  
             "aspect": 1, 
-            "dx": 0.01,  # discretises the environment (for plotting purposes only)
+            "dx": 0.01, 
         }
     """
 

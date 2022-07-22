@@ -24,6 +24,17 @@ class Agent:
         • plot_position_heatmap()
         • plot_histogram_of_speeds()
         • plot_histogram_of_rotational_velocities()
+    
+    The default params for this agent are: 
+        default_params = {
+            "dt": 0.01,
+            "speed_coherence_time": 0.7,  
+            "speed_mean": 0.08,  
+            "speed_std": 0.08,  
+            "rotational_velocity_coherence_time": 0.08,  
+            "rotational_velocity_std": 120 * (np.pi / 180),  
+            "thigmotaxis": 0.5,
+        }
     """
 
     def __init__(self, Environment, params={}):
