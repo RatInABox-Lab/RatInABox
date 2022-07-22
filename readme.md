@@ -29,14 +29,14 @@ The top animation shows the kind of simulation you can easily run using this too
 * **Biological**: Simulate large populations of spatially and/or velocity modulated cell types. Neurons can be rate based or spiking. Motion model fitted to match real rodent motion. 
 * **Fast**: Simulating 1 minute of exploration in a 2D environment with 100 place cells (dt=10 ms) take just 2 seconds on a laptop (no GPU needed).
 * **Precise**: No more pre-discretised positions, tabular state spaces, or jerky movement policies. It's all continuous. 
-* **Visual** Plot or animate trajectories, firing rate timeseries', spike rasters, receptive fields, heat maps, velocity histograms...using the plotting functions ([summarised here](./example_scripts/list_of_plotting_fuctions.md)). 
+* **Visual** Plot or animate trajectories, firing rate timeseries', spike rasters, receptive fields, heat maps, velocity histograms...using the plotting functions ([summarised here](./demos/list_of_plotting_fuctions.md)). 
 * **Easy**: Sensible default parameters mean you can have realisitic simulation data to work with in ~10 lines of code.
 * **General**: Build your own bespoke `Neurons` classes and combine them into complex networks of neurons (example scripts given).
 
 
 ## Get started 
 
-At the bottom of this readme we list [example scripts](./example_scripts/): one simple and one extensive. Reading through these  should be enough to get started. We also provide two case studies where `RatInABox` is used in a [reinforcement learning project](./example_scripts/reinforcement_learning_example.ipynb) and a [path integration](./example_scripts/path_integration_example.ipynb) project. Jupyter scripts reproducing all figures in the [paper](./example_scripts/paper_figures.ipynb) and [readme](./example_scripts/readme_figures.ipynb) are also provided.
+At the bottom of this readme we list [example scripts](./demos/): one simple and one extensive. Reading through these  should be enough to get started. We also provide two case studies where `RatInABox` is used in a [reinforcement learning project](./demos/reinforcement_learning_example.ipynb) and a [path integration](./demos/path_integration_example.ipynb) project. Jupyter scripts reproducing all figures in the [paper](./demos/paper_figures.ipynb) and [readme](./demos/readme_figures.ipynb) are also provided.
 
 
 ## Requirements
@@ -134,7 +134,7 @@ Agent.import_trajectory(times=array_of_times,
 <img src="./images/imported_trajectory.png" width=300>
 
 #### Policy control 
-By default the movement policy is an random and uncontrolled (e.g. displayed above). It is possible, however, to manually pass a "drift_velocity" to the Agent on each `update()` step. This 'closes the loop' allowing, for example, Actor-Critic systems to control the Agent policy. As a demonstration that this method can be used to control the agent's movement we set a radial drift velocity to encourage circular motion. We also use RatInABox to perform a simple model-free RL task and find a reward hidden behind a wall (the full script is given as an example script [here](./example_scripts/example_script_reinforcement_lerning.ipynb))
+By default the movement policy is an random and uncontrolled (e.g. displayed above). It is possible, however, to manually pass a "drift_velocity" to the Agent on each `update()` step. This 'closes the loop' allowing, for example, Actor-Critic systems to control the Agent policy. As a demonstration that this method can be used to control the agent's movement we set a radial drift velocity to encourage circular motion. We also use RatInABox to perform a simple model-free RL task and find a reward hidden behind a wall (the full script is given as an example script [here](./demos/reinforcement_learning_example.ipynb))
 ```python
 Agent.update(drift_velocity=drift_velocity)
 ```
@@ -195,17 +195,17 @@ Neurons.plot_rate_map(method="history") #plots rate map by firing-rate-weighted 
 <img src="./images/rate_map.png" width=600>
 
 #### More complex Neuron types and networks of Neurons
-We encourage users to create their own subclasses of `Neurons`. This is easy to do, see comments in the `Neurons` class within the [code](./ratinabox/Neurons.py) for explanation. By forming these classes from the parent `Neurons` class, the plotting and analysis features described above remain available to these bespoke Neuron types. Additionally we provide a `Neurons` subclass called `FeedForwardLayer`. This neuron sums inputs from any proived list of other `Neurons` classes and can be used as the building block for constructing complex multilayer networks of `Neurons`, as we do [here](./example_scripts/path_integration_example.ipynb) and [here](./example_scripts/reinforcement_learning_example.ipynb). 
+We encourage users to create their own subclasses of `Neurons`. This is easy to do, see comments in the `Neurons` class within the [code](./ratinabox/Neurons.py) for explanation. By forming these classes from the parent `Neurons` class, the plotting and analysis features described above remain available to these bespoke Neuron types. Additionally we provide a `Neurons` subclass called `FeedForwardLayer`. This neuron sums inputs from any proived list of other `Neurons` classes and can be used as the building block for constructing complex multilayer networks of `Neurons`, as we do [here](./demos/path_integration_example.ipynb) and [here](./demos/reinforcement_learning_example.ipynb). 
 
 ## Example Scripts
-In the folder called [example_scripts](./example_scripts/) we provide numerous script and demos which will help when learning `RatInABox`. In approximate order of complexity, these include:
-* [simple_example.ipynb](./simple_example.ipynb): a very simple tutorial for importing RiaB, initilising an Environment, Agent and some PlaceCells, running a brief simulation and outputting some data.
-* [extensive_example.ipynb](./extensive_example.ipynb): a more involved tutorial. More complex enivornment, more complex cell types and more complex plots are used. 
-* [list_of_plotting_functions.md](./list_of_plotting_fuctions.md): All the types of plots available for are listed and explained. 
-* [readme_figures.ipynb](./readme_figures.ipynb): (Almost) all plots/animations shown in the root readme are produced from this script (plus some minor formatting done afterwards in powerpoint).
-* [paper_figures.ipynb](./paper_figures.ipynb): (Almost) all plots/animations shown in the paper are produced from this script (plus some major formatting done afterwards in powerpoint).
-* [reinforcement_learning_example.ipynb](./reinforcement_learning_example.ipynb): RatInABox is use to construct, train and visualise a small two-layer network capable of model free reinforcement learning in order to find a reward hidden behind a wall. 
-* [path_integration_example.ipynb](./path_integration_example.ipynb): RatInABox is use to construct, train and visualise a large multi-layer network capable of learning a "ring attractor" capable of path integrating a position estimate using only velocity inputs.
+In the folder called [demos](./demos/) we provide numerous script and demos which will help when learning `RatInABox`. In approximate order of complexity, these include:
+* [simple_example.ipynb](./demos/simple_example.ipynb): a very simple tutorial for importing RiaB, initilising an Environment, Agent and some PlaceCells, running a brief simulation and outputting some data.
+* [extensive_example.ipynb](./demos/extensive_example.ipynb): a more involved tutorial. More complex enivornment, more complex cell types and more complex plots are used. 
+* [list_of_plotting_functions.md](./demos/list_of_plotting_fuctions.md): All the types of plots available for are listed and explained. 
+* [readme_figures.ipynb](./demos/readme_figures.ipynb): (Almost) all plots/animations shown in the root readme are produced from this script (plus some minor formatting done afterwards in powerpoint).
+* [paper_figures.ipynb](./demos/paper_figures.ipynb): (Almost) all plots/animations shown in the paper are produced from this script (plus some major formatting done afterwards in powerpoint).
+* [reinforcement_learning_example.ipynb](./demos/reinforcement_learning_example.ipynb): RatInABox is use to construct, train and visualise a small two-layer network capable of model free reinforcement learning in order to find a reward hidden behind a wall. 
+* [path_integration_example.ipynb](./demos/path_integration_example.ipynb): RatInABox is use to construct, train and visualise a large multi-layer network capable of learning a "ring attractor" capable of path integrating a position estimate using only velocity inputs.
 
 ## Contribute 
 `RatInABox` is an open source project, and we actively encourage community contributions. These can take various forms, such as new movement policies, new cells types, new plotting functions, new geometries, bug fixes, documentation, citations of relevant work, or additional experiment notebooks. If there is a small contribution you would like to make, please feel free to open a pull request, and we can review it. If you would like to add a new `Neurons` class please pull request it into the [contribs](./ratinabox/contribs/) directory. If there is a larger contribution you are considering please contact the correponding author at `tomgeorge1@btinternet.com`. 
