@@ -1,3 +1,4 @@
+# RatInABox 
 
 * [Environment.py](./Environment.py): Contains the `Environment` class.
 * [Agent.py](./Agent.py): Contains the `Agent` class.

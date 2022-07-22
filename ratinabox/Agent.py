@@ -543,6 +543,7 @@ class Agent:
         """Plots a heatmap of postions the agent has been in. vmin is always set to zero, so the darkest colormap color (if seen) represents locations which have never been visited 
         Args:
             dx (float, optional): The heatmap bin size. Defaults to 5cm in 2D or 1cm in 1D.
+            fig, ax: if provided, will plot onto this
         """
         if self.Environment.dimensionality == "1D":
             if dx is None:
@@ -566,6 +567,8 @@ class Agent:
             heatmap = bin_data_for_histogramming(data=pos, extent=ex, dx=dx)
             if fig == None and ax == None:
                 fig, ax = self.Environment.plot_environment()
+            else:
+                _,_ = self.Environment.plot_environment(fig=fig,ax=ax)
             vmin = 0
             vmax = np.max(heatmap)
             ax.imshow(heatmap, extent=ex, interpolation="bicubic", vmin=vmin, vmax=vmax)

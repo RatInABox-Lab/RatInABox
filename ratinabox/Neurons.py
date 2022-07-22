@@ -522,8 +522,19 @@ class PlaceCells(Neurons):
         )  # scales from being between [0,1] to [min_fr, max_fr]
         return firingrate
 
-    def plot_place_cell_locations(self):
-        fig, ax = self.Agent.Environment.plot_environment()
+    def plot_place_cell_locations(self, fig=None, ax=None):
+        """Scatter plots where the centre of the place cells are
+
+        Args:
+            fig, ax: if provided, will plot fig and ax onto these instead of making new.
+
+        Returns:
+            _type_: _description_
+        """      
+        if fig is None and ax is None:  
+            fig, ax = self.Agent.Environment.plot_environment()
+        else:
+            _, _ = self.Agent.Environment.plot_environment(fig=fig, ax=ax)
         place_cell_centres = self.place_cell_centres
         ax.scatter(
             place_cell_centres[:, 0],
@@ -593,7 +604,7 @@ class GridCells(Neurons):
 
     def get_state(self, evaluate_at="agent", **kwargs):
         """Returns the firing rate of the grid cells.
-        By default position is taken from the Agent and used to calculate firing rates. This can also by passed directly (evaluate_at=None, pos=pass_array_of_positions) or ou can use all the positions in the environment (evaluate_at="all").
+        By default position is taken from the Agent and used to calculate firing rates. This can also by passed directly (evaluate_at=None, pos=pass_array_of_positions) or you can use all the positions in the environment (evaluate_at="all").
 
         Returns:
             firingrates: an array of firing rates 
@@ -829,7 +840,7 @@ class BoundaryVectorCells(Neurons):
         )
         return pref[..., 0]
 
-    def plot_BVC_receptive_field(self, chosen_neurons="all"):
+    def plot_BVC_receptive_field(self, chosen_neurons="all", fig=None, ax=None):
         """Plots the receptive field (in polar corrdinates) of the BVC cells. For allocentric BVCs "up" in this plot == "North", for egocentric BVCs, up == the head direction of the animals
 
         Args:
@@ -846,13 +857,14 @@ class BoundaryVectorCells(Neurons):
                 chosen_neurons = np.linspace(0, self.n - 1, int(chosen_neurons)).astype(
                     int
                 )
-
-        fig, ax = plt.subplots(
-            1,
-            len(chosen_neurons),
-            figsize=(3 * len(chosen_neurons), 3 * 1),
-            subplot_kw={"projection": "polar"},
-        )
+        if fig is None and ax is None: 
+            fig, ax = plt.subplots(
+                1,
+                len(chosen_neurons),
+                figsize=(3 * len(chosen_neurons), 3 * 1),
+                subplot_kw={"projection": "polar"},
+            )
+        ax = np.array([ax]).reshape(-1)
 
         r = np.linspace(0, self.Agent.Environment.scale, 100)
         theta = np.linspace(0, 2 * np.pi, 360)

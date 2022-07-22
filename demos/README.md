@@ -1,3 +1,5 @@
+# Demos
+
 In this folder we provide numerous "example scripts" or "demos" which will help when learning `RatInABox`. In approximate order of complexity, these include:
 
 * [simple_example.ipynb](./simple_example.ipynb): a very simple tutorial for importing RiaB, initilising an Environment, Agent and some PlaceCells, running a brief simulation and outputting some data.
