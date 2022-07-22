@@ -6,13 +6,15 @@ with open("readme.md", "r") as fh:
 setuptools.setup(
     name="ratinabox",
     version="0.1",
+    description="RatInABox: A package for simulating motion and ephys data in continuous environments",
     author="Tom George",
-    author_email="tom.george.20@ucl.ac.uk",
-    description="A package for simulation motion and ephys data in continuous environments",
+    author_email="tomgeorge1@btinternet.com",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/TomGeorge1234/RatInABox",
+    download_url="https://github.com/TomGeorge1234/RatInABox",
     packages=setuptools.find_packages(),
+    license="Apache License 2.0",
 )
 
 

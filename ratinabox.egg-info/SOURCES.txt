@@ -1,0 +1,13 @@
+README.md
+setup.py
+ratinabox/Agent.py
+ratinabox/Environment.py
+ratinabox/Neurons.py
+ratinabox/__init__.py
+ratinabox/utils.py
+ratinabox.egg-info/PKG-INFO
+ratinabox.egg-info/SOURCES.txt
+ratinabox.egg-info/dependency_links.txt
+ratinabox.egg-info/top_level.txt
+ratinabox/contribs/ValueNeuron.py
+ratinabox/contribs/__init__.py

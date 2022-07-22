@@ -1,3 +1,15 @@
+Metadata-Version: 2.1
+Name: ratinabox
+Version: 0.1
+Summary: RatInABox: A package for simulating motion and ephys data in continuous environments
+Home-page: https://github.com/TomGeorge1234/RatInABox
+Author: Tom George
+Author-email: tomgeorge1@btinternet.com
+License: Apache License 2.0
+Download-URL: https://github.com/TomGeorge1234/RatInABox
+Platform: UNKNOWN
+Description-Content-Type: text/markdown
+
 #  RatInABox 
 
 `RatInABox` 🐀📦 (paper here) is a toolkit for simulating motion and various cell types found in the Hippocampal formation. `RatInABox` is fully continuous is space and time: position and neuronal firing rates are calculated rapidly online with float precision. With it you can:
@@ -64,10 +76,7 @@ pip install git+https://github.com/TomGeorge1234/ratinabox.git
 
 Once installed, import using  
 ```python
-import ratinabox
-from ratinabox.Environment import Environment
-from ratinabox.Agent import Agent
-from ratinabox.Neurons import *
+from ratinabox import * 
 ```
 
 ## Feature run-down
@@ -213,5 +222,7 @@ In the folder called [example_scripts](./example_scripts/) we provide numerous s
 ## Cite
 If you use `RatInABox` in your research or educational material, please cite the work as follows: `my wicked bibtex citation`
 The research paper corresponding to the above citation can be found [here](link/to/my/paper).
+
+
 
 
