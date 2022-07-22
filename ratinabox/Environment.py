@@ -1,4 +1,5 @@
-from ratinabox.utils import * 
+from ratinabox.utils import *
+
 verbose = False
 
 import numpy as np
@@ -6,6 +7,7 @@ import matplotlib
 from matplotlib import pyplot as plt
 
 """ENVIRONMENT"""
+
 
 class Environment:
     """Environment class: defines the Environment in which the Agent lives. 
@@ -33,7 +35,7 @@ class Environment:
             "boundary_conditions": "solid", 
             "scale": 1,  
             "aspect": 1, 
-            "dx": 0.01,  # discretises the environment (for plotting purposes only)
+            "dx": 0.01, 
         }
     """
 
