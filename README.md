@@ -52,12 +52,8 @@ Once you have cloned this repository either run
 ```python
 python setup.py install
 ```
-or just point your code to this directory directly (recommended if you want to meddle with the code)
-```python
-sys.path.append("path/from/your/code/to/ratinabox/")
-```
 
-`RatInABox` also support pip installion
+`RatInABox` also support direct installation via pip (no cloning needed)
 ```python
 pip install git+https://github.com/TomGeorge1234/ratinabox.git
 ```

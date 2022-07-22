@@ -2,7 +2,6 @@
 figures/
 rawdata/
 example_scripts/testing.ipynb
-*.ipynb
 *.pptx
 .DS_Store
 __pycache__
