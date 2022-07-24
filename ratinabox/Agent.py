@@ -47,11 +47,13 @@ class Agent:
             "dt": 0.01,
             # Speed params (leave empty if you are importing trajectory data)
             # These defaults are fit to match data from Sargolini et al. (2016)
-            "speed_coherence_time": 0.7,  # time over which speed decoheres
-            "speed_mean": 0.08,  # mean of speed
-            "speed_std": 0.08,  # std of speed (meaningless in 2D where speed ~rayleigh)
-            "rotational_velocity_coherence_time": 0.08,  # time over which speed decoheres
-            "rotational_velocity_std": 120 * (np.pi / 180),  # std of rotational speed
+            # also given are the parameter names as refered to in the methods section of the paper
+            "speed_coherence_time": 0.7,  # time over which speed decoheres, τ_v1 & τ_v2
+            "speed_mean": 0.08,  # mean of speed, σ_v2 μ_v1
+            "speed_std": 0.08,  # std of speed (meaningless in 2D where speed ~rayleigh), σ_v1
+            "rotational_velocity_coherence_time": 0.08,  # time over which speed decoheres, τ_w
+            "rotational_velocity_std": 120
+            * (np.pi / 180),  # std of rotational speed, σ_w
             # wall following parameter
             "thigmotaxis": 0.5,  # tendency for agents to linger near walls [0 = not at all, 1 = max]
         }
@@ -89,6 +91,11 @@ class Agent:
         if self.Environment.dimensionality == "1D":
             self.pos = self.Environment.sample_positions(n=1, method="random")[0]
             self.velocity = np.array([self.speed_mean])
+            if self.Environment.boundary_conditions == "solid":
+                if self.speed_mean != 0:
+                    print(
+                        "Warning you have solid 1D boundary conditions and non-zero speed mean. "
+                    )
 
         if verbose is True:
             print(
@@ -579,7 +586,7 @@ class Agent:
             if fig == None and ax == None:
                 fig, ax = self.Environment.plot_environment()
             else:
-                _,_ = self.Environment.plot_environment(fig=fig,ax=ax)
+                _, _ = self.Environment.plot_environment(fig=fig, ax=ax)
             vmin = 0
             vmax = np.max(heatmap)
             ax.imshow(heatmap, extent=ex, interpolation="bicubic", vmin=vmin, vmax=vmax)

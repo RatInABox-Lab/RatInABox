@@ -287,11 +287,11 @@ def ornstein_uhlenbeck(dt, x, drift=0.0, noise_scale=0.2, coherence_time=5.0):
         dt: update time step
         x: the stochastic variable being updated
         drift (float, or same type as x, optional): [description]. Defaults to 0.
-        noise_scale (float, or same type as v, optional): Magnitude of deviations from drift. Defaults to 0.16 (16 cm s^-1).
+        noise_scale (float, or same type as x, optional): Magnitude of deviations from drift. Defaults to 0.2 (20 cm s^-1 if units of x are in metres).
         coherence_time (float, optional): Effectively over what time scale you expect x to change directions. Defaults to 5.
 
     Returns:
-        dv (same type as v); the required update ot the velocity
+        dx (same type as x); the required update to x
     """
     x = np.array(x)
     drift = drift * np.ones_like(x)
