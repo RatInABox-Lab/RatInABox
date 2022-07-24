@@ -6,7 +6,7 @@
 * **Generate artificial neuronal data** Simulate various location or velocity selective cells found in the Hippocampal-Entorhinal system, or build your own more complex cell type. 
 * **Build complex networks** Build, train and analyse complex networks of cells, powered by `RatInABox`. 
 
-<img src="./images/riab.gif" width=1000>
+<img src="./images/riab.gif" width=800>
 
 `RatInABox` contains three classes: 
 
