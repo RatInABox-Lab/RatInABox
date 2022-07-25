@@ -67,7 +67,7 @@ from ratinabox.Neurons import *
 ```
 
 ## Feature run-down
-Here is a list of features loosely organised into three categories: those pertaining to (i) the `Agent`, (ii) the `Agent` and (iii) the `Neurons`. Specific details can be found in the paper, [here](link/to/paper/on/arxiv). 
+Here is a list of features loosely organised into three categories: those pertaining to (i) the `Environment`, (ii) the `Agent` and (iii) the `Neurons`. Specific details can be found in the paper, [here](link/to/paper/on/arxiv). 
 
 
 ### (i) `Environment` features
