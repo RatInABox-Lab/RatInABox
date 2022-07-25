@@ -197,22 +197,20 @@ We encourage users to create their own subclasses of `Neurons`. This is easy to 
 In the folder called [demos](./demos/) we provide numerous script and demos which will help when learning `RatInABox`. In approximate order of complexity, these include:
 * [simple_example.ipynb](./demos/simple_example.ipynb): a very simple tutorial for importing RiaB, initilising an Environment, Agent and some PlaceCells, running a brief simulation and outputting some data.
 ```python 
-import ratinabox
+import ratinabox #IMPORT 
 from ratinabox.Environment import Environment
 from ratinabox.Agent import Agent
 from ratinabox.Neurons import *
-Env = Environment()
+Env = Environment() #INITIALISE CLASSES
 Ag = Agent(Env)
 PCs = PlaceCells(Ag)
-for i in range(int(20/Ag.dt)):
+for i in range(int(20/Ag.dt)): #EXPLORE
     Ag.update()
     PCs.update()
-print(Ag.history['t'][:10])
-print(Ag.history['pos'][:10])
+print(Ag.history['pos'][:10]) #ANALYSE/PLOT
 print(PCs.history['firingrate'][:10])
-print(PCs.history['spikes'][:10])
-Ag.plot_trajectory()
-PCs.plot_rate_timeseries()
+fig, ax = Ag.plot_trajectory()
+fig, ax = PCs.plot_rate_timeseries()
 ```
 * [extensive_example.ipynb](./demos/extensive_example.ipynb): a more involved tutorial. More complex enivornment, more complex cell types and more complex plots are used. 
 * [list_of_plotting_functions.md](./demos/list_of_plotting_fuctions.md): All the types of plots available for are listed and explained. 
