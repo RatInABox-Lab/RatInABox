@@ -7,8 +7,8 @@ from ratinabox.utils import *
 
 class ValueNeuron(FeedForwardLayer):
     """
-    Contributer: Tom George
-    Date: 21/07/2022
+    Contributer: Tom George tomgeorge1@btinternet.com
+    Date: 23/07/2022
 
     The ValueNeuron class defines a neuron which learns the "value" of a policy using temporally continuous TD learning . This class is a subclass of FeedForwardLayer() which is a subclass of Neurons() and inherits it properties/plotting functions from both of these.  
 

@@ -6,7 +6,11 @@ from ratinabox.utils import *
 
 
 class PlaneWaveNeurons(Neurons):
-    """The PlaneWaveNeurons class defines a population of PlaneWaveNeurons. This class is a subclass of Neurons() and inherits it properties/plotting functions.  
+    """
+    Contributer: Tom George tomgeorge1@btinternet.com
+    Date: 23/07/2022
+
+    The PlaneWaveNeurons class defines a population of PlaneWaveNeurons. This class is a subclass of Neurons() and inherits it properties/plotting functions.  
 
     Must be initialised with an Agent and a 'params' dictionary. 
 
