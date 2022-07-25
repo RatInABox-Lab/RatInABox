@@ -1,6 +1,6 @@
 import setuptools
 
-with open("readme.md", "r") as fh:
+with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
@@ -16,8 +16,4 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     license="Apache License 2.0",
 )
-
-
-
-
 

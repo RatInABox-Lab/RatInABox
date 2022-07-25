@@ -658,7 +658,7 @@ class GridCells(Neurons):
         phi_1 = ((2 * np.pi) / gridscales) * (vecs * w1).sum(axis=-1)
         phi_2 = ((2 * np.pi) / gridscales) * (vecs * w2).sum(axis=-1)
         phi_3 = ((2 * np.pi) / gridscales) * (vecs * w3).sum(axis=-1)
-        firingrate = 0.5 * ((np.cos(phi_1) + np.cos(phi_2) + np.cos(phi_3)))
+        firingrate = (1/3) * ((np.cos(phi_1) + np.cos(phi_2) + np.cos(phi_3)))
         firingrate[firingrate < 0] = 0
 
         firingrate = (
@@ -1156,11 +1156,7 @@ class FeedForwardLayer(Neurons):
             "n": 10,
             "input_layers": [],  # a list of input layers, or add one by one using self.adD_inout
             "activation_params": {
-                "activation": "sigmoid",
-                "max_fr": 1,
-                "min_fr": 0,
-                "mid_x": 1,
-                "width_x": 2,
+                "activation": "linear",
             },
             "name": "FeedForwardLayer",
         }
@@ -1171,11 +1167,7 @@ class FeedForwardLayer(Neurons):
             "n": 10,
             "input_layers": [],  # a list of input layers, or add one by one using self.adD_inout
             "activation_params": {
-                "activation": "sigmoid",
-                "max_fr": 1,
-                "min_fr": 0,
-                "mid_x": 1,
-                "width_x": 2,
+                "activation": "linear",
             },
             "name": "FeedForwardLayer",
         }
