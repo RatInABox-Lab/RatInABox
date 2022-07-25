@@ -201,13 +201,16 @@ import ratinabox #IMPORT
 from ratinabox.Environment import Environment
 from ratinabox.Agent import Agent
 from ratinabox.Neurons import *
-Env = Environment() #INITIALISE CLASSES
+#INITIALISE CLASSES
+Env = Environment() 
 Ag = Agent(Env)
 PCs = PlaceCells(Ag)
-for i in range(int(20/Ag.dt)): #EXPLORE
+#EXPLORE
+for i in range(int(20/Ag.dt)): 
     Ag.update()
     PCs.update()
-print(Ag.history['pos'][:10]) #ANALYSE/PLOT
+#ANALYSE/PLOT
+print(Ag.history['pos'][:10]) 
 print(PCs.history['firingrate'][:10])
 fig, ax = Ag.plot_trajectory()
 fig, ax = PCs.plot_rate_timeseries()
