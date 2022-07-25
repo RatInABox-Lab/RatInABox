@@ -53,7 +53,7 @@ Once you have cloned this repository either run
 python setup.py install
 ```
 
-`RatInABox` also support direct installation via pip (no cloning needed)
+`RatInABox` also support direct installation via pip (no cloning needed, can take a few seconds)
 ```python
 pip install git+https://github.com/TomGeorge1234/ratinabox.git
 ```
@@ -195,7 +195,7 @@ We encourage users to create their own subclasses of `Neurons`. This is easy to 
 
 ## Example Scripts
 In the folder called [demos](./demos/) we provide numerous script and demos which will help when learning `RatInABox`. In approximate order of complexity, these include:
-* [simple_example.ipynb](./demos/simple_example.ipynb): a very simple tutorial for importing RiaB, initilising an Environment, Agent and some PlaceCells, running a brief simulation and outputting some data.
+* [simple_example.ipynb](./demos/simple_example.ipynb): a very simple tutorial for importing RiaB, initialising an Environment, Agent and some PlaceCells, running a brief simulation and outputting some data. Code copied here for convenience.
 ```python 
 import ratinabox #IMPORT 
 from ratinabox.Environment import Environment
