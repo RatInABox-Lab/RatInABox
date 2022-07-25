@@ -130,7 +130,7 @@ Agent.import_trajectory(times=array_of_times,
 <img src="./images/imported_trajectory.png" width=300>
 
 #### Policy control 
-By default the movement policy is an random and uncontrolled (e.g. displayed above). It is possible, however, to manually pass a "drift_velocity" to the Agent on each `update()` step. This 'closes the loop' allowing, for example, Actor-Critic systems to control the Agent policy. As a demonstration that this method can be used to control the agent's movement we set a radial drift velocity to encourage circular motion. We also use RatInABox to perform a simple model-free RL task and find a reward hidden behind a wall (the full script is given as an example script [here](./demos/reinforcement_learning_example.ipynb))
+By default the movement policy is an random and uncontrolled (e.g. displayed above). It is possible, however, to manually pass a "drift_velocity" to the Agent on each `Agent.update()` step. This 'closes the loop' allowing, for example, Actor-Critic systems to control the Agent policy. As a demonstration that this method can be used to control the agent's movement we set a radial drift velocity to encourage circular motion. We also use RatInABox to perform a simple model-free RL task and find a reward hidden behind a wall (the full script is given as an example script [here](./demos/reinforcement_learning_example.ipynb))
 ```python
 Agent.update(drift_velocity=drift_velocity)
 ```
@@ -196,6 +196,24 @@ We encourage users to create their own subclasses of `Neurons`. This is easy to 
 ## Example Scripts
 In the folder called [demos](./demos/) we provide numerous script and demos which will help when learning `RatInABox`. In approximate order of complexity, these include:
 * [simple_example.ipynb](./demos/simple_example.ipynb): a very simple tutorial for importing RiaB, initilising an Environment, Agent and some PlaceCells, running a brief simulation and outputting some data.
+```python 
+import ratinabox
+from ratinabox.Environment import Environment
+from ratinabox.Agent import Agent
+from ratinabox.Neurons import *
+Env = Environment()
+Ag = Agent(Env)
+PCs = PlaceCells(Ag)
+for i in range(int(20/Ag.dt)):
+    Ag.update()
+    PCs.update()
+print(Ag.history['t'][:10])
+print(Ag.history['pos'][:10])
+print(PCs.history['firingrate'][:10])
+print(PCs.history['spikes'][:10])
+Ag.plot_trajectory()
+PCs.plot_rate_timeseries()
+```
 * [extensive_example.ipynb](./demos/extensive_example.ipynb): a more involved tutorial. More complex enivornment, more complex cell types and more complex plots are used. 
 * [list_of_plotting_functions.md](./demos/list_of_plotting_fuctions.md): All the types of plots available for are listed and explained. 
 * [readme_figures.ipynb](./demos/readme_figures.ipynb): (Almost) all plots/animations shown in the root readme are produced from this script (plus some minor formatting done afterwards in powerpoint).
