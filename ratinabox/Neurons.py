@@ -1,4 +1,5 @@
 from ratinabox.utils import *
+
 verbose = False
 
 import numpy as np
@@ -217,7 +218,6 @@ class Neurons:
                     "It was not possible to get the rate map by evaluating the firing rate at all positions across the Environment. This is probably because the Neuron class does not support, or it does not have an groundtruth receptive field. Instead, plotting rate map by weighted position histogram method. Here is the error:"
                 )
                 print("Error: ", e)
-                print("yeet")
                 method = "history"
 
         if method == "history" or spikes == True:
@@ -548,8 +548,8 @@ class PlaceCells(Neurons):
 
         Returns:
             _type_: _description_
-        """      
-        if fig is None and ax is None:  
+        """
+        if fig is None and ax is None:
             fig, ax = self.Agent.Environment.plot_environment()
         else:
             _, _ = self.Agent.Environment.plot_environment(fig=fig, ax=ax)
@@ -658,7 +658,7 @@ class GridCells(Neurons):
         phi_1 = ((2 * np.pi) / gridscales) * (vecs * w1).sum(axis=-1)
         phi_2 = ((2 * np.pi) / gridscales) * (vecs * w2).sum(axis=-1)
         phi_3 = ((2 * np.pi) / gridscales) * (vecs * w3).sum(axis=-1)
-        firingrate = (1/3) * ((np.cos(phi_1) + np.cos(phi_2) + np.cos(phi_3)))
+        firingrate = (1 / 3) * ((np.cos(phi_1) + np.cos(phi_2) + np.cos(phi_3)))
         firingrate[firingrate < 0] = 0
 
         firingrate = (
@@ -897,7 +897,7 @@ class BoundaryVectorCells(Neurons):
                 chosen_neurons = np.linspace(0, self.n - 1, int(chosen_neurons)).astype(
                     int
                 )
-        if fig is None and ax is None: 
+        if fig is None and ax is None:
             fig, ax = plt.subplots(
                 1,
                 len(chosen_neurons),
@@ -1166,9 +1166,7 @@ class FeedForwardLayer(Neurons):
         default_params = {
             "n": 10,
             "input_layers": [],  # a list of input layers, or add one by one using self.adD_inout
-            "activation_params": {
-                "activation": "linear",
-            },
+            "activation_params": {"activation": "linear",},
             "name": "FeedForwardLayer",
         }
         self.Agent = Agent

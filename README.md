@@ -149,13 +149,13 @@ Under the random motion policy, walls in the environment mildly "repel" the agen
 #### Multiple cell types: 
 We provide a list of premade `Neurons` subclasses. These include: 
 
-* `PlaceCells(Neurons)` 
-* `GridCells(Neurons)`
-* `BoundaryVectorCells(Neurons)` (can be egocentric or allocentric)
-* `VelocityCells(Neurons)`
-* `SpeedCells(Neurons)`
-* `HeadDirectionCells(Neurons)`
-* `FeedForwardLayer(Neurons)` - calculates activated weighted sum of inputs from a provide list of input `Neurons` layers.
+* `PlaceCells` 
+* `GridCells`
+* `BoundaryVectorCells` (can be egocentric or allocentric)
+* `VelocityCells`
+* `SpeedCells`
+* `HeadDirectionCells`
+* `FeedForwardLayer` - calculates activated weighted sum of inputs from a provide list of input `Neurons` layers.
 
 This last class, `FeedForwardLayer` deserves special mention. Instead of its firing rate being determined explicitly by the state of the `Agent` it summates synaptic inputs from a provided list of input layers (which can be any `Neurons` subclass). This layer is the building block for how more complex networks can be studied using `RatInABox`. 
 

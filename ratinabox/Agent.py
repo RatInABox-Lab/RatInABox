@@ -337,7 +337,7 @@ class Agent:
         if self.Environment.dimensionality == "2D":
             self.history["rot_vel"].append(self.rotational_velocity)
 
-        return self.pos
+        return
 
     def import_trajectory(self, times=None, positions=None, dataset=None):
         """Import trajectory data into the agent by passing a list or array of timestamps and a list or array of positions. These will used for moting rather than the random motion model. The data is interpolated using cubic splines. This means imported data can be low resolution and smoothly upsampled (aka "augmented" with artificial data). 

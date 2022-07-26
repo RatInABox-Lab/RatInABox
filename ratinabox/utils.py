@@ -503,7 +503,7 @@ def activate(x, activation="sigmoid", deriv=False, other_args={}):
         # max_f = max firing rate = 1
         # mid_x = middle point on domain = 1
         # width_x = distance from 5percent_x to 95percent_x = 1
-        other_args_default = {"max_fr": 1, "min_fr": 0, "mid_x": 1, "width_x": 1}
+        other_args_default = {"max_fr": 1, "min_fr": 0, "mid_x": 1, "width_x": 2}
         other_args_default.update(other_args)
         other_args = other_args_default
         max_fr, min_fr, width_x, mid_x = (
