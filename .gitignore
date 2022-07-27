@@ -1,7 +1,7 @@
 #gitignore 
 figures/
 rawdata/
-example_scripts/testing.ipynb
+demos/testing.ipynb
 *.pptx
 .DS_Store
 __pycache__
