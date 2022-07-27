@@ -490,6 +490,21 @@ class PlaceCells(Neurons):
             self.n = self.place_cell_centres.shape[0]
         self.place_cell_widths = self.widths * np.ones(self.n)
 
+        if (
+            (self.wall_geometry == "line_of_sight")
+            and (self.Agent.Environment.boundary_conditions == "periodic")
+            and (self.Agent.Environment.dimensionality == "2D")
+        ):
+            print(
+                "'line_of_sight' wall geometry only possible in 2D when the boundary conditions are solid. Using 'geodesic' instead."
+            )
+            self.wall_geometry == "geodesic"
+        if (self.wall_geometry == "geodesic") and (len(self.Environment.walls) > 5):
+            print(
+                "'geodesic' wall geometry only supported for enivoronments with 1 additional wall (4 boundaing walls + 1 additional). Sorry. Using 'line_of_sight' instead."
+            )
+            self.wall_geometry == "line_of_sight"
+
         if verbose is True:
             print(
                 f"PlaceCells successfully initialised. You can see where they are centred at using PlaceCells.plot_place_cell_locations()"

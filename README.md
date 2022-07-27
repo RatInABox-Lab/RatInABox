@@ -87,6 +87,7 @@ Env = Environment(
     params = {'boundary_conditions':'periodic'} #or 'solid' (default)
 ) 
 ```
+
 <img src="./images/boundary_conditions.png" width=600>
 
 #### 1- or 2-dimensions 
@@ -96,7 +97,8 @@ Env = Environment(
     params = {'dimensionality':'1D'} #or '2D' (default)
 ) 
 ```
-<img src="./images/one_dimension.png" width=800>
+
+img src="./images/one_dimension.png" width=800>
 
 
 
@@ -115,6 +117,7 @@ Agent.speed_coherence_time = 0.7
 Agent.rotation_velocity_std = 120 * np.pi/180 #radians 
 Agent.rotational_velocity_coherence_time = 0.08
 ```
+
 <img src="./images/motion_model.png" width=800>
 
 
@@ -127,6 +130,7 @@ Agent.import_trajectory(times=array_of_times,
                         positions=array_of_positions)
 
 ```
+
 <img src="./images/imported_trajectory.png" width=300>
 
 #### Policy control 
@@ -134,6 +138,7 @@ By default the movement policy is an random and uncontrolled (e.g. displayed abo
 ```python
 Agent.update(drift_velocity=drift_velocity)
 ```
+
 <img src="./images/motion.gif" width=600>
 
 #### Wall repelling 
@@ -141,6 +146,7 @@ Under the random motion policy, walls in the environment mildly "repel" the agen
 ```python 
 Αgent.thigmotaxis = 0.8 #1 = high thigmotaxis (left plot), 0 = low (right)
 ```
+
 <img src="./images/wall_repel.png" height=300>
 
 
@@ -162,14 +168,18 @@ This last class, `FeedForwardLayer` deserves special mention. Instead of its fir
 Place cells come in multiple types (give by `params['description']`):
 * `"gaussian"`: normal gaussian place cell 
 * `"gaussian_threshold"`: gaussian thresholded at 1 sigma
-* `"diff_of_gaussian"`: gaussian(sigma) - gaussian(1.5 sigma)
+* `"diff_of_gaussians"`: gaussian(sigma) - gaussian(1.5 sigma)
 * `"top_hat"`: circular receptive field, max firing rate within, min firing rate otherwise
 * `"one_hot"`: the closest palce cell to any given location is established. This and only this cell fires. 
 
-This last place cell type, `"one_hot"` is particularly useful as it essentially rediscretises space and tabularises the state space (gridworld again). This can be used to  contrast and compare learning algorithms acting over continuous vs discrete state spaces. 
+This last place cell type, `"one_hot"` is particularly useful as it essentially rediscretises space and tabularises the state space (gridworld again). This can be used to  contrast and compare learning algorithms acting over continuous vs discrete state spaces. This figure compares the 5 place cell models for population of 9 place cells (top left shows centres of place cells, and in all cases the `"widths"` parameters is set to  0.2 m, or irrelevant in the case of `"one_hot"`s)
+
+<img src="./images/placecellmodels.png" width=900>
+
 
 #### Geometry of `PlaceCells` 
 Choose how you want `PlaceCells` to interact with walls in the `Environment`. We provide three types of geometries.  
+
 <img src="./images/wall_geometry.png" width=900>
 
 #### Spiking 
@@ -177,6 +187,7 @@ All neurons are rate based. However, at each update spikes are sampled as though
 ```
 Neurons.plot_ratemap(spikes=True)
 ```
+
 <img src="./images/spikes.png" width="1000">
 
 
@@ -188,6 +199,7 @@ More generally, however, cells firing is not only determined by position but pot
 Neurons.plot_rate_map() #attempted to plot "ground truth" rate map 
 Neurons.plot_rate_map(method="history") #plots rate map by firing-rate-weighted position heatmap
 ``` 
+
 <img src="./images/rate_map.png" width=600>
 
 #### More complex Neuron types and networks of Neurons
