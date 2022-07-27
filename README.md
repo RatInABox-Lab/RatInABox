@@ -176,7 +176,7 @@ Place cells come in multiple types (given by `params['description']`), or it wou
 
 This last place cell type, `"one_hot"` is particularly useful as it essentially rediscretises space and tabularises the state space (gridworld again). This can be used to  contrast and compare learning algorithms acting over continuous vs discrete state spaces. This figure compares the 5 place cell models for population of 9 place cells (top left shows centres of place cells, and in all cases the `"widths"` parameters is set to  0.2 m, or irrelevant in the case of `"one_hot"`s)
 
-<img src="./images/placecellmodels.png" width=900>
+<img src="./images/placecellmodels.png" width=800>
 
 
 #### Geometry of `PlaceCells` 
