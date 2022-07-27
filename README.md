@@ -165,7 +165,9 @@ We provide a list of premade `Neurons` subclasses. These include:
 
 This last class, `FeedForwardLayer` deserves special mention. Instead of its firing rate being determined explicitly by the state of the `Agent` it summates synaptic inputs from a provided list of input layers (which can be any `Neurons` subclass). This layer is the building block for how more complex networks can be studied using `RatInABox`. 
 
-Place cells come in multiple types (give by `params['description']`):
+#### Place cell models: 
+
+Place cells come in multiple types (given by `params['description']`), or it would be easy to write your own:
 * `"gaussian"`: normal gaussian place cell 
 * `"gaussian_threshold"`: gaussian thresholded at 1 sigma
 * `"diff_of_gaussians"`: gaussian(sigma) - gaussian(1.5 sigma)
