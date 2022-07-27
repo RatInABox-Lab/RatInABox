@@ -123,6 +123,7 @@ class Agent:
             dt = self.dt
         self.dt = dt
         self.t += dt
+        self.velocity = self.velocity.astype(float)
 
         if self.use_imported_trajectory == False:  # use random motion model
             if self.Environment.dimensionality == "2D":
