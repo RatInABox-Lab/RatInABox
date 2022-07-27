@@ -10,9 +10,9 @@
 
 `RatInABox` contains three classes: 
 
-1. `Environment`: The environment/maze (or "box"📦) that the agent lives in. 1- or 2-dimensional.
-2. `Agent`: The agent (or "rat") moving around the `Environment`. 
-3. `Neurons`: A population of neurons with firing rates determined by the state (position and velocity) of the `Agent`. Make your own or use one of our premade cell types: 
+1. `Environment`📦: The environment/maze (or "box") that the agent lives in. 1- or 2-dimensional.
+2. `Agent`🐀: The agent (or "rat") moving around the `Environment`. 
+3. `Neurons`🧠: A population of neurons with firing rates determined by the state (position and velocity) of the `Agent`. Make your own or use one of our premade cell types: 
     * `PlaceCells`
     * `GridCells`
     * `BoundaryVectorCells` (egocentric or allocentric)
