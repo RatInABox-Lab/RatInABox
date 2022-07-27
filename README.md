@@ -1,6 +1,6 @@
 #  RatInABox 
 
-`RatInABox` 🐀📦 (paper here) is a toolkit for simulating motion and various cell types found in the Hippocampal formation. `RatInABox` is fully continuous is space and time: position and neuronal firing rates are calculated rapidly online with float precision. With it you can:
+`RatInABox` (paper here) is a toolkit for simulating motion and various cell types found in the Hippocampal formation. `RatInABox` is fully continuous is space and time: position and neuronal firing rates are calculated rapidly online with float precision. With it you can:
 
 * **Generate realistic trajectories** for rats exploring complex 1- and 2-dimensional environments under a random policy or using imported data
 * **Generate artificial neuronal data** Simulate various location or velocity selective cells found in the Hippocampal-Entorhinal system, or build your own more complex cell type. 
@@ -10,7 +10,7 @@
 
 `RatInABox` contains three classes: 
 
-1. `Environment`: The environment/maze (or "box") that the agent lives in. 1- or 2-dimensional.
+1. `Environment`: The environment/maze (or "box"📦) that the agent lives in. 1- or 2-dimensional.
 2. `Agent`: The agent (or "rat") moving around the `Environment`. 
 3. `Neurons`: A population of neurons with firing rates determined by the state (position and velocity) of the `Agent`. Make your own or use one of our premade cell types: 
     * `PlaceCells`
@@ -28,7 +28,7 @@ The top animation shows the kind of simulation you can easily run using this too
 * **Flexible**: Generate arbitrarily complex environments. 
 * **Biological**: Simulate large populations of spatially and/or velocity modulated cell types. Neurons can be rate based or spiking. Motion model fitted to match real rodent motion. 
 * **Fast**: Simulating 1 minute of exploration in a 2D environment with 100 place cells (dt=10 ms) take just 2 seconds on a laptop (no GPU needed).
-* **Precise**: No more pre-discretised positions, tabular state spaces, or jerky movement policies. It's all continuous. 
+* **Precise**: No more prediscretised positions, tabular state spaces, or jerky movement policies. It's all continuous. 
 * **Visual** Plot or animate trajectories, firing rate timeseries', spike rasters, receptive fields, heat maps, velocity histograms...using the plotting functions ([summarised here](./demos/list_of_plotting_fuctions.md)). 
 * **Easy**: Sensible default parameters mean you can have realisitic simulation data to work with in ~10 lines of code.
 * **General**: Build your own bespoke `Neurons` classes and combine them into complex networks of neurons (example scripts given).
