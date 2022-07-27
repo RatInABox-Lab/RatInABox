@@ -142,7 +142,7 @@ Agent.update(drift_velocity=drift_velocity)
 <img src="./images/motion.gif" width=600>
 
 #### Wall repelling 
-Under the random motion policy, walls in the environment mildly "repel" the agent. Coupled with the finite turning speed this replicates an effect (known as thigmotaxis and linked to anxiety) where the agent is biased to over-explore near walls and corners (as shown in these heatmaps) matching real rodent behaviour. It can be turned up or down with the `anxiety` parameter.
+Under the random motion policy, walls in the environment mildly "repel" the agent. Coupled with the finite turning speed this replicates an effect (known as thigmotaxis, sometimes linked to anxiety) where the agent is biased to over-explore near walls and corners (as shown in these heatmaps) matching real rodent behaviour. It can be turned up or down with the `thigmotaxis` parameter.
 ```python 
 Αgent.thigmotaxis = 0.8 #1 = high thigmotaxis (left plot), 0 = low (right)
 ```
