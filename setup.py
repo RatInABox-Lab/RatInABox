@@ -1,5 +1,7 @@
 import setuptools
 
+required = ["numpy", "matplotlib", "scipy", "tqdm", "jupyter"]
+
 setuptools.setup(
     name="ratinabox",
     version="0.1",
@@ -10,6 +12,7 @@ setuptools.setup(
     url="https://github.com/TomGeorge1234/RatInABox",
     download_url="https://github.com/TomGeorge1234/RatInABox",
     packages=setuptools.find_packages(),
+    install_requires=required,
     license="Apache License 2.0",
 )
 
