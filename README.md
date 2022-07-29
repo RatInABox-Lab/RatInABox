@@ -36,7 +36,7 @@ The top animation shows the kind of simulation you can easily run using this too
 
 ## Get started 
 
-At the bottom of this readme we list [example scripts](./demos/): one simple and one extensive. Reading through these  should be enough to get started. We also provide two case studies where `RatInABox` is used in a [reinforcement learning project](./demos/reinforcement_learning_example.ipynb) and a [path integration](./demos/path_integration_example.ipynb) project. Jupyter scripts reproducing all figures in the [paper](./demos/paper_figures.ipynb) and [readme](./demos/readme_figures.ipynb) are also provided.
+At the bottom of this readme we list [example scripts](./demos/): one simple and one extensive. Reading through these should be enough to get started. We also provide two case studies where `RatInABox` is used in a [reinforcement learning project](./demos/reinforcement_learning_example.ipynb) and a [path integration](./demos/path_integration_example.ipynb) project. Jupyter scripts reproducing all figures in the [paper](./demos/paper_figures.ipynb) and [readme](./demos/readme_figures.ipynb) are also provided.
 
 
 ## Requirements
@@ -48,17 +48,18 @@ At the bottom of this readme we list [example scripts](./demos/): one simple and
 * tqdm (optional)
 
 ## Installing and Importing
-Once you have cloned this repository either run 
-```python
-python setup.py install
-```
 
-`RatInABox` also support direct installation via pip (no cloning needed, can take a few seconds)
-```python
-pip install git+https://github.com/TomGeorge1234/ratinabox.git
+This package can be installed via `pip` at the command line with 
+```console
+$ pip install git+https://github.com/TomGeorge1234/ratinabox.git
 ```
-
-Once installed, import using  
+or manually via 
+```console
+$ git clone https://github.com/TomGeorge1234/RatInABox.git
+$ cd RatInABox
+$ python setup.py install
+```
+Once installed, import into your python project with  
 ```python
 import ratinabox
 from ratinabox.Environment import Environment
@@ -233,6 +234,7 @@ fig, ax = PCs.plot_rate_timeseries()
 * [list_of_plotting_functions.md](./demos/list_of_plotting_fuctions.md): All the types of plots available for are listed and explained. 
 * [readme_figures.ipynb](./demos/readme_figures.ipynb): (Almost) all plots/animations shown in the root readme are produced from this script (plus some minor formatting done afterwards in powerpoint).
 * [paper_figures.ipynb](./demos/paper_figures.ipynb): (Almost) all plots/animations shown in the paper are produced from this script (plus some major formatting done afterwards in powerpoint).
+* [decoding_position_example.ipynb](./demos/decoding_position_example.ipynb): Postion is decoded from neural data generated with RatInABox. Place cells, grid cell and boundary vector cells are compared. 
 * [reinforcement_learning_example.ipynb](./demos/reinforcement_learning_example.ipynb): RatInABox is use to construct, train and visualise a small two-layer network capable of model free reinforcement learning in order to find a reward hidden behind a wall. 
 * [path_integration_example.ipynb](./demos/path_integration_example.ipynb): RatInABox is use to construct, train and visualise a large multi-layer network capable of learning a "ring attractor" capable of path integrating a position estimate using only velocity inputs.
 
