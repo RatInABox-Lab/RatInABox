@@ -56,16 +56,17 @@ $ pip install git+https://github.com/TomGeorge1234/ratinabox.git
 Alternatively, install `RatInABox` locally using  
 ```console
 $ git clone https://github.com/TomGeorge1234/RatInABox.git
-$ pip install -e RatInABox 
+$ cd RatInABox
+$ pip install -e . 
 ```
-N.b. the `-e` (`--editable`) handle means this install points directly to the cloned repository. Any changes made here will be reflected when you import next `RatInABox` into your code.
+N.b. the `-e` (`--editable`) handle means this install points *directly* to the cloned repository itself. Any changes made here will be reflected when you next import `RatInABox` into your code.
 
 **Import** into your python project with  
 ```python
 import ratinabox
 from ratinabox.Environment import Environment
 from ratinabox.Agent import Agent
-from ratinabox.Neurons import *
+from ratinabox.Neurons import PlaceCells, GridCells #...
 ```
 
 ## Feature run-down

@@ -182,9 +182,9 @@ class Neurons:
 
         elif imshow == True:
             if fig is None and ax is None:
-                fig, ax = plt.subplots(figsize=(8, 2.5))
+                fig, ax = plt.subplots(figsize=(4, 2.5))
             data = rate_timeseries[:, chosen_neurons].T
-            ax.imshow(data, aspect=0.3 * data.shape[1] / data.shape[0])
+            ax.imshow(data[::-1], aspect=0.3 * data.shape[1] / data.shape[0])
             ax.spines["top"].set_visible(False)
             ax.spines["right"].set_visible(False)
             ax.spines["left"].set_visible(False)
