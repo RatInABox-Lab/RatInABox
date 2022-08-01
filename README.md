@@ -49,19 +49,19 @@ At the bottom of this readme we list [example scripts](./demos/): one simple and
 
 ## Installing and Importing
 
-This package can be installed via `pip` at the command line with 
+**Install** using `pip` at the command line 
 ```console
 $ pip install git+https://github.com/TomGeorge1234/ratinabox.git
 ```
-alternatively you can install locally with  
+Alternatively, install `RatInABox` locally using  
 ```console
 $ git clone https://github.com/TomGeorge1234/RatInABox.git
 $ cd RatInABox
 $ pip install -e . 
 ```
-The `-e` handle means that any changes you make to your cloned repo will be reflected when you import `RatInABox`.
- 
-Once installed, import into your python project with  
+N.b. the `-e` handle means this install points directly to the cloned repository. Any changes made here will be reflected when you import next `RatInABox` into your code.
+
+**Import** into your python project with  
 ```python
 import ratinabox
 from ratinabox.Environment import Environment
