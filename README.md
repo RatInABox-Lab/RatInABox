@@ -53,12 +53,14 @@ This package can be installed via `pip` at the command line with
 ```console
 $ pip install git+https://github.com/TomGeorge1234/ratinabox.git
 ```
-or manually via 
+alternatively you can install locally with  
 ```console
 $ git clone https://github.com/TomGeorge1234/RatInABox.git
 $ cd RatInABox
-$ python setup.py install
+$ pip install -e . 
 ```
+The `-e` handle means that any changes you make to your cloned repo will be reflected when you import `RatInABox`.
+ 
 Once installed, import into your python project with  
 ```python
 import ratinabox

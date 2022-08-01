@@ -115,6 +115,7 @@ class Neurons:
         t_end=None,
         chosen_neurons="all",
         spikes=True,
+        imshow=False,
         fig=None,
         ax=None,
         xlim=None,
@@ -126,8 +127,9 @@ class Neurons:
             • t_end (int, optional): _description_. Defaults to 60.
             • chosen_neurons: Which neurons to plot. string "10" or 10 will plot ten of them, "all" will plot all of them, "12rand" will plot 12 random ones. A list like [1,4,5] will plot cells indexed 1, 4 and 5. Defaults to "all".
             chosen_neurons (str, optional): Which neurons to plot. string "10" will plot 10 of them, "all" will plot all of them, a list like [1,4,5] will plot cells indexed 1, 4 and 5. Defaults to "10".
-            • plot_spikes (bool, optional): If True, scatters exact spike times underneath each curve of firing rate. Defaults to True.
+            • spikes (bool, optional): If True, scatters exact spike times underneath each curve of firing rate. Defaults to True.
             the below params I just added for help with animations
+            • imshow - if True will not dispaly as mountain plot but as an image (plt.imshow)
             • fig, ax: the figure, axis to plot on (can be None)
             xlim: fix xlim of plot irrespective of how much time you're plotting 
         Returns:
@@ -148,35 +150,49 @@ class Neurons:
         # neurons to plot
         chosen_neurons = self.return_list_of_neurons(chosen_neurons)
 
-        firingrates = rate_timeseries[:, chosen_neurons].T
-        fig, ax = mountain_plot(
-            X=t / 60,
-            NbyX=firingrates,
-            color=self.color,
-            xlabel="Time / min",
-            ylabel="Neurons",
-            xlim=None,
-            fig=fig,
-            ax=ax,
-        )
+        if imshow == False:
+            firingrates = rate_timeseries[:, chosen_neurons].T
+            fig, ax = mountain_plot(
+                X=t / 60,
+                NbyX=firingrates,
+                color=self.color,
+                xlabel="Time / min",
+                ylabel="Neurons",
+                xlim=None,
+                fig=fig,
+                ax=ax,
+            )
 
-        if spikes == True:
-            for i in range(len(chosen_neurons)):
-                time_when_spiked = t[spike_data[:, chosen_neurons[i]]] / 60
-                h = (i + 1 - 0.1) * np.ones_like(time_when_spiked)
-                ax.scatter(
-                    time_when_spiked,
-                    h,
-                    color=(self.color or "C1"),
-                    alpha=0.5,
-                    s=2,
-                    linewidth=0,
-                )
+            if spikes == True:
+                for i in range(len(chosen_neurons)):
+                    time_when_spiked = t[spike_data[:, chosen_neurons[i]]] / 60
+                    h = (i + 1 - 0.1) * np.ones_like(time_when_spiked)
+                    ax.scatter(
+                        time_when_spiked,
+                        h,
+                        color=(self.color or "C1"),
+                        alpha=0.5,
+                        s=2,
+                        linewidth=0,
+                    )
+            ax.set_xticks([t_start / 60, t_end / 60])
+            if xlim is not None:
+                ax.set_xlim(right=xlim / 60)
+                ax.set_xticks([0, xlim / 60])
 
-        ax.set_xticks([t_start / 60, t_end / 60])
-        if xlim is not None:
-            ax.set_xlim(right=xlim / 60)
-            ax.set_xticks([0, xlim / 60])
+        elif imshow == True:
+            if fig is None and ax is None:
+                fig, ax = plt.subplots(figsize=(8, 2.5))
+            data = rate_timeseries[:, chosen_neurons].T
+            ax.imshow(data, aspect=0.3 * data.shape[1] / data.shape[0])
+            ax.spines["top"].set_visible(False)
+            ax.spines["right"].set_visible(False)
+            ax.spines["left"].set_visible(False)
+            ax.set_xlabel("Time / min")
+            ax.set_xticks([0 - 0.5, len(t) + 0.5])
+            ax.set_xticklabels([round(t_start / 60, 2), round(t_end / 60, 2)])
+            ax.set_yticks([])
+            ax.set_ylabel("Neurons")
 
         return fig, ax
 
@@ -499,7 +515,9 @@ class PlaceCells(Neurons):
                 "'line_of_sight' wall geometry only possible in 2D when the boundary conditions are solid. Using 'geodesic' instead."
             )
             self.wall_geometry == "geodesic"
-        if (self.wall_geometry == "geodesic") and (len(self.Agent.Environment.walls) > 5):
+        if (self.wall_geometry == "geodesic") and (
+            len(self.Agent.Environment.walls) > 5
+        ):
             print(
                 "'geodesic' wall geometry only supported for enivoronments with 1 additional wall (4 boundaing walls + 1 additional). Sorry. Using 'line_of_sight' instead."
             )
