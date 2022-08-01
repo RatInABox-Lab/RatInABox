@@ -134,7 +134,7 @@ Agent.import_trajectory(times=array_of_times,
 
 ```
 
-<img src="./images/imported_trajectory.png" width=300>
+<img src="./images/imported_trajectory.png" width=200>
 
 #### Policy control 
 By default the movement policy is an random and uncontrolled (e.g. displayed above). It is possible, however, to manually pass a "drift_velocity" to the Agent on each `Agent.update()` step. This 'closes the loop' allowing, for example, Actor-Critic systems to control the Agent policy. As a demonstration that this method can be used to control the agent's movement we set a radial drift velocity to encourage circular motion. We also use RatInABox to perform a simple model-free RL task and find a reward hidden behind a wall (the full script is given as an example script [here](./demos/reinforcement_learning_example.ipynb))
@@ -150,7 +150,7 @@ Under the random motion policy, walls in the environment mildly "repel" the agen
 Αgent.thigmotaxis = 0.8 #1 = high thigmotaxis (left plot), 0 = low (right)
 ```
 
-<img src="./images/wall_repel.png" height=300>
+<img src="./images/wall_repel.png" width=300>
 
 
 ### (iii) `Neurons` features 
