@@ -56,10 +56,9 @@ $ pip install git+https://github.com/TomGeorge1234/ratinabox.git
 Alternatively, install `RatInABox` locally using  
 ```console
 $ git clone https://github.com/TomGeorge1234/RatInABox.git
-$ cd RatInABox
-$ pip install -e . 
+$ pip install -e RatInABox 
 ```
-N.b. the `-e` handle means this install points directly to the cloned repository. Any changes made here will be reflected when you import next `RatInABox` into your code.
+N.b. the `-e` (`--editable`) handle means this install points directly to the cloned repository. Any changes made here will be reflected when you import next `RatInABox` into your code.
 
 **Import** into your python project with  
 ```python
