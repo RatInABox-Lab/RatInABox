@@ -304,7 +304,7 @@ class Environment:
             if wall_geometry == "geodesic":
                 assert (
                     boundary_conditions == "solid"
-                ), "line of sight geometry not available for periodic boundary conditions"
+                ), "geodesic geometry is not available for periodic boundary conditions"
                 assert (
                     len(walls) <= 5
                 ), "unfortunately geodesic geomtry is only defined in closed rooms with one additional wall (efficient geometry calculations withh more than 1 wall are super hard I have discovered!) "

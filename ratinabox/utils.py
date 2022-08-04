@@ -492,6 +492,8 @@ def activate(x, activation="sigmoid", deriv=False, other_args={}):
     except KeyError:
         name = activation
 
+    assert name in ["linear", "sigmoid", "relu"]
+
     if name == "linear":
         if deriv == False:
             return x

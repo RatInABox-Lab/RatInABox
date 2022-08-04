@@ -433,6 +433,7 @@ class Agent:
         ax=None,
         decay_point_size=False,
         plot_agent=True,
+        color=None,
         xlim=None,
     ):
 
@@ -449,6 +450,8 @@ class Agent:
         Returns:
             fig, ax
         """
+        if color is None:
+            color = "C0"
         dt = self.dt
         approx_speed = self.average_measured_speed
         scatter_distance = 0.02  # on average how far betwen scatter points
@@ -473,7 +476,7 @@ class Agent:
             if decay_point_size == True:
                 s = 15 * np.exp((time - time[-1]) / 10)
                 s[(time[-1] - time) > 15] *= 0
-            c = ["C0"] * len(time)
+            c = [color] * len(time)
             if plot_agent == True:
                 s[-1] = 40
                 c[-1] = "r"
@@ -489,7 +492,7 @@ class Agent:
         if self.Environment.dimensionality == "1D":
             if fig is None and ax is None:
                 fig, ax = plt.subplots(figsize=(4, 2))
-            ax.scatter(time / 60, trajectory, alpha=0.7, linewidth=0)
+            ax.scatter(time / 60, trajectory, alpha=0.7, linewidth=0, c=color)
             ax.spines["left"].set_position(("data", t_start / 60))
             ax.set_xlabel("Time / min")
             ax.set_ylabel("Position / m")

@@ -101,7 +101,7 @@ Env = Environment(
 ) 
 ```
 
-img src="./images/one_dimension.png" width=800>
+<img src="./images/one_dimension.png" width=800>
 
 
 

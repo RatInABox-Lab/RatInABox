@@ -226,6 +226,7 @@ class Neurons:
         Returns:
             fig, ax 
         """
+        # GET DATA
         if method == "groundtruth":
             try:
                 rate_maps = self.get_state(evaluate_at="all", **kwargs)
@@ -262,38 +263,75 @@ class Neurons:
 
         chosen_neurons = self.return_list_of_neurons(chosen_neurons=chosen_neurons)
 
+        # PLOT 2D
         if self.Agent.Environment.dimensionality == "2D":
+            from mpl_toolkits.axes_grid1 import ImageGrid
 
             if fig is None and ax is None:
                 if shape is None:
                     Nx, Ny = 1, len(chosen_neurons)
                 else:
                     Nx, Ny = shape[0], shape[1]
-                fig, ax = plt.subplots(
-                    Nx, Ny, figsize=(3 * Ny, 3 * Nx), facecolor=coloralpha,
+                fig = plt.figure()
+                axes = ImageGrid(
+                    fig,
+                    111,
+                    nrows_ncols=(Nx, Ny),
+                    axes_pad=0.05,
+                    cbar_location="right",
+                    cbar_mode="single",
+                    cbar_size="5%",
+                    cbar_pad=0.05,
                 )
-            ax = np.array([ax])
+                cax = axes.cbar_axes[0]
+                axes = np.array(axes)
+            else:
+                axes = np.array([ax]).reshape(-1)
+                from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-            if len(chosen_neurons) != ax.size:
+                divider = make_axes_locatable(axes[-1])
+                cax = divider.append_axes("right", size="5%", pad=0.05)
+            if len(chosen_neurons) != axes.size:
                 print(
-                    f"You are trying to plot a different number of neurons {len(chosen_neurons)} than the number of axes provided {ax.size}. Some might be missed. Either change this with the chosen_neurons argument or pass in a list of axes to plot on"
+                    f"You are trying to plot a different number of neurons {len(chosen_neurons)} than the number of axes provided {axes.size}. Some might be missed. Either change this with the chosen_neurons argument or pass in a list of axes to plot on"
                 )
-            for (i, ax_) in enumerate(ax.flatten()):
-                self.Agent.Environment.plot_environment(fig, ax_)
 
-                if method == "groundtruth":
-                    rate_map = rate_maps[chosen_neurons[i], :].reshape(
-                        self.Agent.Environment.discrete_coords.shape[:2]
-                    )
-                    im = ax_.imshow(rate_map, extent=self.Agent.Environment.extent)
-                if method == "history":
+            vmin, vmax = 0, 0
+            ims = []
+            if method in ["groundtruth", "history"]:
+                for (i, ax_) in enumerate(axes):
+                    self.Agent.Environment.plot_environment(fig, ax_)
                     ex = self.Agent.Environment.extent
-                    rate_timeseries_ = rate_timeseries[chosen_neurons[i], :]
-                    rate_map = bin_data_for_histogramming(
-                        data=pos, extent=ex, dx=0.05, weights=rate_timeseries_
+                    if method == "groundtruth":
+                        rate_map = rate_maps[chosen_neurons[i], :].reshape(
+                            self.Agent.Environment.discrete_coords.shape[:2]
+                        )
+                        im = ax_.imshow(rate_map, extent=ex)
+                    elif method == "history":
+                        rate_timeseries_ = rate_timeseries[chosen_neurons[i], :]
+                        rate_map = bin_data_for_histogramming(
+                            data=pos, extent=ex, dx=0.05, weights=rate_timeseries_
+                        )
+                        im = ax_.imshow(
+                            rate_map,
+                            extent=self.Agent.Environment.extent,
+                            interpolation="bicubic",
+                        )
+                    ims.append(im)
+                    vmin, vmax = (
+                        min(vmin, np.min(rate_map)),
+                        max(vmax, np.max(rate_map)),
                     )
-                    im = ax_.imshow(rate_map, extent=ex, interpolation="bicubic")
-                if spikes is True:
+                for im in ims:
+                    im.set_clim((vmin, vmax))
+                cbar = plt.colorbar(ims[-1], cax=cax)
+                lim_v = vmax if vmax > -vmin else vmin
+                cbar.set_ticks([0, lim_v])
+                cbar.set_ticklabels([0, round(lim_v, 0)])
+                cbar.outline.set_visible(False)
+
+            if spikes is True:
+                for (i, ax_) in enumerate(axes):
                     pos_where_spiked = pos[spike_data[chosen_neurons[i], :]]
                     ax_.scatter(
                         pos_where_spiked[:, 0],
@@ -302,8 +340,10 @@ class Neurons:
                         linewidth=0,
                         alpha=0.7,
                     )
+
             return fig, ax
 
+        # PLOT 1D
         if self.Agent.Environment.dimensionality == "1D":
             if method == "groundtruth":
                 rate_maps = rate_maps[chosen_neurons, :]
@@ -506,22 +546,26 @@ class PlaceCells(Neurons):
             self.n = self.place_cell_centres.shape[0]
         self.place_cell_widths = self.widths * np.ones(self.n)
 
+        # Assertions (some combinations of boundary condition and wall geometries aren't allowed)
         if (
-            (self.wall_geometry == "line_of_sight")
+            (
+                (self.wall_geometry == "line_of_sight")
+                or ((self.wall_geometry == "geodesic"))
+            )
             and (self.Agent.Environment.boundary_conditions == "periodic")
             and (self.Agent.Environment.dimensionality == "2D")
         ):
             print(
-                "'line_of_sight' wall geometry only possible in 2D when the boundary conditions are solid. Using 'geodesic' instead."
+                f"{self.wall_geometry} wall geometry only possible in 2D when the boundary conditions are solid. Using 'euclidean' insstead."
             )
-            self.wall_geometry == "geodesic"
+            self.wall_geometry = "euclidean"
         if (self.wall_geometry == "geodesic") and (
             len(self.Agent.Environment.walls) > 5
         ):
             print(
                 "'geodesic' wall geometry only supported for enivoronments with 1 additional wall (4 boundaing walls + 1 additional). Sorry. Using 'line_of_sight' instead."
             )
-            self.wall_geometry == "line_of_sight"
+            self.wall_geometry = "line_of_sight"
 
         if verbose is True:
             print(
@@ -1252,7 +1296,6 @@ class FeedForwardLayer(Neurons):
         Returns:
             firingrate: array of firing rates 
         """
-
         if evaluate_at == "last":
             V = np.zeros(self.n)
         elif evaluate_at == "all":
@@ -1272,7 +1315,6 @@ class FeedForwardLayer(Neurons):
             V += np.matmul(w, I)
         firingrate = activate(V, other_args=self.activation_params)
         firingrate_prime = activate(V, other_args=self.activation_params, deriv=True)
-
         self.firingrate_temp = firingrate
         self.firingrate_prime_temp = firingrate_prime
 
