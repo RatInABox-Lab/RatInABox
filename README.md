@@ -8,7 +8,7 @@
 
 <img src="./images/riab.gif" width=850>
 
-`RatInABox` contains three classes: 
+`RatInABox` contains just three classes: 
 
 1. `Environment`📦: The environment/maze (or "box") that the agent lives in. 1- or 2-dimensional.
 2. `Agent`      🐀: The agent (or "rat") moving around the `Environment`. 
