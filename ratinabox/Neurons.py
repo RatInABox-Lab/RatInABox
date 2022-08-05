@@ -287,10 +287,13 @@ class Neurons:
                 axes = np.array(axes)
             else:
                 axes = np.array([ax]).reshape(-1)
-                from mpl_toolkits.axes_grid1 import make_axes_locatable
+                if method in ["groundtruth", "history"]:
+                    from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-                divider = make_axes_locatable(axes[-1])
-                cax = divider.append_axes("right", size="5%", pad=0.05)
+                    divider = make_axes_locatable(axes[-1])
+                    cax = divider.append_axes("right", size="5%", pad=0.05)
+            for (i, ax_) in enumerate(axes):
+                self.Agent.Environment.plot_environment(fig, ax_)
             if len(chosen_neurons) != axes.size:
                 print(
                     f"You are trying to plot a different number of neurons {len(chosen_neurons)} than the number of axes provided {axes.size}. Some might be missed. Either change this with the chosen_neurons argument or pass in a list of axes to plot on"
@@ -300,7 +303,6 @@ class Neurons:
             ims = []
             if method in ["groundtruth", "history"]:
                 for (i, ax_) in enumerate(axes):
-                    self.Agent.Environment.plot_environment(fig, ax_)
                     ex = self.Agent.Environment.extent
                     if method == "groundtruth":
                         rate_map = rate_maps[chosen_neurons[i], :].reshape(
@@ -341,7 +343,7 @@ class Neurons:
                         alpha=0.7,
                     )
 
-            return fig, ax
+            return fig, axes
 
         # PLOT 1D
         if self.Agent.Environment.dimensionality == "1D":

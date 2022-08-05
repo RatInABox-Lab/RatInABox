@@ -33,7 +33,7 @@ Plots the agent trajectory. Works for 1 or 2D.
 
 ## `Agent.animate_trajectory()`
 Makes an animation of the agents trajectory. 
-<img src="../images/plotting_examples/trajectory_animation.gif" height="150">
+<img src="../images/plotting_examples/trajectory_animation.gif" width="150">
 
 
 ## `Agent.plot_position_heatmap()`
@@ -61,6 +61,13 @@ Plots a heatmap of the Agents past locations (2D and 1D example shown)
 
 
 ## `Neurons.plot_rate_timeseries()`
+Plots a timeseries of the firing rates
+<img src="../images/plotting_examples/gc_plotrts.svg" height="150">
+
+## `Neurons.plot_rate_timeseries(imshow=True)`
+Plots a timeseries of the firing rates as an image 
+<img src="../images/plotting_examples/gc_plotrts_imshow.svg" height="200">
+
 Plots a timeseries of the firing rates
 <img src="../images/plotting_examples/gc_plotrts.svg" height="150">
 
