@@ -491,7 +491,7 @@ class Agent:
             )
         if self.Environment.dimensionality == "1D":
             if fig is None and ax is None:
-                fig, ax = plt.subplots(figsize=(4, 2))
+                fig, ax = plt.subplots(figsize=(6, 3))
             ax.scatter(time / 60, trajectory, alpha=0.7, linewidth=0, c=color)
             ax.spines["left"].set_position(("data", t_start / 60))
             ax.set_xlabel("Time / min")

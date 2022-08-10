@@ -403,7 +403,7 @@ def mountain_plot(
     NbyX = 0.7 * NbyX / np.max(np.abs(NbyX))
     if fig is None and ax is None:
         fig, ax = plt.subplots(
-            figsize=(4, len(NbyX) * 5.5 / 25)
+            figsize=(8, len(NbyX) * 8 / 25)
         )  # ~6mm gap between lines
     for i in range(len(NbyX)):
         ax.plot(X, NbyX[i] + i + 1, c=c)

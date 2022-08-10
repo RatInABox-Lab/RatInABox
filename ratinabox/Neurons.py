@@ -182,7 +182,7 @@ class Neurons:
 
         elif imshow == True:
             if fig is None and ax is None:
-                fig, ax = plt.subplots(figsize=(4, 2.5))
+                fig, ax = plt.subplots(figsize=(8, 4))
             data = rate_timeseries[:, chosen_neurons].T
             ax.imshow(data[::-1], aspect=0.3 * data.shape[1] / data.shape[0])
             ax.spines["top"].set_visible(False)
@@ -274,7 +274,7 @@ class Neurons:
                 else:
                     Nx, Ny = shape[0], shape[1]
                 fig = plt.figure(figsize=(2 * Ny, 2 * Nx))
-                if colorbar == True:
+                if colorbar == True and (method in ["groundtruth", "history"]):
                     cbar_mode = "single"
                 else:
                     cbar_mode = None

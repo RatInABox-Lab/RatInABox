@@ -132,7 +132,7 @@ fig, ax = Ag.plot_trajectory(fig=fig, ax=ax)
 ```python 
 fig, axes = plt.subplots(1,5,figsize=(20,4))
 Ag.plot_trajectory(fig=fig,ax=axes[0])
-Neurons.plot_rate_map(fig=fig,ax=[axes[1],axes[2],axes[3]],chosen_neurons='1') #<-- to plot more than 1 neuron pass an array of axes
+Neurons.plot_rate_map(fig=fig,ax=[axes[1],axes[2],axes[3]],chosen_neurons='3') #<-- to plot more than 1 neuron pass an array of axes
 Neurons.plot_rate_timeseries(fig=fig,ax=axes[4]) 
 ```
 
