@@ -33,7 +33,7 @@ class Neurons:
                      Agent,
                      params={}): #<-- do not change these 
 
-            default_params = {'a_default_param":3.14159}
+            default_params = {'a_default_param":3.14159} #note this params dictionary is passed upwards and used in all the parents classes of your class. 
             
             default_params.update(params)
             self.params = default_params
@@ -537,7 +537,7 @@ class PlaceCells(Neurons):
             "n": 10,
             "name": "PlaceCells",
             "description": "gaussian",
-            "widths": 0.20,
+            "widths": 0.20, #the radii
             "place_cell_centres": None,  # if given this will overwrite 'n',
             "wall_geometry": "geodesic",
             "min_fr": 0,
@@ -1253,7 +1253,7 @@ class FeedForwardLayer(Neurons):
     def __init__(self, Agent, params={}):
         default_params = {
             "n": 10,
-            "input_layers": [],  # a list of input layers, or add one by one using self.adD_inout
+            "input_layers": [],  # a list of input layers, or add one by one using self.add_inout
             "activation_params": {"activation": "linear",},
             "name": "FeedForwardLayer",
         }

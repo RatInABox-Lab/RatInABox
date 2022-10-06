@@ -434,6 +434,7 @@ class Agent:
         decay_point_size=False,
         plot_agent=True,
         color=None,
+        alpha=0.7,
         xlim=None,
     ):
 
@@ -445,6 +446,8 @@ class Agent:
             • fig, ax: the fig, ax to plot on top of, optional, if not provided used self.Environment.plot_Environment(). This can be used to plot trajectory on top of receptive fields etc. 
             • decay_point_size: decay trajectory point size over time (recent times = largest)
             • plot_agent: dedicated point show agent current position
+            • color: plot point color 
+            • alpha: plot point opaqness
             • xlim: In 1D, force the xlim to be a certain time (useful if animating this function)
 
         Returns:
@@ -469,9 +472,7 @@ class Agent:
         time = t[startid:endid][::skiprate]
 
         if self.Environment.dimensionality == "2D":
-            if fig is None and ax is None:
-                fig, ax = self.Environment.plot_environment()
-            _, _ = self.Environment.plot_environment(fig=fig, ax=ax)
+            fig, ax = self.Environment.plot_environment(fig=fig,ax=ax)
             s = 15 * np.ones_like(time)
             if decay_point_size == True:
                 s = 15 * np.exp((time - time[-1]) / 10)
@@ -484,7 +485,7 @@ class Agent:
                 trajectory[:, 0],
                 trajectory[:, 1],
                 s=s,
-                alpha=0.7,
+                alpha=alpha,
                 zorder=2,
                 c=c,
                 linewidth=0,
@@ -492,7 +493,7 @@ class Agent:
         if self.Environment.dimensionality == "1D":
             if fig is None and ax is None:
                 fig, ax = plt.subplots(figsize=(6, 3))
-            ax.scatter(time / 60, trajectory, alpha=0.7, linewidth=0, c=color)
+            ax.scatter(time / 60, trajectory, alpha=alpha, linewidth=0, c=color)
             ax.spines["left"].set_position(("data", t_start / 60))
             ax.set_xlabel("Time / min")
             ax.set_ylabel("Position / m")
@@ -506,7 +507,6 @@ class Agent:
             ax.set_xticks([t_start / 60, t_end / 60])
             ex = self.Environment.extent
             ax.set_yticks([ex[1]])
-
         return fig, ax
 
     def animate_trajectory(self, t_start=None, t_end=None, speed_up=1):
