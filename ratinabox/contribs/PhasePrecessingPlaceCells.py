@@ -80,7 +80,7 @@ class PhasePrecessingPlaceCells(PlaceCells):
             theta_modulation_factors = self.theta_modulation_factors()
             firingrate *= theta_modulation_factors
         else:
-            print("No phase precession modulation applied, just using pure place cells")
+            print("Since you are not evaluating hte firing rate using the current state of the agent no phase precession modulation has been applied (since this requires a velocity). Ignore this if you are plotting receptive field. ")
 
         return firingrate
 

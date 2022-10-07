@@ -181,6 +181,10 @@ This last place cell type, `"one_hot"` is particularly useful as it essentially 
 
 <img src="./images/placecellmodels.png" width=800>
 
+These place cells (with the exception of `"one_hot"`s) can all be made to phase precess by instead initialising them with the `PhasePrecessingPlaceCells()` class currently residing in the `contribs` folder. This figure shows example output data. 
+
+<img src="./images/phaseprecession.png" width=500>
+
 
 #### Geometry of `PlaceCells` 
 Choose how you want `PlaceCells` to interact with walls in the `Environment`. We provide three types of geometries.  
