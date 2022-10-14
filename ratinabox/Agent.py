@@ -56,6 +56,8 @@ class Agent:
             * (np.pi / 180),  # std of rotational speed, σ_w
             # wall following parameter
             "thigmotaxis": 0.5,  # tendency for agents to linger near walls [0 = not at all, 1 = max]
+            "wall_repel_distance":0.1,
+            "walls_repel":True #whether or not the walls repel
         }
         self.Environment = Environment
         default_params.update(params)
@@ -77,7 +79,6 @@ class Agent:
 
         # motion model stufff
         self.walls_repel = True  # over ride to switch of wall repulsion
-        self.wall_repel_distance = 0.10
 
         # initialise starting positions and velocity
         if self.Environment.dimensionality == "2D":
@@ -183,7 +184,7 @@ class Agent:
                             self.speed_mean,
                         )
 
-                        # Wall repulsion and wall following works as follows. When an agent is near the wall, the acceleration and velocity of a hypothetical spring mass tied to a line self.wall_repel_distance away from the wall is calculated. The spring constant is calibrateed so taht if if starts with the Agent.speed_mean it will ~~just~~ not hit the wall. Now, either the acceleration can be used to update the velocity and guide the agent away from the wall OR the counteracting velocity can be used to update the agents position and shift it away from the wall. Both result in repulsive motion away from the wall. The difference is that the latter (and not the former) does not update the agents velocity vector to reflect this, in which case it continues to walk (unsuccessfully) in the same direction barging into the wall and 'following' it. The thigmotaxis parameter allows us to divvy up which of these two dominate. If thigmotaxis is low the acceleration-gives-velocity-update is most dominant and the agent will not linger near the wall. If thigmotaxis is high the velocity-gives-position-update is most dominant and the agent will linger near the wall.
+                        # Wall repulsion and wall following works as follows. When an agent is near the wall, the acceleration and velocity of a hypothetical spring mass tied to a line self.wall_repel_distance away from the wall is calculated. The spring constant is calibrated so that if if starts with the Agent.speed_mean it will ~~just~~ not hit the wall. Now, either the acceleration can be used to update the velocity and guide the agent away from the wall OR the counteracting velocity can be used to update the agents position and shift it away from the wall. Both result in repulsive motion away from the wall. The difference is that the latter (and not the former) does not update the agents velocity vector to reflect this, in which case it continues to walk (unsuccessfully) in the same direction barging into the wall and 'following' it. The thigmotaxis parameter allows us to divvy up which of these two dominate. If thigmotaxis is low the acceleration-gives-velocity-update is most dominant and the agent will not linger near the wall. If thigmotaxis is high the velocity-gives-position-update is most dominant and the agent will linger near the wall.
 
                         # Spring acceletation model: in this case this is done by applying an acceleration whenever the agent is near to a wall. this acceleration matches that of a spring with spring constant 3x that of a spring which would, if the agent arrived head on at v = self.speed_mean, turn around exactly at the wall. this is solved by letting d2x/dt2 = -k.x where k = v**2/d**2 (v=seld.speed_mean, d = self.wall_repel_distance)
                         spring_constant = v ** 2 / d ** 2

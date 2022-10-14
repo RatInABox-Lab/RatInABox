@@ -61,7 +61,7 @@ class Environment:
             self.extent = np.array([0, self.scale])
             self.centre = np.array([self.scale / 2, self.scale / 2])
 
-        self.walls = np.array([])
+        self.wallsoun = np.array([])
         if self.dimensionality == "2D":
             if self.boundary_conditions != "periodic":
                 self.walls = np.array(

@@ -537,7 +537,7 @@ class PlaceCells(Neurons):
             "n": 10,
             "name": "PlaceCells",
             "description": "gaussian",
-            "widths": 0.20, #the radii
+            "widths": 0.20,  # the radii
             "place_cell_centres": None,  # if given this will overwrite 'n',
             "wall_geometry": "geodesic",
             "min_fr": 0,
@@ -709,9 +709,7 @@ class GridCells(Neurons):
             w.append(np.array([w1, w2, w3]))
         self.w = np.array(w)
         if self.random_gridscales == True:
-            self.gridscales = np.random.uniform(
-                2 * self.gridscale / 3, 1.5 * self.gridscale, size=self.n
-            )
+            self.gridscales = np.random.rayleigh(scale=self.gridscale, size=self.n)
         if verbose is True:
             print(
                 "GridCells successfully initialised. You can also manually set their gridscale (GridCells.gridscales), offsets (GridCells.phase_offset) and orientations (GridCells.w1, GridCells.w2,GridCells.w3 give the cosine vectors)"
@@ -771,7 +769,7 @@ class BoundaryVectorCells(Neurons):
     default_params = {
             "n": 10,
             "reference_frame": "allocentric",
-            "prefered_wall_distance_mean": 0.15,
+            "pref_wall_dist": 0.15,
             "angle_spread_degrees": 11.25,
             "xi": 0.08,  # as in de cothi and barry 2020
             "beta": 12,
@@ -790,7 +788,7 @@ class BoundaryVectorCells(Neurons):
         default_params = {
             "n": 10,
             "reference_frame": "allocentric",
-            "prefered_wall_distance_mean": 0.15,
+            "pref_wall_dist": 0.15,
             "angle_spread_degrees": 11.25,
             "xi": 0.08,  # as in de cothi and barry 2020
             "beta": 12,
@@ -814,6 +812,7 @@ class BoundaryVectorCells(Neurons):
         test_direction = np.array([1, 0])
         test_directions = [test_direction]
         test_angles = [0]
+        #numerically discretise over 360 degrees
         self.n_test_angles = 360
         self.dtheta = 2 * np.pi / self.n_test_angles
         for i in range(self.n_test_angles - 1):
@@ -827,7 +826,7 @@ class BoundaryVectorCells(Neurons):
         )
         self.tuning_angles = np.random.uniform(0, 2 * np.pi, size=self.n)
         self.tuning_distances = np.random.rayleigh(
-            scale=self.prefered_wall_distance_mean, size=self.n,
+            scale=self.pref_wall_dist, size=self.n,
         )
         self.sigma_distances = self.tuning_distances / beta + xi
 
