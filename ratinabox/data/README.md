@@ -29,3 +29,9 @@ The provided dataset "sargolini.npz" was downloaded from public available data h
     Agent.import_trajectory(dataset="sargolini") 
 ```
 
+### Tanni dataset
+
+The provided dataset "tanni.npz" was downloaded from public available data here https://rdr.ucl.ac.uk/articles/dataset/Supporting_data_for_State_transitions_in_the_statistically_stable_place_cell_population_are_determined_by_rate_of_perceptual_change/18128891/1 and republished here (with minor preprocessing, to extract only the trajaectory relevant data and save as `.npz`, with permission from Prof. Caswell Barry) . If you use this dataset remember to reference this website in your methods and cite the paper where it came from (Tanni et al. (2022) DOI: 10.1016/j.cub.2022.06.046). Import the tanni dataset using
+```python
+    Agent.import_trajectory(dataset="tanni") 
+	```
