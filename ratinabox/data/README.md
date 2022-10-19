@@ -27,7 +27,7 @@ python
 
 ## List of datasets: 
 ### **Sargolini**
-The provided dataset "sargolini.npz" was downloaded from public available data here https://www.ntnu.edu/kavli/research/grid-cell-data  and republished here with minor preprocessing, to extract only the trajaectory relevant data, with permission from Profs. Edvard Moser and Francesca Sorgolini. If you use this dataset remember to reference this website in your methods and cite the paper where it came from (Sargolini et al. (2006) DOI:10.1126/science.1125572). The room size is 1 m x 1 m and the total amount of data is 600 s. Import the sargolini dataset using:
+The provided dataset "sargolini.npz" was downloaded from public available data here https://www.ntnu.edu/kavli/research/grid-cell-data  and republished here with minor preprocessing, to extract only the trajaectory relevant data, with permission from Profs. Edvard Moser and Francesca Sorgolini. If you use this dataset remember to reference this website in your methods and cite the paper where it came from (Sargolini et al. (2006) DOI:10.1126/science.1125572). The room size is 1 m x 1 m and the total amount of data is 600 s.
 
 
 ### **Tanni**
