@@ -25,19 +25,10 @@ python
               pos=pos)
 ```
 
-<<<<<<< HEAD
-### Tanni dataset
-
-The provided dataset "tanni.npz" was downloaded from public available data here https://rdr.ucl.ac.uk/articles/dataset/Supporting_data_for_State_transitions_in_the_statistically_stable_place_cell_population_are_determined_by_rate_of_perceptual_change/18128891/1 and republished here (with minor preprocessing, to extract only the trajaectory relevant data and save as `.npz`, with permission from Prof. Caswell Barry) . If you use this dataset remember to reference this website in your methods and cite the paper where it came from (Tanni et al. (2022) DOI: 10.1016/j.cub.2022.06.046). Import the tanni dataset using
-```python
-    Agent.import_trajectory(dataset="tanni") 
-	```
-=======
 ## List of datasets: 
 ### **Sargolini**
 The provided dataset "sargolini.npz" was downloaded from public available data here https://www.ntnu.edu/kavli/research/grid-cell-data  and republished here with minor preprocessing, to extract only the trajaectory relevant data, with permission from Profs. Edvard Moser and Francesca Sorgolini. If you use this dataset remember to reference this website in your methods and cite the paper where it came from (Sargolini et al. (2006) DOI:10.1126/science.1125572). The room size is 1 m x 1 m and the total amount of data is 600 s.
 
 
 ### **Tanni**
-The provided dataset "tanni.npz" was...... Import the sargolini dataset using:
->>>>>>> d5108432b543af1fbf367c5795e55447c2bee6d1
+The provided dataset "tanni.npz" was downloaded from public available data here https://rdr.ucl.ac.uk/articles/dataset/Supporting_data_for_State_transitions_in_the_statistically_stable_place_cell_population_are_determined_by_rate_of_perceptual_change/18128891/1 and republished here (with minor preprocessing, to extract only the trajaectory relevant data and save as `.npz`, with permission from Prof. Caswell Barry) . If you use this dataset remember to reference this website in your methods and cite the paper where it came from (Tanni et al. (2022) DOI: 10.1016/j.cub.2022.06.046). The room size is 2.5 m x 3.5 m and the total amount of data is 7323 s.
