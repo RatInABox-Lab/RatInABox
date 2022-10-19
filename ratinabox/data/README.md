@@ -32,6 +32,3 @@ The provided dataset "sargolini.npz" was downloaded from public available data h
 
 ### **Tanni**
 The provided dataset "tanni.npz" was...... Import the sargolini dataset using:
-
-
-
