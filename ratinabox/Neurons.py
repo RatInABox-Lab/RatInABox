@@ -172,7 +172,7 @@ class Neurons:
                         h,
                         color=(self.color or "C1"),
                         alpha=0.5,
-                        s=2,
+                        s=5,
                         linewidth=0,
                     )
             ax.set_xticks([t_start / 60, t_end / 60])
@@ -558,25 +558,26 @@ class PlaceCells(Neurons):
         self.place_cell_widths = self.widths * np.ones(self.n)
 
         # Assertions (some combinations of boundary condition and wall geometries aren't allowed)
-        if (
-            (
-                (self.wall_geometry == "line_of_sight")
-                or ((self.wall_geometry == "geodesic"))
-            )
-            and (self.Agent.Environment.boundary_conditions == "periodic")
-            and (self.Agent.Environment.dimensionality == "2D")
-        ):
-            print(
-                f"{self.wall_geometry} wall geometry only possible in 2D when the boundary conditions are solid. Using 'euclidean' insstead."
-            )
-            self.wall_geometry = "euclidean"
-        if (self.wall_geometry == "geodesic") and (
-            len(self.Agent.Environment.walls) > 5
-        ):
-            print(
-                "'geodesic' wall geometry only supported for enivoronments with 1 additional wall (4 boundaing walls + 1 additional). Sorry. Using 'line_of_sight' instead."
-            )
-            self.wall_geometry = "line_of_sight"
+        if self.Agent.Environment.dimensionality == "2D":
+            if (
+                (
+                    (self.wall_geometry == "line_of_sight")
+                    or ((self.wall_geometry == "geodesic"))
+                )
+                and (self.Agent.Environment.boundary_conditions == "periodic")
+                and (self.Agent.Environment.dimensionality == "2D")
+            ):
+                print(
+                    f"{self.wall_geometry} wall geometry only possible in 2D when the boundary conditions are solid. Using 'euclidean' insstead."
+                )
+                self.wall_geometry = "euclidean"
+            if (self.wall_geometry == "geodesic") and (
+                len(self.Agent.Environment.walls) > 5
+            ):
+                print(
+                    "'geodesic' wall geometry only supported for enivoronments with 1 additional wall (4 boundaing walls + 1 additional). Sorry. Using 'line_of_sight' instead."
+                )
+                self.wall_geometry = "line_of_sight"
 
         if verbose is True:
             print(
@@ -812,7 +813,7 @@ class BoundaryVectorCells(Neurons):
         test_direction = np.array([1, 0])
         test_directions = [test_direction]
         test_angles = [0]
-        #numerically discretise over 360 degrees
+        # numerically discretise over 360 degrees
         self.n_test_angles = 360
         self.dtheta = 2 * np.pi / self.n_test_angles
         for i in range(self.n_test_angles - 1):

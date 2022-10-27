@@ -392,6 +392,8 @@ class Agent:
         ), "time and position arrays must have same length"
 
         times = times - min(times)
+        print(f"Total of {times[-1]:.1f} s of data available")
+        
         self.use_imported_trajectory = True
 
         ex = self.Environment.extent
