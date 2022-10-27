@@ -168,7 +168,6 @@ class Agent:
                     )  # <--- this controls how "powerful" this signal is
 
                 # Deterministically drift the velocity away from any nearby walls
-                print("testing")
                 if (self.walls_repel == True) and (len(self.Environment.walls > 0)):
                     vectors_from_walls = self.Environment.vectors_from_walls(
                         self.pos
