@@ -553,6 +553,10 @@ class PlaceCells(Neurons):
             self.place_cell_centres = self.Agent.Environment.sample_positions(
                 n=self.n, method="uniform_jitter"
             )
+        elif self.place_cell_centres in ["random", "uniform", "uniform_jitter"]:
+            self.place_cell_centres = self.Agent.Environment.sample_positions(
+                n=self.n, method=self.place_cell_centres
+            )
         else:
             self.n = self.place_cell_centres.shape[0]
         self.place_cell_widths = self.widths * np.ones(self.n)
