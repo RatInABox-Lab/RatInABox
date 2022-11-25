@@ -268,7 +268,6 @@ class Environment:
         )
 
         # shorthand
-        walls = self.walls
         dimensionality = self.dimensionality
         boundary_conditions = self.boundary_conditions
 
@@ -276,6 +275,7 @@ class Environment:
             distances = get_distances_between(vectors=vectors)
 
         if dimensionality == "2D":
+            walls = self.walls
             if wall_geometry == "euclidean":
                 distances = get_distances_between(vectors=vectors)
 

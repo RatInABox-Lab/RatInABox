@@ -1,6 +1,6 @@
 #  RatInABox 
 
-`RatInABox` (paper here*) is a toolkit for simulating motion and various cell types found in the Hippocampal formation. `RatInABox` is fully continuous is space and time: position and neuronal firing rates are calculated rapidly online with float precision. With it you can:
+`RatInABox` (paper [here](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v1)) is a toolkit for simulating motion and various cell types found in the Hippocampal formation. `RatInABox` is fully continuous is space and time: position and neuronal firing rates are calculated rapidly online with float precision. With it you can:
 
 * **Generate realistic trajectories** for rats exploring complex 1- and 2-dimensional environments under a random policy or using imported data
 * **Generate artificial neuronal data** Simulate various location or velocity selective cells found in the Hippocampal-Entorhinal system, or build your own more complex cell type. 
@@ -181,6 +181,10 @@ This last place cell type, `"one_hot"` is particularly useful as it essentially 
 
 <img src="./images/placecellmodels.png" width=800>
 
+These place cells (with the exception of `"one_hot"`s) can all be made to phase precess by instead initialising them with the `PhasePrecessingPlaceCells()` class currently residing in the `contribs` folder. This figure shows example output data. 
+
+<img src="./images/phaseprecession.png" width=500>
+
 
 #### Geometry of `PlaceCells` 
 Choose how you want `PlaceCells` to interact with walls in the `Environment`. We provide three types of geometries.  
@@ -244,7 +248,22 @@ fig, ax = PCs.plot_rate_timeseries()
 `RatInABox` is an open source project, and we actively encourage community contributions. These can take various forms, such as new movement policies, new cells types, new plotting functions, new geometries, bug fixes, documentation, citations of relevant work, or additional experiment notebooks. If there is a small contribution you would like to make, please feel free to open a pull request, and we can review it. If you would like to add a new `Neurons` class please pull request it into the [contribs](./ratinabox/contribs/) directory. If there is a larger contribution you are considering please contact the correponding author at `tomgeorge1@btinternet.com`. 
 
 ## Cite
-If you use `RatInABox` in your research or educational material, please cite the work as follows: `my wicked bibtex citation`
-The research paper corresponding to the above citation can be found [here](link/to/my/paper).
-*I haven't put these links up yet...if you're looking for them please find a link to the paper on my twitter @TomNotGeorge
+If you use `RatInABox` in your research or educational material, please cite the work as follows: 
+Bibtex:
+```
+@article{ratinabox2022,
+	doi = {10.1101/2022.08.10.503541},
+	url = {https://doi.org/10.1101%2F2022.08.10.503541},
+	year = 2022,
+	month = {aug},
+	publisher = {Cold Spring Harbor Laboratory},
+	author = {Tom M George and William de Cothi and Claudia Clopath and Kimberly Stachenfeld and Caswell Barry},
+	title = {{RatInABox}: A toolkit for modelling locomotion and neuronal activity in complex continuous environments}
+}
+```
+Formatted:
+```
+Tom M George, William de Cothi, Claudia Clopath, Kimberly Stachenfeld, Caswell Barry. "RatInABox: A toolkit for modelling locomotion and neuronal activity in complex continuous environments" (2022).
+``` 
+The research paper corresponding to the above citation can be found [here](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v1).
 

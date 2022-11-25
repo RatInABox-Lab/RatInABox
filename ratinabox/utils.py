@@ -182,7 +182,7 @@ def get_vectors_between(pos1=None, pos2=None, line_segments=None):
     Args:
         pos1 (array): (N x dimensionality) array of positions
         pos2 (array): (M x dimensionality) array of positions
-        line_segments: if you already have th el line segments, just pass these 
+        line_segments: if you already have the line segments, just pass these 
     Returns:
             (N x M x dimensionality) array of vectors from pos1's to pos2's"""
     if line_segments is None:

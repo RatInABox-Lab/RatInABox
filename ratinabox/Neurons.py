@@ -33,7 +33,7 @@ class Neurons:
                      Agent,
                      params={}): #<-- do not change these 
 
-            default_params = {'a_default_param":3.14159}
+            default_params = {'a_default_param":3.14159} #note this params dictionary is passed upwards and used in all the parents classes of your class. 
             
             default_params.update(params)
             self.params = default_params
@@ -172,7 +172,7 @@ class Neurons:
                         h,
                         color=(self.color or "C1"),
                         alpha=0.5,
-                        s=2,
+                        s=5,
                         linewidth=0,
                     )
             ax.set_xticks([t_start / 60, t_end / 60])
@@ -537,7 +537,7 @@ class PlaceCells(Neurons):
             "n": 10,
             "name": "PlaceCells",
             "description": "gaussian",
-            "widths": 0.20,
+            "widths": 0.20,  # the radii
             "place_cell_centres": None,  # if given this will overwrite 'n',
             "wall_geometry": "geodesic",
             "min_fr": 0,
@@ -553,30 +553,35 @@ class PlaceCells(Neurons):
             self.place_cell_centres = self.Agent.Environment.sample_positions(
                 n=self.n, method="uniform_jitter"
             )
+        elif self.place_cell_centres in ["random", "uniform", "uniform_jitter"]:
+            self.place_cell_centres = self.Agent.Environment.sample_positions(
+                n=self.n, method=self.place_cell_centres
+            )
         else:
             self.n = self.place_cell_centres.shape[0]
         self.place_cell_widths = self.widths * np.ones(self.n)
 
         # Assertions (some combinations of boundary condition and wall geometries aren't allowed)
-        if (
-            (
-                (self.wall_geometry == "line_of_sight")
-                or ((self.wall_geometry == "geodesic"))
-            )
-            and (self.Agent.Environment.boundary_conditions == "periodic")
-            and (self.Agent.Environment.dimensionality == "2D")
-        ):
-            print(
-                f"{self.wall_geometry} wall geometry only possible in 2D when the boundary conditions are solid. Using 'euclidean' insstead."
-            )
-            self.wall_geometry = "euclidean"
-        if (self.wall_geometry == "geodesic") and (
-            len(self.Agent.Environment.walls) > 5
-        ):
-            print(
-                "'geodesic' wall geometry only supported for enivoronments with 1 additional wall (4 boundaing walls + 1 additional). Sorry. Using 'line_of_sight' instead."
-            )
-            self.wall_geometry = "line_of_sight"
+        if self.Agent.Environment.dimensionality == "2D":
+            if (
+                (
+                    (self.wall_geometry == "line_of_sight")
+                    or ((self.wall_geometry == "geodesic"))
+                )
+                and (self.Agent.Environment.boundary_conditions == "periodic")
+                and (self.Agent.Environment.dimensionality == "2D")
+            ):
+                print(
+                    f"{self.wall_geometry} wall geometry only possible in 2D when the boundary conditions are solid. Using 'euclidean' insstead."
+                )
+                self.wall_geometry = "euclidean"
+            if (self.wall_geometry == "geodesic") and (
+                len(self.Agent.Environment.walls) > 5
+            ):
+                print(
+                    "'geodesic' wall geometry only supported for enivoronments with 1 additional wall (4 boundaing walls + 1 additional). Sorry. Using 'line_of_sight' instead."
+                )
+                self.wall_geometry = "line_of_sight"
 
         if verbose is True:
             print(
@@ -709,9 +714,7 @@ class GridCells(Neurons):
             w.append(np.array([w1, w2, w3]))
         self.w = np.array(w)
         if self.random_gridscales == True:
-            self.gridscales = np.random.uniform(
-                2 * self.gridscale / 3, 1.5 * self.gridscale, size=self.n
-            )
+            self.gridscales = np.random.rayleigh(scale=self.gridscale, size=self.n)
         if verbose is True:
             print(
                 "GridCells successfully initialised. You can also manually set their gridscale (GridCells.gridscales), offsets (GridCells.phase_offset) and orientations (GridCells.w1, GridCells.w2,GridCells.w3 give the cosine vectors)"
@@ -771,7 +774,7 @@ class BoundaryVectorCells(Neurons):
     default_params = {
             "n": 10,
             "reference_frame": "allocentric",
-            "prefered_wall_distance_mean": 0.15,
+            "pref_wall_dist": 0.15,
             "angle_spread_degrees": 11.25,
             "xi": 0.08,  # as in de cothi and barry 2020
             "beta": 12,
@@ -790,7 +793,7 @@ class BoundaryVectorCells(Neurons):
         default_params = {
             "n": 10,
             "reference_frame": "allocentric",
-            "prefered_wall_distance_mean": 0.15,
+            "pref_wall_dist": 0.15,
             "angle_spread_degrees": 11.25,
             "xi": 0.08,  # as in de cothi and barry 2020
             "beta": 12,
@@ -814,6 +817,7 @@ class BoundaryVectorCells(Neurons):
         test_direction = np.array([1, 0])
         test_directions = [test_direction]
         test_angles = [0]
+        # numerically discretise over 360 degrees
         self.n_test_angles = 360
         self.dtheta = 2 * np.pi / self.n_test_angles
         for i in range(self.n_test_angles - 1):
@@ -827,7 +831,7 @@ class BoundaryVectorCells(Neurons):
         )
         self.tuning_angles = np.random.uniform(0, 2 * np.pi, size=self.n)
         self.tuning_distances = np.random.rayleigh(
-            scale=self.prefered_wall_distance_mean, size=self.n,
+            scale=self.pref_wall_dist, size=self.n,
         )
         self.sigma_distances = self.tuning_distances / beta + xi
 
@@ -1253,7 +1257,7 @@ class FeedForwardLayer(Neurons):
     def __init__(self, Agent, params={}):
         default_params = {
             "n": 10,
-            "input_layers": [],  # a list of input layers, or add one by one using self.adD_inout
+            "input_layers": [],  # a list of input layers, or add one by one using self.add_inout
             "activation_params": {"activation": "linear",},
             "name": "FeedForwardLayer",
         }
