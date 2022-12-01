@@ -715,6 +715,8 @@ class GridCells(Neurons):
         self.w = np.array(w)
         if self.random_gridscales == True:
             self.gridscales = np.random.rayleigh(scale=self.gridscale, size=self.n)
+        else:
+            self.gridscales = np.full(self.n, fill_value=self.gridscale)
         if verbose is True:
             print(
                 "GridCells successfully initialised. You can also manually set their gridscale (GridCells.gridscales), offsets (GridCells.phase_offset) and orientations (GridCells.w1, GridCells.w2,GridCells.w3 give the cosine vectors)"
