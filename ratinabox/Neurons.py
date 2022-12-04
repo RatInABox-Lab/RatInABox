@@ -673,6 +673,7 @@ class GridCells(Neurons):
             "gridscale": 0.45,
             "random_orientations": True,
             "random_gridscales": True,
+            "random_phase_offsets": True,
             "min_fr": 0,
             "max_fr": 1,
             "name": "GridCells",
