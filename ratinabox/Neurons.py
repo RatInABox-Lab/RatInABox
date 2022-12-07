@@ -765,6 +765,7 @@ class GridCells(Neurons):
         return firingrate
 
     def set_phase_offsets(self):
+        """Set non-random phase_offsets. Most offsets (cell number: x*y) are grid-like, while the remainings (cell number: n - x*y) are random."""
         n_x = int(np.sqrt(self.n))
         n_y = self.n // n_x
         n_remaining = self.n - n_x * n_y
