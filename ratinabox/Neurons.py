@@ -5,6 +5,8 @@ verbose = False
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
+from matplotlib import animation
+import traceback
 
 
 """NEURONS"""
@@ -37,7 +39,7 @@ class Neurons:
             
             default_params.update(params)
             self.params = default_params
-            super().__init__(self.params)
+            super().__init__(Agent,self.params)
         
         def get_state(self,
                       evaluate_at='agent',
@@ -111,7 +113,7 @@ class Neurons:
 
     def plot_rate_timeseries(
         self,
-        t_start=0,
+        t_start=None,
         t_end=None,
         chosen_neurons="all",
         spikes=True,
@@ -119,12 +121,14 @@ class Neurons:
         fig=None,
         ax=None,
         xlim=None,
+        background_color=None,
+        **kwargs,
     ):
         """Plots a timeseries of the firing rate of the neurons between t_start and t_end
 
         Args:
-            • t_start (int, optional): _description_. Defaults to 0.
-            • t_end (int, optional): _description_. Defaults to 60.
+            • t_start (int, optional): _description_. Defaults to start of data, probably 0.
+            • t_end (int, optional): _description_. Defaults to end of data.
             • chosen_neurons: Which neurons to plot. string "10" or 10 will plot ten of them, "all" will plot all of them, "12rand" will plot 12 random ones. A list like [1,4,5] will plot cells indexed 1, 4 and 5. Defaults to "all".
             chosen_neurons (str, optional): Which neurons to plot. string "10" will plot 10 of them, "all" will plot all of them, a list like [1,4,5] will plot cells indexed 1, 4 and 5. Defaults to "10".
             • spikes (bool, optional): If True, scatters exact spike times underneath each curve of firing rate. Defaults to True.
@@ -132,11 +136,16 @@ class Neurons:
             • imshow - if True will not dispaly as mountain plot but as an image (plt.imshow)
             • fig, ax: the figure, axis to plot on (can be None)
             xlim: fix xlim of plot irrespective of how much time you're plotting 
+            • background_color: color of the background if not matplotlib default (probably white)
+            • kwargs sent to mountain plot function, you can ignore these
+
         Returns:
             fig, ax
         """
         t = np.array(self.history["t"])
         # times to plot
+        if t_start is None:
+            t_start = t[0]
         if t_end is None:
             t_end = t[-1]
         startid = np.argmin(np.abs(t - (t_start)))
@@ -161,6 +170,7 @@ class Neurons:
                 xlim=None,
                 fig=fig,
                 ax=ax,
+                **kwargs,
             )
 
             if spikes == True:
@@ -175,10 +185,17 @@ class Neurons:
                         s=5,
                         linewidth=0,
                     )
+            ax.set_xlim(left=t_start / 60, right=t_end / 60)
             ax.set_xticks([t_start / 60, t_end / 60])
+            ax.set_xticklabels([round(t_start / 60, 2), round(t_end / 60, 2)])
             if xlim is not None:
                 ax.set_xlim(right=xlim / 60)
-                ax.set_xticks([0, xlim / 60])
+                ax.set_xticks([round(t_start / 60, 2), round(xlim / 60, 2)])
+                ax.set_xticklabels([round(t_start / 60, 2), round(xlim / 60, 2)])
+
+            if background_color is not None:
+                ax.set_facecolor(background_color)
+                fig.patch.set_facecolor(background_color)
 
         elif imshow == True:
             if fig is None and ax is None:
@@ -221,8 +238,8 @@ class Neurons:
 
             • shape is the shape of the multiplanlle figure, must be compatible with chosen neurons
             • colorbar: whether to show a colorbar 
-            • t_start, t_end: i nthe case where you are plotting spike, or using historical data to get rate map, this restricts the timerange of data you are using 
-            • kwargs are sent to get_state and can be ignore if you don't need to use them
+            • t_start, t_end: in the case where you are plotting spike, or using historical data to get rate map, this restricts the timerange of data you are using 
+            • kwargs are sent to get_state and mountain_plot and can be ignore if you don't need to use them
         
         Returns:
             fig, ax 
@@ -236,11 +253,17 @@ class Neurons:
                     "It was not possible to get the rate map by evaluating the firing rate at all positions across the Environment. This is probably because the Neuron class does not support, or it does not have an groundtruth receptive field. Instead, plotting rate map by weighted position histogram method. Here is the error:"
                 )
                 print("Error: ", e)
+                traceback.print_exc()
                 method = "history"
 
         if method == "history" or spikes == True:
             t = np.array(self.history["t"])
             # times to plot
+            if len(t) == 0:
+                print(
+                    "Can't plot rate map by method='history' since there is no available data to plot. "
+                )
+                return
             t_end = t_end or t[-1]
             startid = np.argmin(np.abs(t - (t_start)))
             endid = np.argmin(np.abs(t - (t_end)))
@@ -376,12 +399,12 @@ class Neurons:
 
             if fig is None and ax is None:
                 fig, ax = self.Agent.Environment.plot_environment(
-                    height=len(chosen_neurons)
+                    height=0.5 * len(chosen_neurons)
                 )
 
             if method != "neither":
                 fig, ax = mountain_plot(
-                    X=x, NbyX=rate_maps, color=self.color, fig=fig, ax=ax,
+                    X=x, NbyX=rate_maps, color=self.color, fig=fig, ax=ax, **kwargs
                 )
 
             if spikes is True:
@@ -410,7 +433,15 @@ class Neurons:
         self.history["firingrate"].append(list(self.firingrate))
         self.history["spikes"].append(list(cell_spikes))
 
-    def animate_rate_timeseries(self, t_end=None, chosen_neurons="all", speed_up=1):
+    def animate_rate_timeseries(
+        self,
+        t_start=None,
+        t_end=None,
+        chosen_neurons="all",
+        fps=15,
+        speed_up=1,
+        **kwargs,
+    ):
         """Returns an animation (anim) of the firing rates, 25fps. 
         Should be saved using comand like 
         anim.save("./where_to_save/animations.gif",dpi=300)
@@ -424,23 +455,25 @@ class Neurons:
         Returns:
             animation
         """
-
+        dt = 1 / fps
+        if t_start == None:
+            t_start = self.history["t"][0]
         if t_end == None:
             t_end = self.history["t"][-1]
 
-        def animate(i, fig, ax, chosen_neurons, t_max, speed_up):
+        def animate(i, fig, ax, chosen_neurons, t_max, dt, speed_up):
             t = self.history["t"]
             t_start = t[0]
-            t_end = t[0] + (i + 1) * speed_up * 50e-3
+            t_end = t[0] + (i + 1) * speed_up * dt
             ax.clear()
             fig, ax = self.plot_rate_timeseries(
                 t_start=t_start,
                 t_end=t_end,
                 chosen_neurons=chosen_neurons,
-                spikes=True,
                 fig=fig,
                 ax=ax,
                 xlim=t_max,
+                **kwargs,
             )
             plt.close()
             return
@@ -450,14 +483,15 @@ class Neurons:
             t_end=10 * self.Agent.dt,
             chosen_neurons=chosen_neurons,
             xlim=t_end,
+            **kwargs,
         )
         anim = matplotlib.animation.FuncAnimation(
             fig,
             animate,
-            interval=50,
-            frames=int(t_end / 50e-3),
+            interval=1000 * dt,
+            frames=int((t_end - t_start) / (dt * speed_up)),
             blit=False,
-            fargs=(fig, ax, chosen_neurons, t_end, speed_up),
+            fargs=(fig, ax, chosen_neurons, t_end, dt, speed_up),
         )
         return anim
 
@@ -568,7 +602,7 @@ class PlaceCells(Neurons):
                 and (self.Agent.Environment.dimensionality == "2D")
             ):
                 print(
-                    f"{self.wall_geometry} wall geometry only possible in 2D when the boundary conditions are solid. Using 'euclidean' insstead."
+                    f"{self.wall_geometry} wall geometry only possible in 2D when the boundary conditions are solid. Using 'euclidean' instead."
                 )
                 self.wall_geometry = "euclidean"
             if (self.wall_geometry == "geodesic") and (
@@ -774,6 +808,7 @@ class BoundaryVectorCells(Neurons):
             "angle_spread_degrees": 11.25,
             "xi": 0.08,  # as in de cothi and barry 2020
             "beta": 12,
+            "dtheta":2, #angular resolution in degrees
             "min_fr": 0,
             "max_fr": 1,
             "name": "BoundaryVectorCells",
@@ -791,8 +826,9 @@ class BoundaryVectorCells(Neurons):
             "reference_frame": "allocentric",
             "pref_wall_dist": 0.15,
             "angle_spread_degrees": 11.25,
-            "xi": 0.08,  # as in de cothi and barry 2020
+            "xi": 0.08,
             "beta": 12,
+            "dtheta": 2,
             "min_fr": 0,
             "max_fr": 1,
             "name": "BoundaryVectorCells",
@@ -814,12 +850,11 @@ class BoundaryVectorCells(Neurons):
         test_directions = [test_direction]
         test_angles = [0]
         # numerically discretise over 360 degrees
-        self.n_test_angles = 360
-        self.dtheta = 2 * np.pi / self.n_test_angles
+        self.n_test_angles = int(360 / self.dtheta)
         for i in range(self.n_test_angles - 1):
-            test_direction_ = rotate(test_direction, 2 * np.pi * i / 360)
+            test_direction_ = rotate(test_direction, 2 * np.pi * i * self.dtheta / 360)
             test_directions.append(test_direction_)
-            test_angles.append(2 * np.pi * i / 360)
+            test_angles.append(2 * np.pi * i * self.dtheta / 360)
         self.test_directions = np.array(test_directions)
         self.test_angles = np.array(test_angles)
         self.sigma_angles = np.array(
@@ -1048,14 +1083,14 @@ class VelocityCells(Neurons):
         self.Agent = Agent
         default_params.update(params)
         self.params = default_params
-        super().__init__(Agent, self.params)
-
         if self.Agent.Environment.dimensionality == "2D":
             self.n = 4  # one up, one down, one left, one right
         if self.Agent.Environment.dimensionality == "1D":
             self.n = 2  # one left, one right
         self.params["n"] = self.n
         self.one_sigma_speed = self.Agent.speed_mean + self.Agent.speed_std
+
+        super().__init__(Agent, self.params)
 
         if verbose is True:
             print(
@@ -1121,12 +1156,13 @@ class HeadDirectionCells(Neurons):
         for key in params.keys():
             default_params[key] = params[key]
         self.params = default_params
-        super().__init__(Agent, self.params)
 
         if self.Agent.Environment.dimensionality == "2D":
             self.n = 4  # one up, one down, one left, one right
         if self.Agent.Environment.dimensionality == "1D":
             self.n = 2  # one left, one right
+        self.params["n"] = self.n
+        super().__init__(Agent, self.params)
         if verbose is True:
             print(
                 f"HeadDirectionCells successfully initialised. Your environment is {self.Agent.Environment.dimensionality} therefore you have {self.n} head direction cells"
@@ -1226,14 +1262,17 @@ class FeedForwardLayer(Neurons):
     *** Understanding this layer is crucial if you want to build multilayer networks of Neurons with RatInABox ***
 
     Must be initialised with an Agent and a 'params' dictionary. 
-    Input params dictionary should contain a list of input_layers which feed into this layer. This list looks like [Input1, Input2,...] where each is a Neurons() class (typically this list will but you can have arbitrariy many layers feed into this one). You can also add inputs one-by-one using self.add_input()
+    Input params dictionary should contain a list of input_layers which feed into this layer. This list looks like [Input1, Input2,...] where each is a Neurons() class (typically this list will be length 1 but you can have arbitrariy many layers feed into this one if you want). You can also add inputs one-by-one using self.add_input()
 
-    Each layer which feeds into this one is assigned a set of weights fr = activation_function(sum_over_layers(sum_over_inputs_in_this_layer(w_i I_i))) (you my be interested in accessing these weights in order to write a function which "learns" them, for example). A dictionary stores all the inputs, the key for each input layer is its name (e.g Input1.name = "Input1"), so to get the weights call 
+    Each layer which feeds into this one is assigned a set of weights 
+        firingrate = activation_function(sum_over_layers(sum_over_inputs_in_this_layer(w_i I_i)) + bias) 
+    (you my be interested in accessing these weights in order to write a function which "learns" them, for example). A dictionary stores all the inputs, the key for each input layer is its name (e.g Input1.name = "Input1"), so to get the weights call 
         FeedForwardLayer.inputs["Input1"]['w'] --> returns the weight matrix from Input1 to FFL
         FeedForwardLayer.inputs["Input2"]['w'] --> returns the weight matrix from Input1 to FFL
         ...
+    One set of biases are stored in self.biases (defaulting to an array of zeros), one for each neuron. 
     
-    Currently supported activations include 'sigmoid' (paramterised by max_fr, min_fr, mid_x, width), 'relu' (gain, threshold) and 'linear' specified with the "activation_params" dictionary in the inout params dictionary. See also utils.activate() for full details. 
+    Currently supported activations include 'sigmoid' (paramterised by max_fr, min_fr, mid_x, width), 'relu' (gain, threshold) and 'linear' specified with the "activation_params" dictionary in the inout params dictionary. See also utils.activate() for full details. It is possible to write your own activatino function (not recommended) under the key {"function" : an_activation_function}, see utils.actvate for how one of these should be written. 
 
     Check that the input layers are all named differently. 
     List of functions: 
@@ -1254,8 +1293,9 @@ class FeedForwardLayer(Neurons):
         default_params = {
             "n": 10,
             "input_layers": [],  # a list of input layers, or add one by one using self.add_inout
-            "activation_params": {"activation": "linear",},
+            "activation_params": {"activation": "linear",},  #
             "name": "FeedForwardLayer",
+            "biases": None,  # an array of biases, one for each neuron
         }
         self.Agent = Agent
         default_params.update(params)
@@ -1266,30 +1306,38 @@ class FeedForwardLayer(Neurons):
         for input_layer in self.input_layers:
             self.add_input(input_layer)
 
+        if self.biases is None:
+            self.biases = np.zeros(self.n)
+
         if verbose is True:
             print(
-                f"FeedForwardLayer initialised with {len(self.inputs.keys())} layers ({self.inputs.keys()}). To add another layer use FeedForwardLayer.add_input_layer().\nTo set the weights manual edit them by changing self.inputs['key']['W']"
+                f"FeedForwardLayer initialised with {len(self.inputs.keys())} layers. To add another layer use FeedForwardLayer.add_input_layer().\nTo set the weights manually edit them by changing self.inputs['layer_name']['w']"
             )
 
-    def add_input(self, input_layer, w_init_scale=1, **kwargs):
+    def add_input(self, input_layer, w=None, w_init_scale=1, **kwargs):
         """Adds an input layer to the class. Each input layer is stored in a dictionary of self.inputs. Each has an associated matrix of weights which are initialised randomly. 
 
         Note the inputs are stored in a dictionary. The keys are taken to be the name of each layer passed (input_layer.name). Make sure you set this correctly (and uniquely). 
 
         Args:
             • input_layer (_type_): the layer intself. Must be a Neurons() class object (e.g. can be PlaceCells(), etc...). 
+            • w: the weight matrix. If None these will be drawn randomly, see next argument. 
             • w_init_scale: initial weights drawn from zero-centred gaussian with std w_init_scale / sqrt(N_in)
             • **kwargs any extra kwargs will get saved into the inputs dictionary in case you need these
 
         """
         n = input_layer.n
         name = input_layer.name
-        w = np.random.normal(loc=0, scale=w_init_scale / np.sqrt(n), size=(self.n, n))
+        if w is None:
+            w = np.random.normal(
+                loc=0, scale=w_init_scale / np.sqrt(n), size=(self.n, n)
+            )
         I = np.zeros(n)
         if name in self.inputs.keys():
-            print(
-                f"There already exists a layer called {input_layer_name}. Overwriting it now."
-            )
+            if verbose is True:
+                print(
+                    f"There already exists a layer called {name}. Overwriting it now."
+                )
         self.inputs[name] = {}
         self.inputs[name]["layer"] = input_layer
         self.inputs[name]["w"] = w
@@ -1297,6 +1345,10 @@ class FeedForwardLayer(Neurons):
         self.inputs[name]["I"] = I
         for (key, value) in kwargs.items():
             self.inputs[name][key] = value
+        if verbose is True:
+            print(
+                f'An input layer called {name} was added. The weights can be accessed with "self.inputs[{name}]["w"]"'
+            )
 
     def get_state(self, evaluate_at="last", **kwargs):
         """Returns the firing rate of the feedforward layer cells. By default this layer uses the last saved firingrate from its input layers. Alternatively evaluate_at and kwargs can be set to be anything else which will just be passed to the input layer for evaluation. 
@@ -1307,6 +1359,7 @@ class FeedForwardLayer(Neurons):
         Returns:
             firingrate: array of firing rates 
         """
+
         if evaluate_at == "last":
             V = np.zeros(self.n)
         elif evaluate_at == "all":
@@ -1324,10 +1377,16 @@ class FeedForwardLayer(Neurons):
                 I = inputlayer["layer"].get_state(evaluate_at, **kwargs)
             inputlayer["I_temp"] = I
             V += np.matmul(w, I)
+
+        biases = self.biases
+        print(V.shape, biases.shape)
+        if biases.shape != V.shape:
+            biases = biases.reshape((-1,1))
+        print(V.shape, biases.shape)
+        V += biases
+
         firingrate = activate(V, other_args=self.activation_params)
         firingrate_prime = activate(V, other_args=self.activation_params, deriv=True)
-        self.firingrate_temp = firingrate
-        self.firingrate_prime_temp = firingrate_prime
 
         return firingrate
 
