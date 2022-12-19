@@ -587,6 +587,10 @@ class PlaceCells(Neurons):
             self.place_cell_centres = self.Agent.Environment.sample_positions(
                 n=self.n, method="uniform_jitter"
             )
+        elif self.place_cell_centres in ["random", "uniform", "uniform_jitter"]:
+            self.place_cell_centres = self.Agent.Environment.sample_positions(
+                n=self.n, method=self.place_cell_centres
+            )
         else:
             self.n = self.place_cell_centres.shape[0]
         self.place_cell_widths = self.widths * np.ones(self.n)
@@ -703,6 +707,7 @@ class GridCells(Neurons):
             "gridscale": 0.45,
             "random_orientations": True,
             "random_gridscales": True,
+            "random_phase_offsets": True,
             "min_fr": 0,
             "max_fr": 1,
             "name": "GridCells",
@@ -720,6 +725,7 @@ class GridCells(Neurons):
             "gridscale": 0.45,
             "random_orientations": True,
             "random_gridscales": True,
+            "random_phase_offsets": True,
             "min_fr": 0,
             "max_fr": 1,
             "name": "GridCells",
@@ -733,7 +739,10 @@ class GridCells(Neurons):
         assert (
             self.Agent.Environment.dimensionality == "2D"
         ), "grid cells only available in 2D"
-        self.phase_offsets = np.random.uniform(0, self.gridscale, size=(self.n, 2))
+        if self.random_phase_offsets == True:
+            self.phase_offsets = np.random.uniform(0, self.gridscale, size=(self.n, 2))
+        else:
+            self.phase_offsets = self.set_phase_offsets()
         w = []
         for i in range(self.n):
             w1 = np.array([1, 0])
@@ -745,6 +754,8 @@ class GridCells(Neurons):
         self.w = np.array(w)
         if self.random_gridscales == True:
             self.gridscales = np.random.rayleigh(scale=self.gridscale, size=self.n)
+        else:
+            self.gridscales = np.full(self.n, fill_value=self.gridscale)
         if verbose is True:
             print(
                 "GridCells successfully initialised. You can also manually set their gridscale (GridCells.gridscales), offsets (GridCells.phase_offset) and orientations (GridCells.w1, GridCells.w2,GridCells.w3 give the cosine vectors)"
@@ -786,6 +797,23 @@ class GridCells(Neurons):
             firingrate * (self.max_fr - self.min_fr) + self.min_fr
         )  # scales from being between [0,1] to [min_fr, max_fr]
         return firingrate
+
+    def set_phase_offsets(self):
+        """Set non-random phase_offsets. Most offsets (cell number: x*y) are grid-like, while the remainings (cell number: n - x*y) are random."""
+        n_x = int(np.sqrt(self.n))
+        n_y = self.n // n_x
+        n_remaining = self.n - n_x * n_y
+
+        dx = self.gridscale / n_x
+        dy = self.gridscale / n_y
+
+        grid = np.mgrid[(0 + dx/2):(self.gridscale - dx/2):(n_x*1j), (0 + dy/2):(self.gridscale - dy/2):(n_y*1j)]
+        grid = grid.reshape(2, -1).T
+        remaining = np.random.uniform(0, self.gridscale, size=(n_remaining, 2))
+
+        all_offsets = np.vstack([grid, remaining])
+
+        return all_offsets
 
 
 class BoundaryVectorCells(Neurons):
