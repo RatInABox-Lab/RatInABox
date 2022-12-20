@@ -1,7 +1,10 @@
 #gitignore 
 figures/
 rawdata/
+journal/
 demos/testing.ipynb
+demos/talkfigures.ipynb
+ratinabox/contribs/STDPFeedForwardLayer.py
 *.pptx
 .DS_Store
 __pycache__
