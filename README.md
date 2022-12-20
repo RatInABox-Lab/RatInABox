@@ -1,10 +1,12 @@
 #  RatInABox 
 
-`RatInABox` (paper [here](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v1)) is a toolkit for simulating motion and various cell types found in the Hippocampal formation. `RatInABox` is fully continuous is space and time: position and neuronal firing rates are calculated rapidly online with float precision. With it you can:
+`RatInABox` (paper [here](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v1)) is a toolkit for generating locomotion trajectories and complementary neural data for spatially and/or velocity selective cell types. With `RatInABox` you can: 
 
-* **Generate realistic trajectories** for rats exploring complex 1- and 2-dimensional environments under a random policy or using imported data
+* **Generate realistic trajectories** for rats exploring complex 1- and 2-dimensional environments under a smooth random policy, an external control signal, or your own trajectory data.
 * **Generate artificial neuronal data** Simulate various location or velocity selective cells found in the Hippocampal-Entorhinal system, or build your own more complex cell type. 
-* **Build complex networks** Build, train and analyse complex networks of cells, powered by `RatInABox`. 
+* **Build and train complex networks** Build, train and analyse complex networks of cells, powered by data generated with `RatInABox`. 
+
+`RatInABox` is an open source project weloming [contributions](#contribute). If you use `RatInABox` please [cite](#cite) the paper and consider giving this repository a star.
 
 <img src="./images/riab.gif" width=850>
 
@@ -12,21 +14,22 @@
 
 1. `Environment`📦: The environment/maze (or "box") that the agent lives in. 1- or 2-dimensional.
 2. `Agent`      🐀: The agent (or "rat") moving around the `Environment`. 
-3. `Neurons`    🧠: A population of neurons with firing rates determined by the state (position and velocity) of the `Agent`. Make your own or use one of our premade cell types: 
+3. `Neurons`    🧠: A population of neurons with firing rates determined by the state (position and velocity) of the `Agent`. Make your own or use one of our premade cell types including: 
     * `PlaceCells`
     * `GridCells`
     * `BoundaryVectorCells` (egocentric or allocentric)
     * `VelocityCells`
     * `SpeedCells`
     * `HeadDirectionCells`
-    * `FeedForwardLayer`
+    * `FeedForwardLayer` (a generic class analagous to a feedforward layer in a deep neural network)
+    * ...
 
-The top animation shows the kind of simulation you can easily run using this toolbox. In it an `Agent` randomly explores a 2D `Environment` with a wall. Three populations of `Neurons` (`PlaceCells`, `GridCells`, `BoundaryVectorCells`) vary their activity and "fire" as the `Agent` explores. 
+The top animation shows an example use case: an `Agent` randomly explores a 2D `Environment` with a wall. Three populations of `Neurons` (`PlaceCells`, `GridCells`, `BoundaryVectorCells`) fire according to the receptive fields shown. All data is saved into the history for downstream use. Nb. `RatInABox` is fully continuous is space; this means that position and neuronal firing rates are calculated rapidly online with float precision rather than pre-calculated over a discretised mesh; this makes `RatInABox` more accurate than "gridworld" based simulations and potentially much more efficient. `RatInABox` is flexibly discretised in time; `dt` can be set by the user (defaulting to 10 ms) depending on requirements. 
+
 
 ## Key features
-
-* **Flexible**: Generate arbitrarily complex environments. 
-* **Biological**: Simulate large populations of spatially and/or velocity modulated cell types. Neurons can be rate based or spiking. Motion model fitted to match real rodent motion. 
+* **Flexible**: Generate data in arbitrarily complex environments. 
+* **Biological**: Simulate large populations of spatially and/or velocity modulated cell types. Neurons can be rate based or spiking. The stochastic motion model fitted to match real rodent motion. 
 * **Fast**: Simulating 1 minute of exploration in a 2D environment with 100 place cells (dt=10 ms) take just 2 seconds on a laptop (no GPU needed).
 * **Precise**: No more prediscretised positions, tabular state spaces, or jerky movement policies. It's all continuous. 
 * **Visual** Plot or animate trajectories, firing rate timeseries', spike rasters, receptive fields, heat maps, velocity histograms...using the plotting functions ([summarised here](./demos/list_of_plotting_fuctions.md)). 
@@ -35,8 +38,8 @@ The top animation shows the kind of simulation you can easily run using this too
 
 
 ## Get started 
+Many [demos](./demos/) are provided. Reading through the [example scripts](#example-scripts) (one simple and one extensive, duplicated at the bottom of the readme) these should be enough to get started. We also provide numerous interactive jupyter scripts as more in-depth case studies; for example one where `RatInABox` is used for [reinforcement learning](./demos/reinforcement_learning_example.ipynb), another for [neural decoding](./demos/decoding_position_example.ipynb) of position from firing rate. Jupyter scripts reproducing all figures in the [paper](./demos/paper_figures.ipynb) and [readme](./demos/readme_figures.ipynb) are also provided.
 
-At the bottom of this readme we list [example scripts](./demos/): one simple and one extensive. Reading through these should be enough to get started. We also provide two case studies where `RatInABox` is used in a [reinforcement learning project](./demos/reinforcement_learning_example.ipynb) and a [path integration](./demos/path_integration_example.ipynb) project. Jupyter scripts reproducing all figures in the [paper](./demos/paper_figures.ipynb) and [readme](./demos/readme_figures.ipynb) are also provided.
 
 
 ## Requirements
@@ -48,7 +51,6 @@ At the bottom of this readme we list [example scripts](./demos/): one simple and
 * tqdm (optional)
 
 ## Installing and Importing
-
 **Install** using `pip` at the command line 
 ```console
 $ pip install git+https://github.com/TomGeorge1234/ratinabox.git
@@ -245,7 +247,8 @@ fig, ax = PCs.plot_rate_timeseries()
 * [path_integration_example.ipynb](./demos/path_integration_example.ipynb): RatInABox is use to construct, train and visualise a large multi-layer network capable of learning a "ring attractor" capable of path integrating a position estimate using only velocity inputs.
 
 ## Contribute 
-`RatInABox` is an open source project, and we actively encourage community contributions. These can take various forms, such as new movement policies, new cells types, new plotting functions, new geometries, bug fixes, documentation, citations of relevant work, or additional experiment notebooks. If there is a small contribution you would like to make, please feel free to open a pull request, and we can review it. If you would like to add a new `Neurons` class please pull request it into the [contribs](./ratinabox/contribs/) directory. If there is a larger contribution you are considering please contact the correponding author at `tomgeorge1@btinternet.com`. 
+`RatInABox` is an open source project, and we actively encourage community contributions. These can take various forms, such as new movement policies, new cells types, new plotting functions, new geometries, bug fixes, documentation, citations of relevant work, or additional experiment notebooks. If there is a small contribution you would like to make, please feel free to open a pull request, and we can review it. For bugs and bug fixes please raise an issue. 
+If you would like to add a new `Neurons` class please pull request it into the [contribs](./ratinabox/contribs/) directory. If there is a larger contribution you are considering please contact the correponding author at `tomgeorge1@btinternet.com`. 
 
 ## Cite
 If you use `RatInABox` in your research or educational material, please cite the work as follows: 

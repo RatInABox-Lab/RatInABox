@@ -13,6 +13,6 @@ setuptools.setup(
     download_url="https://github.com/TomGeorge1234/RatInABox",
     packages=setuptools.find_packages(),
     install_requires=required,
-    license="Apache License 2.0",
+    license="MIT License",
 )
 
