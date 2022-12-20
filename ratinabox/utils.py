@@ -288,7 +288,7 @@ def ornstein_uhlenbeck(dt, x, drift=0.0, noise_scale=0.2, coherence_time=5.0):
         x: the stochastic variable being updated
         drift (float, or same type as x, optional): [description]. Defaults to 0.
         noise_scale (float, or same type as x, optional): Magnitude of deviations from drift. Defaults to 0.2 (20 cm s^-1 if units of x are in metres).
-        coherence_time (float, optional): Effectively over what time scale you expect x to change directions. Defaults to 5.
+        coherence_time (float, optional): Effectively over what time scale you expect x to change. Can be a vector (one timescale for each element of x) directions. Defaults to 5.
 
     Returns:
         dx (same type as x); the required update to x
@@ -337,108 +337,10 @@ def normal_to_rayleigh(x, sigma=1):
 def rayleigh_to_normal(x, sigma=1):
     """Converts a rayleigh distributed variable (sigma) to a normally distributed variable (mean 0, var 1)
     """
-    if x <= 0:
-        x = 1e-6
-    if x >= 1:
-        x = 1 - 1e-6
     x = 1 - np.exp(-(x ** 2) / (2 * sigma ** 2))  # rayleigh to uniform
+    x = min(max(1e-6, x), 1 - 1e-6)
     x = scipy.stats.norm.ppf(x)  # uniform to normal
     return x
-
-
-"""Plotting functions"""
-
-
-def bin_data_for_histogramming(data, extent, dx, weights=None):
-    """Bins data ready for plotting. So for example if the data is 1D the extent is broken up into bins (leftmost edge = extent[0], rightmost edge = extent[1]) and then data is histogrammed into these bins. weights weights the histogramming process so the contribution of each data point to a bin count is the weight, not 1. 
-
-    Args:
-        data (array): (2,N) for 2D or (N,) for 1D)
-        extent (_type_): _description_
-        dx (_type_): _description_
-        weights (_type_, optional): _description_. Defaults to None.
-
-    Returns:
-        (heatmap,bin_centres): if 1D
-        (heatmap): if 2D
-    """
-    if len(extent) == 2:  # dimensionality = "1D"
-        bins = np.arange(extent[0], extent[1] + dx, dx)
-        heatmap, xedges = np.histogram(data, bins=bins, weights=weights)
-        centres = (xedges[1:] + xedges[:-1]) / 2
-        return (heatmap, centres)
-
-    elif len(extent) == 4:  # dimensionality = "2D"
-        bins_x = np.arange(extent[0], extent[1] + dx, dx)
-        bins_y = np.arange(extent[2], extent[3] + dx, dx)
-        heatmap, xedges, yedges = np.histogram2d(
-            data[:, 0], data[:, 1], bins=[bins_x, bins_y], weights=weights
-        )
-        heatmap = heatmap.T[::-1, :]
-        return heatmap
-
-
-def mountain_plot(
-    X, NbyX, color="C0", xlabel="", ylabel="", xlim=None, fig=None, ax=None,
-):
-    """Make a mountain plot. NbyX is an N by X array of all the plots to display. The nth plot is shown at height n, line are scaled so the maximum value across all of them is 0.7, then they are all seperated by 1 (sot they don't overlap)
-
-    Args:
-        X: independent variable to go on X axis 
-        NbyX: dependent variables to go on y axis
-        color: plot color. Defaults to "C0".
-        xlabel (str, optional): x axis label. Defaults to "".
-        ylabel (str, optional): y axis label. Defaults to "".
-        xlim (_type_, optional): fix xlim to this is desired. Defaults to None.
-        fig (_type_, optional): fig to plot over if desired. Defaults to None.
-        ax (_type_, optional): ax to plot on if desider. Defaults to None.
-
-    Returns:
-        fig, ax: _description_
-    """
-    c = color or "C1"
-    c = np.array(matplotlib.colors.to_rgb(c))
-    fc = 0.3 * c + (1 - 0.3) * np.array([1, 1, 1])  # convert rgb+alpha to rgb
-
-    NbyX = 0.7 * NbyX / np.max(np.abs(NbyX))
-    if fig is None and ax is None:
-        fig, ax = plt.subplots(
-            figsize=(8, len(NbyX) * 8 / 25)
-        )  # ~6mm gap between lines
-    for i in range(len(NbyX)):
-        ax.plot(X, NbyX[i] + i + 1, c=c)
-        ax.fill_between(X, NbyX[i] + i + 1, i + 1, facecolor=fc)
-    ax.spines["left"].set_bounds(1, len(NbyX))
-    ax.spines["bottom"].set_position(("outward", 1))
-    ax.spines["left"].set_position(("outward", 1))
-    ax.set_yticks([1, len(NbyX)])
-    ax.set_ylim(1 - 0.5, len(NbyX) + 1)
-    ax.set_xticks(np.arange(max(X + 0.1)))
-    ax.spines["left"].set_color(None)
-    ax.spines["right"].set_color(None)
-    ax.spines["top"].set_color(None)
-    ax.set_yticks([])
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-    ax.set_ylim()
-    if xlim is not None:
-        ax.set_xlim(right=xlim)
-
-    return fig, ax
-
-
-"""Other"""
-
-
-def update_class_params(Class, params: dict):
-    """Updates parameters from a dictionary. 
-    All parameters found in params will be updated to new value
-    Args:
-        params (dict): dictionary of parameters to change
-        initialise (bool, optional): [description]. Defaults to False.
-    """
-    for key, value in params.items():
-        setattr(Class, key, value)
 
 
 def gaussian(x, mu, sigma, norm=None):
@@ -475,6 +377,121 @@ def von_mises(theta, mu, sigma, norm=None):
     return v
 
 
+"""Plotting functions"""
+
+
+def bin_data_for_histogramming(data, extent, dx, weights=None):
+    """Bins data ready for plotting. So for example if the data is 1D the extent is broken up into bins (leftmost edge = extent[0], rightmost edge = extent[1]) and then data is histogrammed into these bins. weights weights the histogramming process so the contribution of each data point to a bin count is the weight, not 1. 
+
+    Args:
+        data (array): (2,N) for 2D or (N,) for 1D)
+        extent (_type_): _description_
+        dx (_type_): _description_
+        weights (_type_, optional): _description_. Defaults to None.
+
+    Returns:
+        (heatmap,bin_centres): if 1D
+        (heatmap): if 2D
+    """
+    if len(extent) == 2:  # dimensionality = "1D"
+        bins = np.arange(extent[0], extent[1] + dx, dx)
+        heatmap, xedges = np.histogram(data, bins=bins, weights=weights)
+        centres = (xedges[1:] + xedges[:-1]) / 2
+        return (heatmap, centres)
+
+    elif len(extent) == 4:  # dimensionality = "2D"
+        bins_x = np.arange(extent[0], extent[1] + dx, dx)
+        bins_y = np.arange(extent[2], extent[3] + dx, dx)
+        heatmap, xedges, yedges = np.histogram2d(
+            data[:, 0], data[:, 1], bins=[bins_x, bins_y], weights=weights
+        )
+        heatmap = heatmap.T[::-1, :]
+        return heatmap
+
+
+def mountain_plot(
+    X,
+    NbyX,
+    color="C0",
+    xlabel="",
+    ylabel="",
+    xlim=None,
+    fig=None,
+    ax=None,
+    norm_by="max",
+    overlap=0.8,
+    shift=4,
+    **kwargs,
+):
+    """Make a mountain plot. NbyX is an N by X array of all the plots to display. The nth plot is shown at height n, line are scaled so the maximum value across all of them is 0.7, then they are all seperated by 1 (sot they don't overlap)
+
+    Args:
+        X: independent variable to go on X axis 
+        NbyX: dependent variables to go on y axis
+        color: plot color. Defaults to "C0".
+        xlabel (str, optional): x axis label. Defaults to "".
+        ylabel (str, optional): y axis label. Defaults to "".
+        xlim (_type_, optional): fix xlim to this is desired. Defaults to None.
+        fig (_type_, optional): fig to plot over if desired. Defaults to None.
+        ax (_type_, optional): ax to plot on if desider. Defaults to None.
+        norm_by: what to normalise each line of the mountainplot by. If "max", norms by the maximum firing rate found across all the neurons. Otherwise, pass a float (useful if you want to compare different neural datsets apples-to-apples)
+        overlap: how much each plots overlap by (> 1 = overlap, < 1 = no overlap) (overlap is not relevant if you also set "norm_by")
+        shift: distance between lines in mm
+
+    Returns:
+        fig, ax: _description_
+    """
+    c = color or "C1"
+    c = np.array(matplotlib.colors.to_rgb(c))
+    fc = 0.3 * c + (1 - 0.3) * np.array([1, 1, 1])  # convert rgb+alpha to rgb
+
+    if norm_by == "max":
+        NbyX = overlap * NbyX / np.max(np.abs(NbyX))
+    else:
+        NbyX = overlap * NbyX / norm_by
+    if fig is None and ax is None:
+        fig, ax = plt.subplots(
+            figsize=(4, len(NbyX) * shift / 25)
+        )  # ~<shift>mm gap between lines
+    zorder = 1
+    for i in range(len(NbyX)):
+        ax.plot(X, NbyX[i] + i + 1, c=c, zorder=zorder)
+        zorder -= 0.01
+        ax.fill_between(X, NbyX[i] + i + 1, i + 1, color=fc, zorder=zorder, alpha=0.9)
+        zorder -= 0.01
+    ax.spines["left"].set_bounds(1, len(NbyX))
+    ax.spines["bottom"].set_position(("outward", 1))
+    ax.spines["left"].set_position(("outward", 1))
+    ax.set_yticks([1, len(NbyX)])
+    ax.set_ylim(1 - 0.5, len(NbyX) + overlap)
+    ax.set_xticks(np.arange(max(X + 0.1)))
+    ax.spines["left"].set_color(None)
+    ax.spines["right"].set_color(None)
+    ax.spines["top"].set_color(None)
+    ax.set_yticks([])
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.set_ylim()
+    if xlim is not None:
+        ax.set_xlim(right=xlim)
+
+    return fig, ax
+
+
+"""Other"""
+
+
+def update_class_params(Class, params: dict):
+    """Updates parameters from a dictionary. 
+    All parameters found in params will be updated to new value
+    Args:
+        params (dict): dictionary of parameters to change
+        initialise (bool, optional): [description]. Defaults to False.
+    """
+    for key, value in params.items():
+        setattr(Class, key, value)
+
+
 def activate(x, activation="sigmoid", deriv=False, other_args={}):
     """Activation function function
 
@@ -483,16 +500,31 @@ def activate(x, activation="sigmoid", deriv=False, other_args={}):
         activation: which type of fucntion to use (this is overwritten by 'activation' key in other_args)
         deriv (bool, optional): Whether it return f(x) or df(x)/dx. Defaults to False.
         other_args: Dictionary of parameters including other_args["activation"] = str for what type of activation (sigmoid, linear) and other params e.g. sigmoid midpoi n, max firing rate... 
+        Oother args my contain your own bespoke activation function under key other_args["function"]
 
     Returns:
         f(x) or df(x)/dx : array same as x
     """
+    # write your own:
+    try:
+        my_activation_function = other_args["function"]
+        return my_activation_function(x, deriv=deriv)
+    except KeyError:
+        pass
+
+    # otherwise use on of these
     try:
         name = other_args["activation"]
     except KeyError:
         name = activation
 
-    assert name in ["linear", "sigmoid", "relu"]
+    assert name in [
+        "linear",
+        "sigmoid",
+        "relu",
+        "tanh",
+        "retanh",
+    ]
 
     if name == "linear":
         if deriv == False:
@@ -531,3 +563,30 @@ def activate(x, activation="sigmoid", deriv=False, other_args={}):
             return other_args["gain"] * np.maximum(0, x - other_args["threshold"])
         elif deriv == True:
             return other_args["gain"] * ((x - other_args["threshold"]) > 0)
+
+    if name == "tanh":
+        other_args_default = {"gain": 1, "threshold": 0}
+        for key in other_args.keys():
+            other_args_default[key] = other_args[key]
+        other_args = other_args_default
+        if deriv == False:
+            return other_args["gain"] * np.tanh(x - other_args["threshold"])
+        elif deriv == True:
+            return other_args["gain"] * (1 - np.tanh(x) ** 2)
+
+    if name == "retanh":
+        other_args_default = {"gain": 1, "threshold": 0}
+        for key in other_args.keys():
+            other_args_default[key] = other_args[key]
+        other_args = other_args_default
+        if deriv == False:
+            return other_args["gain"] * np.maximum(
+                0, np.tanh(x - other_args["threshold"])
+            )
+        elif deriv == True:
+            return (
+                other_args["gain"]
+                * (1 - np.tanh(x) ** 2)
+                * ((x - other_args["threshold"]) > 0)
+            )
+
