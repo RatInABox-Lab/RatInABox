@@ -5,6 +5,7 @@ verbose = False
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
+from matplotlib import animation
 
 """AGENT"""
 
@@ -384,8 +385,11 @@ class Agent:
             positions = data["pos"]
             print(f"Successfully imported dataset from {dataset}")
         else:
-            times, positions = np.array(times), np.array(positions)
-            print(f"Successfully imported dataset from arrays passed")
+            if (times is not None) and (positions is not None):
+                times, positions = np.array(times), np.array(positions)
+                print(f"Successfully imported dataset from arrays passed")
+            else:
+                print("No data passed, provided arguments 'times' and 'positions'")
 
         assert len(positions) == len(
             times
@@ -439,6 +443,7 @@ class Agent:
         color=None,
         alpha=0.7,
         xlim=None,
+        background_color=None,
     ):
 
         """Plots the trajectory between t_start (seconds) and t_end (defaulting to the last time available)
@@ -451,7 +456,8 @@ class Agent:
             • plot_agent: dedicated point show agent current position
             • color: plot point color 
             • alpha: plot point opaqness
-            • xlim: In 1D, force the xlim to be a certain time (useful if animating this function)
+            • xlim: In 1D, forces the xlim to be a certain time (minutes) (useful if animating this function)
+            • background_color: color of the background if not matplotlib default, only for 1D (probably white)
 
         Returns:
             fig, ax
@@ -495,8 +501,8 @@ class Agent:
             )
         if self.Environment.dimensionality == "1D":
             if fig is None and ax is None:
-                fig, ax = plt.subplots(figsize=(6, 3))
-            ax.scatter(time / 60, trajectory, alpha=alpha, linewidth=0, c=color)
+                fig, ax = plt.subplots(figsize=(3, 1.5))
+            ax.scatter(time / 60, trajectory, alpha=alpha, linewidth=0, c=color, s=5)
             ax.spines["left"].set_position(("data", t_start / 60))
             ax.set_xlabel("Time / min")
             ax.set_ylabel("Position / m")
@@ -510,57 +516,59 @@ class Agent:
             ax.set_xticks([t_start / 60, t_end / 60])
             ex = self.Environment.extent
             ax.set_yticks([ex[1]])
+            if background_color is not None:
+                ax.set_facecolor(background_color)
+                fig.patch.set_facecolor(background_color)
         return fig, ax
 
-    def animate_trajectory(self, t_start=None, t_end=None, speed_up=1):
-        """Returns an animation (anim) of the trajectory, 20fps. 
+    def animate_trajectory(
+        self, t_start=None, t_end=None, fps=15, speed_up=1, **kwargs
+    ):
+        """Returns an animation (anim) of the trajectory, 25fps. 
         Should be saved using comand like 
         anim.save("./where_to_save/animations.gif",dpi=300)
 
         Args:
             t_start: Agent time at which to start animation
             t_end (_type_, optional): _description_. Defaults to None.
+            fps: frames per second of end video 
             speed_up: #times real speed animation should come out at 
 
         Returns:
             animation
         """
-
+        dt = 1 / fps
         if t_start == None:
             t_start = self.history["t"][0]
         if t_end == None:
             t_end = self.history["t"][-1]
 
-        def animate(i, fig, ax, t_start, t_max, speed_up):
+        def animate(i, fig, ax, t_start, t_max, speed_up, dt):
             t = self.history["t"]
-            # t_start = t[np.argmin(np.abs(np.array(t) - t_start))]
-            # print(t_start)
-            t_end = t_start + (i + 1) * speed_up * 40e-3
+            t_end = t_start + (i + 1) * speed_up * dt
             ax.clear()
             if self.Environment.dimensionality == "2D":
                 fig, ax = self.Environment.plot_environment(fig=fig, ax=ax)
-                xlim = None
-            if self.Environment.dimensionality == "1D":
-                xlim = t_max
             fig, ax = self.plot_trajectory(
                 t_start=t_start,
                 t_end=t_end,
                 fig=fig,
                 ax=ax,
                 decay_point_size=True,
-                xlim=xlim,
+                xlim=t_max / 60,
+                **kwargs,
             )
             plt.close()
             return
 
-        fig, ax = self.plot_trajectory(0, 10 * self.dt)
+        fig, ax = self.plot_trajectory(0, 10 * self.dt, xlim=t_end / 60, **kwargs)
         anim = matplotlib.animation.FuncAnimation(
             fig,
             animate,
-            interval=40,
-            frames=int((t_end - t_start) / (40e-3 * speed_up)),
+            interval=1000 * dt,
+            frames=int((t_end - t_start) / (dt * speed_up)),
             blit=False,
-            fargs=(fig, ax, t_start, t_end, speed_up),
+            fargs=(fig, ax, t_start, t_end, speed_up, dt),
         )
         return anim
 

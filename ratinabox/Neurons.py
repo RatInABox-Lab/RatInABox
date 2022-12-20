@@ -807,7 +807,10 @@ class GridCells(Neurons):
         dx = self.gridscale / n_x
         dy = self.gridscale / n_y
 
-        grid = np.mgrid[(0 + dx/2):(self.gridscale - dx/2):(n_x*1j), (0 + dy/2):(self.gridscale - dy/2):(n_y*1j)]
+        grid = np.mgrid[
+            (0 + dx / 2) : (self.gridscale - dx / 2) : (n_x * 1j),
+            (0 + dy / 2) : (self.gridscale - dy / 2) : (n_y * 1j),
+        ]
         grid = grid.reshape(2, -1).T
         remaining = np.random.uniform(0, self.gridscale, size=(n_remaining, 2))
 
@@ -1057,8 +1060,8 @@ class BoundaryVectorCells(Neurons):
             )
         ax = np.array([ax]).reshape(-1)
 
-        r = np.linspace(0, self.Agent.Environment.scale, 100)
-        theta = np.linspace(0, 2 * np.pi, 360)
+        r = np.linspace(0, self.Agent.Environment.scale, 20)
+        theta = np.linspace(0, 2 * np.pi, int(360 / 5))
         [theta_meshgrid, r_meshgrid] = np.meshgrid(theta, r)
 
         def bvc_rf(theta, r, mu_r=0.5, sigma_r=0.2, mu_theta=0.5, sigma_theta=0.1):
@@ -1409,7 +1412,7 @@ class FeedForwardLayer(Neurons):
         biases = self.biases
         print(V.shape, biases.shape)
         if biases.shape != V.shape:
-            biases = biases.reshape((-1,1))
+            biases = biases.reshape((-1, 1))
         print(V.shape, biases.shape)
         V += biases
 

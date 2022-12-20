@@ -108,7 +108,7 @@ class Environment:
         return
 
     def plot_environment(self, fig=None, ax=None, height=1):
-        """Plots the environment, dark grey lines show the walls
+        """Plots the environment on the x axis, dark grey lines show the walls
         Args:        
             fig,ax: the fig and ax to plot on (can be None)
             height: if 1D, how many line plots will be stacked (5.5mm per line)
@@ -119,7 +119,7 @@ class Environment:
         if self.dimensionality == "1D":
             extent = self.extent
             fig, ax = plt.subplots(
-                figsize=(3 * (extent[1] - extent[0]), height * (5.5 / 25))
+                figsize=(2 * (extent[1] - extent[0]), height * (5.5 / 25))
             )
             ax.set_xlim(left=extent[0], right=extent[1])
             ax.spines["left"].set_color("none")
