@@ -1410,10 +1410,8 @@ class FeedForwardLayer(Neurons):
             V += np.matmul(w, I)
 
         biases = self.biases
-        print(V.shape, biases.shape)
         if biases.shape != V.shape:
             biases = biases.reshape((-1, 1))
-        print(V.shape, biases.shape)
         V += biases
 
         firingrate = activate(V, other_args=self.activation_params)
