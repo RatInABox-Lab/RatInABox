@@ -1,5 +1,8 @@
 #  RatInABox 
 
+![example workflow](https://github.com/github/docs/actions/workflows/run_tests.yml/badge.svg)
+
+
 `RatInABox` (paper [here](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v1)) is a toolkit for generating locomotion trajectories and complementary neural data for spatially and/or velocity selective cell types. With `RatInABox` you can: 
 
 * **Generate realistic trajectories** for rats exploring complex 1- and 2-dimensional environments under a smooth random policy, an external control signal, or your own trajectory data.

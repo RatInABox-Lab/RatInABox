@@ -1,4 +1,4 @@
-name: run_tests
+name: Tests
 on: [push]
 jobs:
   run_tests:
