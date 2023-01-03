@@ -1,7 +1,8 @@
 import setuptools
 
-required = ["numpy", "matplotlib", "scipy", "tqdm", "jupyter"]
-
+with open('requirements.txt') as f:
+    required = f.read().splitlines()
+    
 setuptools.setup(
     name="ratinabox",
     version="0.1",
@@ -15,4 +16,3 @@ setuptools.setup(
     install_requires=required,
     license="MIT License",
 )
-
