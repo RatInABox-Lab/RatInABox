@@ -8,11 +8,12 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version: '3.10'
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install pytest
+          pip install -e .
           pip install -r requirements.txt
       - name: Test
         run: |
