@@ -1,6 +1,6 @@
 #  RatInABox 
 
-![example workflow](https://github.com/TomGeorge1234/RatInABox/actions/workflows/run_tests.yml/badge.svg)
+![example workflow](https://github.com/TomGeorge1234/RatInABox/actions/workflows/build_and_test.yml/badge.svg)
 
 
 `RatInABox` (paper [here](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v1)) is a toolkit for generating locomotion trajectories and complementary neural data for spatially and/or velocity selective cell types. With `RatInABox` you can: 
@@ -9,7 +9,7 @@
 * **Generate artificial neuronal data** Simulate various location or velocity selective cells found in the Hippocampal-Entorhinal system, or build your own more complex cell type. 
 * **Build and train complex networks** Build, train and analyse complex networks of cells, powered by data generated with `RatInABox`. 
 
-`RatInABox` is an open source project weloming [contributions](#contribute). If you use `RatInABox` please [cite](#cite) the paper and consider giving this repository a star.
+`RatInABox` is an open source project welcoming [contributions](#contribute). If you use `RatInABox` please [cite](#cite) the paper and consider giving this repository a star.
 
 <img src="./ratinabox/.images/riab.gif" width=850>
 
