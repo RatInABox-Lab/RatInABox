@@ -7,7 +7,7 @@
 * **Generate artificial neuronal data** Simulate various location or velocity selective cells found in the Hippocampal-Entorhinal system, or build your own more complex cell type. 
 * **Build and train complex networks** Build, train and analyse complex networks of cells, powered by data generated with `RatInABox`. 
 
-`RatInABox` is an open source project welcoming [contributions](#contribute). If you use `RatInABox` please [cite](#cite) the paper and consider giving this repository a star ⭐️.
+`RatInABox` is an open source project welcoming [contributions](#contribute). If you use `RatInABox` please [cite](#cite) the paper and consider giving this repository a star ☆.
 
 <img src=".images/readme/ratinabox.gif" width=850>
 
@@ -25,7 +25,7 @@
     * `FeedForwardLayer` (a generic class analagous to a feedforward layer in a deep neural network)
     * ...
 
-The top animation shows an example use case: an `Agent` randomly explores a 2D `Environment` with a wall. Three populations of `Neurons` (`PlaceCells`, `GridCells`, `BoundaryVectorCells`) fire according to the receptive fields shown. All data is saved into the history for downstream use. Nb. `RatInABox` is fully continuous is space; this means that position and neuronal firing rates are calculated rapidly online with float precision rather than pre-calculated over a discretised mesh; this makes `RatInABox` more accurate than "gridworld" based simulations and potentially much more efficient. `RatInABox` is flexibly discretised in time; `dt` can be set by the user (defaulting to 10 ms) depending on requirements. 
+The top animation shows an example use case: an `Agent` randomly explores a 2D `Environment` with a wall. Three populations of `Neurons` (`PlaceCells`, `GridCells`, `BoundaryVectorCells`) fire according to the receptive fields shown. All data is saved into the history for downstream use. Nb. `RatInABox` is fully continuous is space; this means that position and neuronal firing rates are calculated rapidly online with float precision rather than pre-calculated over a discretised mesh; this makes `RatInABox` more accurate than "gridworld" based simulations and potentially much more efficient. `RatInABox` is flexibly discretised in time; `dt` can be set by the user (defaulting to 10 ms) depending on requirements.
 
 
 ## Key features
