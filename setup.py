@@ -12,7 +12,7 @@ For full details, tutorials, source code and more please see our [github reposit
 
 setuptools.setup(
     name="ratinabox",
-    version="1.0.9",
+    version="1.0.0",
     description="RatInABox: A package for simulating motion and ephys data in continuous environments",
     long_description=long_description,
     long_description_content_type="text/markdown",
