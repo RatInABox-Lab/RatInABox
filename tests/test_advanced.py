@@ -66,8 +66,7 @@ def test_extensive():
     # 6 Simulate. 
     dt = 50e-3 
     T = 5*60
-    from tqdm import tqdm #gives time bar
-    for i in tqdm(range(int(T/dt))):
+    for i in range(int(T/dt)):
         Ag.update(dt=dt)
         PCs.update()
         BVCs.update()
@@ -157,8 +156,7 @@ def test_decoding_position():
     PCs = PlaceCells(Ag,params={'description':'gaussian_threshold','widths':0.4,'n':20,'color':'C1'})
     GCs = GridCells(Ag,params={'n':20,'color':'C2'},)
 
-    from tqdm import tqdm 
-    for i in tqdm(range(int(5*60/Ag.dt))):
+    for i in range(int(5*60/Ag.dt)):
         Ag.update()
         PCs.update()
         GCs.update()
@@ -172,7 +170,7 @@ def test_decoding_position():
     train_decoder(GCs)
 
     np.random.seed(10)
-    for i in tqdm(range(int(60/Ag.dt))):
+    for i in range(int(60/Ag.dt)):
         Ag.update()
         PCs.update()
         GCs.update()
