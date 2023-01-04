@@ -7,9 +7,9 @@
 * **Generate artificial neuronal data** Simulate various location or velocity selective cells found in the Hippocampal-Entorhinal system, or build your own more complex cell type. 
 * **Build and train complex networks** Build, train and analyse complex networks of cells, powered by data generated with `RatInABox`. 
 
-`RatInABox` is an open source project welcoming [contributions](#contribute). If you use `RatInABox` please [cite](#cite) the paper and consider giving this repository a star.
+`RatInABox` is an open source project welcoming [contributions](#contribute). If you use `RatInABox` please [cite](#cite) the paper and consider giving this repository a star ⭐️.
 
-<img src=".images/readme/riab.gif" width=850>
+<img src=".images/readme/ratinabox.gif" width=850>
 
 `RatInABox` contains three classes: 
 
@@ -29,37 +29,32 @@ The top animation shows an example use case: an `Agent` randomly explores a 2D `
 
 
 ## Key features
-* **Flexible**: Generate data in arbitrarily complex environments. 
-* **Biological**: Simulate large populations of spatially and/or velocity modulated cell types. Neurons can be rate based or spiking. The stochastic motion model fitted to match real rodent motion. 
-* **Fast**: Simulating 1 minute of exploration in a 2D environment with 100 place cells (dt=10 ms) take just 2 seconds on a laptop (no GPU needed).
-* **Precise**: No more prediscretised positions, tabular state spaces, or jerky movement policies. It's all continuous. 
-* **Visual** Plot or animate trajectories, firing rate timeseries', spike rasters, receptive fields, heat maps, velocity histograms...using the plotting functions ([summarised here](./demos/list_of_plotting_fuctions.md)). 
-* **Easy**: Sensible default parameters mean you can have realisitic simulation data to work with in ~10 lines of code.
-* **General**: Build your own bespoke `Neurons` classes and combine them into complex networks of neurons (example scripts given).
+* **Non-specific**: Trajectories can be randomly generated, imported, or adaptively controlled making `RatInABox` a powerful engine for many tasks involving continuous motion (e.g. control theory or [reinforcement learning](#policy-control)).  Combine premade or bespoke `Neurons` classes into arbitrary deep networks (examples given).
+* **Biological**:   Simulate large populations of spatially and/or velocity modulated cell types. Neurons can be rate based or spiking. The random motion model is fitted to match real rodent motion. 
+* **Flexible**:     Simulate environments in 1D or 2D with arbitrarily wall arrangements. 
+* **Fast**:         Simulating 1 minute of exploration in a 2D environment with 100 place cells (dt=10 ms) take just 2 seconds on a laptop (no GPU needed).
+* **Precise**:      No more prediscretised positions, tabular state spaces, or jerky movement policies. It's all continuous. 
+* **Easy**:         Sensible default parameters mean you can have realisitic simulation data to work with in ~10 lines of code.
+* **Visual**        Plot or animate trajectories, firing rate timeseries', spike rasters, receptive fields, heat maps, velocity histograms...using the plotting functions ([summarised here](./demos/list_of_plotting_fuctions.md)). 
 
 
 ## Get started 
 Many [demos](./demos/) are provided. Reading through the [example scripts](#example-scripts) (one simple and one extensive, duplicated at the bottom of the readme) these should be enough to get started. We also provide numerous interactive jupyter scripts as more in-depth case studies; for example one where `RatInABox` is used for [reinforcement learning](./demos/reinforcement_learning_example.ipynb), another for [neural decoding](./demos/decoding_position_example.ipynb) of position from firing rate. Jupyter scripts reproducing all figures in the [paper](./demos/paper_figures.ipynb) and [readme](./demos/readme_figures.ipynb) are also provided.
 
+## Requirements, Installing and Importing
+**Requirements** are minimal (`python3`, `numpy`, `scipy` and `matplotlib`) and will be installed automatically. 
 
-## Requirements
-* python 3.7+
-* numpy
-* scipy
-* matplotlib
-
-## Installing and Importing
-For the latest, stable version install using `pip` at the command line with
+**Install** the latest, stable version using `pip` at the command line with
 ```console
 $ pip install ratinabox
 ```
-Alternatively, install `RatInABox` locally using  
+Alternatively, in particular if you would like to edit `RatInABox` code, install locally using  
 ```console
-$ git clone https://github.com/TomGeorge1234/RatInABox.git
+$ git clone --depth 1 https://github.com/TomGeorge1234/RatInABox.git
 $ cd RatInABox
 $ pip install -e . 
 ```
-N.b. the `-e` (`--editable`) handle means this install points *directly* to the cloned repository itself. Any changes made here will be reflected when you next import `RatInABox` into your code.
+n.b. the `-e` (`--editable`) handle means this install points *directly* to the cloned repository itself. Any changes made here will be reflected when you next import `RatInABox` into your code.
 
 **Import** into your python project with  
 ```python
