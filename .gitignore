@@ -5,11 +5,11 @@ journal/
 demos/testing.ipynb
 demos/talkfigures.ipynb
 ratinabox/contribs/STDPFeedForwardLayer.py
+publishing_instructions.md
 *.pptx
 .DS_Store
 __pycache__
 */__pycache__
 *.egg-info
 */.ipynb_checkpoints
-dist
 build
