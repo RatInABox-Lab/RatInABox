@@ -1,5 +1,4 @@
 import scipy
-from scipy import stats
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
@@ -24,14 +23,17 @@ def get_perpendicular(a=None):
 
 def vector_intercepts(vector_list_a, vector_list_b, return_collisions=False):
     """
-    Each element of vector_list_a gives a line segment of the form [[x_a_0,y_a_0],[x_a_1,y_a_1]], or, in vector notation [p_a_0,p_a_1] (same goes for vector vector_list_b). Thus
+    Each element of vector_list_a gives a line segment of the form [[x_a_0,y_a_0],[x_a_1,y_a_1]], or, in vector notation [p_a_0,p_a_1]
+    (same goes for vector vector_list_b). Thus
         vector_list_A.shape = (N_a,2,2)
         vector_list_B.shape = (N_b,2,2)
     where N_a is the number of vectors defined in vector_list_a
 
-    Each line segments define an (infinite) line, parameterised by line_a = p_a_0 + l_a.(p_a_1-p_a_0). We want to find the intersection between these lines in terms of the parameters l_a and l_b. Iff l_a and l_b are BOTH between 0 and 1 then the line segments intersect. Thus the goal is to return an array, I,  of shape 
+    Each line segments define an (infinite) line, parameterised by line_a = p_a_0 + l_a.(p_a_1-p_a_0).
+    We want to find the intersection between these lines in terms of the parameters l_a and l_b.
+    Iff l_a and l_b are BOTH between 0 and 1 then the line segments intersect. Thus the goal is to return an array, I,  of shape
         I.shape = (N_a,N_b,2)
-    where, if I[n_a,n_b][0] and I[n_a,n_b][1] are both between 0 and 1 then it means line segments vector_list_a[n_a] and vector_list_b[n_b] intersect. 
+    where, if I[n_a,n_b][0] and I[n_a,n_b][1] are both between 0 and 1 then it means line segments vector_list_a[n_a] and vector_list_b[n_b] intersect.
 
     To do this we consider solving the equation line_a = line_b. The solution to this is:
         l_a = dot((p_b_0 - p_a_0) , (p_b_1 - p_b_0)_p) / dot((p_a_1 - p_a_0) , (p_b_1 - p_b_0)_p)
@@ -39,13 +41,14 @@ def vector_intercepts(vector_list_a, vector_list_b, return_collisions=False):
     where "_p" denotes the perpendicular (in two-D [x,y]_p = [-y,x]). Using notation
         l_a = dot(d0,sb_p) / dot(sa,sb_p)
         l_b = dot(-d0,sa_p) / dot(sb,sa_p)
-    for 
+    for
         d0 = p_b_0 - p_a_0
-        sa = p_a_1 - p_a_0 
+        sa = p_a_1 - p_a_0
         sb = p_b_1 - p_b_0
     We will calculate these first.
 
-    If return_collisions == True, the list of intercepts is used to assess whether each pair of segments actually collide (True) or not (False) and this bollean array (shape = (N_a,N_b)) is returned instead.
+    If return_collisions == True, the list of intercepts is used to assess whether each pair of segments actually collide (True) or not (False)
+    and this bollean array (shape = (N_a,N_b)) is returned instead.
     """
     assert (vector_list_a.shape[-2:] == (2, 2)) and (
         vector_list_b.shape[-2:] == (2, 2)
@@ -89,12 +92,7 @@ def vector_intercepts(vector_list_a, vector_list_b, return_collisions=False):
 
     intercepts = np.stack((l_a, l_b), axis=-1)
     if return_collisions == True:
-        direct_collision = (
-            (intercepts[:, :, 0] > 0)
-            * (intercepts[:, :, 0] < 1)
-            * (intercepts[:, :, 1] > 0)
-            * (intercepts[:, :, 1] < 1)
-        )
+        direct_collision = ((intercepts[:, :, 0] > 0) * (intercepts[:, :, 0] < 1) * (intercepts[:, :, 1] > 0) * (intercepts[:, :, 1] < 1))
         return direct_collision
     else:
         return intercepts
@@ -102,17 +100,20 @@ def vector_intercepts(vector_list_a, vector_list_b, return_collisions=False):
 
 def shortest_vectors_from_points_to_lines(positions, vectors):
     """
-    Takes a list of positions and a list of vectors (line segments) and returns the pairwise  vectors of shortest distance FROM the vector segments TO the positions. 
-    Suppose we have a list of N_p positions and a list of N_v line segments (or vectors). Each position is a point like [x_p,y_p], or p_p as a vector. Each vector is defined by two points [[x_v_0,y_v_0],[x_v_1,y_v_1]], or [p_v_0,p_v_1]. Thus 
+    Takes a list of positions and a list of vectors (line segments) and returns the pairwise  vectors of shortest distance
+    FROM the vector segments TO the positions.
+    Suppose we have a list of N_p positions and a list of N_v line segments (or vectors). Each position is a point like [x_p,y_p], or p_p as a vector.
+    Each vector is defined by two points [[x_v_0,y_v_0],[x_v_1,y_v_1]], or [p_v_0,p_v_1]. Thus
         positions.shape = (N_p,2)
         vectors.shape = (N_v,2,2)
-    
-    Each vector defines an infinite line, parameterised by line_v = p_v_0 + l_v . (p_v_1 - p_v_0). We want to solve for the l_v defining the point on the line with the shortest distance to p_p. This is given by:
-        l_v = dot((p_p-p_v_0),(p_v_1-p_v_0)/dot((p_v_1-p_v_0),(p_v_1-p_v_0)). 
+
+    Each vector defines an infinite line, parameterised by line_v = p_v_0 + l_v . (p_v_1 - p_v_0).
+    We want to solve for the l_v defining the point on the line with the shortest distance to p_p. This is given by:
+        l_v = dot((p_p-p_v_0),(p_v_1-p_v_0)/dot((p_v_1-p_v_0),(p_v_1-p_v_0)).
     Or, using a diferrent notation
         l_v = dot(d,s)/dot(s,s)
-    where 
-        d = p_p-p_v_0 
+    where
+        d = p_p-p_v_0
         s = p_v_1-p_v_0"""
     assert (positions.shape[-1] == 2) and (
         vectors.shape[-2:] == (2, 2)
@@ -141,8 +142,10 @@ def shortest_vectors_from_points_to_lines(positions, vectors):
     """
     Now we can actually find the vector of shortest distance from the line segments to the points which is given by the size of the perpendicular
         perp = p_p - (p_v_0 + l_v.s_)
-    
-    But notice that if l_v > 1 then the perpendicular drops onto a part of the line which doesn't exist. In fact the shortest distance is to the point on the line segment where l_v = 1. Likewise for l_v < 0. To fix this we should limit l_v to be between 1 and 0
+
+    But notice that if l_v > 1 then the perpendicular drops onto a part of the line which doesn't exist.
+    In fact the shortest distance is to the point on the line segment where l_v = 1. Likewise for l_v < 0.
+    To fix this we should limit l_v to be between 1 and 0
     """
     l_v[l_v > 1] = 1
     l_v[l_v < 0] = 0
@@ -182,7 +185,7 @@ def get_vectors_between(pos1=None, pos2=None, line_segments=None):
     Args:
         pos1 (array): (N x dimensionality) array of positions
         pos2 (array): (M x dimensionality) array of positions
-        line_segments: if you already have the line segments, just pass these 
+        line_segments: if you already have the line segments, just pass these
     Returns:
             (N x M x dimensionality) array of vectors from pos1's to pos2's"""
     if line_segments is None:
@@ -196,7 +199,7 @@ def get_distances_between(pos1=None, pos2=None, vectors=None):
     Args:
         pos1 (array): (N x dimensionality) array of positions
         pos2 (array): (M x dimensionality) array of positions
-        vectors: if you already have the pair-wise vectors between pos1 and pos2, just pass these 
+        vectors: if you already have the pair-wise vectors between pos1 and pos2, just pass these
     Returns:
             (N x M) array of distances from pos1's to pos2's"""
     if vectors is None:
@@ -206,10 +209,10 @@ def get_distances_between(pos1=None, pos2=None, vectors=None):
 
 
 def get_angle(segment):
-    """Given a 'segment' (either 2x2 start and end positions or 2x1 direction bearing) 
+    """Given a 'segment' (either 2x2 start and end positions or 2x1 direction bearing)
          returns the 'angle' of this segment modulo 2pi
     Args:
-        segment (array): The segment, (2,2) or (2,) array 
+        segment (array): The segment, (2,2) or (2,) array
     Returns:
         float: angle of segment
     """
@@ -227,7 +230,7 @@ def get_angle(segment):
 
 
 def rotate(vector, theta):
-    """rotates a vector shape (2,) by angle theta. 
+    """rotates a vector shape (2,) by angle theta.
     Args:
         vector (array): the 2d vector
         theta (flaot): the rotation angle
@@ -238,7 +241,7 @@ def rotate(vector, theta):
 
 
 def wall_bounce(current_velocity, wall):
-    """Given current direction and wall returns a new direction which is the result of reflecting off that wall 
+    """Given current direction and wall returns a new direction which is the result of reflecting off that wall
     Args:
         current_direction (array): the current direction vector
         wall (array): start and end coordinates of the wall
@@ -282,13 +285,14 @@ def pi_domain(x):
 
 def ornstein_uhlenbeck(dt, x, drift=0.0, noise_scale=0.2, coherence_time=5.0):
     """An ornstein uhlenbeck process in x.
-    x can be multidimensional 
+    x can be multidimensional
     Args:
         dt: update time step
         x: the stochastic variable being updated
         drift (float, or same type as x, optional): [description]. Defaults to 0.
         noise_scale (float, or same type as x, optional): Magnitude of deviations from drift. Defaults to 0.2 (20 cm s^-1 if units of x are in metres).
-        coherence_time (float, optional): Effectively over what time scale you expect x to change. Can be a vector (one timescale for each element of x) directions. Defaults to 5.
+        coherence_time (float, optional):
+        Effectively over what time scale you expect x to change. Can be a vector (one timescale for each element of x) directions. Defaults to 5.
 
     Returns:
         dx (same type as x); the required update to x
@@ -304,11 +308,12 @@ def ornstein_uhlenbeck(dt, x, drift=0.0, noise_scale=0.2, coherence_time=5.0):
 
 
 def interpolate_and_smooth(x, y, sigma=None):
-    """Interpolates with cublic spline x and y to 10x resolution then smooths these with a gaussian kernel of width sigma. Currently this only works for 1-dimensional x.
+    """Interpolates with cublic spline x and y to 10x resolution then smooths these with a gaussian kernel of width sigma.
+    Currently this only works for 1-dimensional x.
     Args:
-        x 
-        y 
-        sigma 
+        x
+        y
+        sigma
     Returns (x_new,y_new)
     """
     from scipy.ndimage.filters import gaussian_filter1d
@@ -344,7 +349,7 @@ def rayleigh_to_normal(x, sigma=1):
 
 
 def gaussian(x, mu, sigma, norm=None):
-    """Gaussian function. x, mu and sigma can be any shape as long as they are all the same (or strictly, all broadcastable) 
+    """Gaussian function. x, mu and sigma can be any shape as long as they are all the same (or strictly, all broadcastable)
     Args:
         x: input
         mu ; mean
@@ -361,7 +366,9 @@ def gaussian(x, mu, sigma, norm=None):
 
 
 def von_mises(theta, mu, sigma, norm=None):
-    """Von Mises function. theta, mu and sigma can be any shape as long as they are all the same (or strictly, all broadcastable). sigma is the standard deviation (in radians) which is converted to the von mises spread parameter, kappa = 1 / sigma^2 (note this approximation is only true for small, sigma << 2pi, spreads). All quantities must be given in radians. 
+    """Von Mises function. theta, mu and sigma can be any shape as long as they are all the same (or strictly, all broadcastable).
+    sigma is the standard deviation (in radians) which is converted to the von mises spread parameter,
+    kappa = 1 / sigma^2 (note this approximation is only true for small, sigma << 2pi, spreads). All quantities must be given in radians.
     Args:
         x: input
         mu ; mean
@@ -381,7 +388,10 @@ def von_mises(theta, mu, sigma, norm=None):
 
 
 def bin_data_for_histogramming(data, extent, dx, weights=None):
-    """Bins data ready for plotting. So for example if the data is 1D the extent is broken up into bins (leftmost edge = extent[0], rightmost edge = extent[1]) and then data is histogrammed into these bins. weights weights the histogramming process so the contribution of each data point to a bin count is the weight, not 1. 
+    """Bins data ready for plotting.
+    So for example if the data is 1D the extent is broken up into bins (leftmost edge = extent[0], rightmost edge = extent[1]) and then data is
+    histogrammed into these bins.
+    weights weights the histogramming process so the contribution of each data point to a bin count is the weight, not 1.
 
     Args:
         data (array): (2,N) for 2D or (N,) for 1D)
@@ -423,10 +433,13 @@ def mountain_plot(
     shift=4,
     **kwargs,
 ):
-    """Make a mountain plot. NbyX is an N by X array of all the plots to display. The nth plot is shown at height n, line are scaled so the maximum value across all of them is 0.7, then they are all seperated by 1 (sot they don't overlap)
+    """Make a mountain plot.
+    NbyX is an N by X array of all the plots to display.
+    The nth plot is shown at height n, line are scaled so the maximum value across all of them is 0.7,
+    then they are all seperated by 1 (sot they don't overlap)
 
     Args:
-        X: independent variable to go on X axis 
+        X: independent variable to go on X axis
         NbyX: dependent variables to go on y axis
         color: plot color. Defaults to "C0".
         xlabel (str, optional): x axis label. Defaults to "".
@@ -434,7 +447,8 @@ def mountain_plot(
         xlim (_type_, optional): fix xlim to this is desired. Defaults to None.
         fig (_type_, optional): fig to plot over if desired. Defaults to None.
         ax (_type_, optional): ax to plot on if desider. Defaults to None.
-        norm_by: what to normalise each line of the mountainplot by. If "max", norms by the maximum firing rate found across all the neurons. Otherwise, pass a float (useful if you want to compare different neural datsets apples-to-apples)
+        norm_by: what to normalise each line of the mountainplot by.
+           If "max", norms by the maximum firing rate found across all the neurons. Otherwise, pass a float (useful if you want to compare different neural datsets apples-to-apples)
         overlap: how much each plots overlap by (> 1 = overlap, < 1 = no overlap) (overlap is not relevant if you also set "norm_by")
         shift: distance between lines in mm
 
@@ -482,7 +496,7 @@ def mountain_plot(
 
 
 def update_class_params(Class, params: dict):
-    """Updates parameters from a dictionary. 
+    """Updates parameters from a dictionary.
     All parameters found in params will be updated to new value
     Args:
         params (dict): dictionary of parameters to change
@@ -499,7 +513,8 @@ def activate(x, activation="sigmoid", deriv=False, other_args={}):
         x (the input (vector))
         activation: which type of fucntion to use (this is overwritten by 'activation' key in other_args)
         deriv (bool, optional): Whether it return f(x) or df(x)/dx. Defaults to False.
-        other_args: Dictionary of parameters including other_args["activation"] = str for what type of activation (sigmoid, linear) and other params e.g. sigmoid midpoi n, max firing rate... 
+        other_args: Dictionary of parameters including other_args["activation"] = str for what type of activation (sigmoid, linear) and other params e.g.
+          sigmoid midpoi n, max firing rate...
         Oother args my contain your own bespoke activation function under key other_args["function"]
 
     Returns:
@@ -548,7 +563,6 @@ def activate(x, activation="sigmoid", deriv=False, other_args={}):
         )
         beta = np.log((1 - 0.05) / 0.05) / (0.5 * width_x)  # sigmoid width
         if deriv == False:
-            exp = np.exp(-beta * (x - mid_x))
             return ((max_fr - min_fr) / (1 + np.exp(-beta * (x - mid_x)))) + min_fr
         elif deriv == True:
             f = activate(x, deriv=False, other_args=other_args)
@@ -585,8 +599,4 @@ def activate(x, activation="sigmoid", deriv=False, other_args={}):
             )
         elif deriv == True:
             return (
-                other_args["gain"]
-                * (1 - np.tanh(x) ** 2)
-                * ((x - other_args["threshold"]) > 0)
-            )
-
+                other_args["gain"] * (1 - np.tanh(x) ** 2) * ((x - other_args["threshold"]) > 0))

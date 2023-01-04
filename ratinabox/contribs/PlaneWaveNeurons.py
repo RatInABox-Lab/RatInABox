@@ -1,22 +1,22 @@
-import ratinabox
 from ratinabox.Environment import Environment
 from ratinabox.Agent import Agent
 from ratinabox.Neurons import *
 from ratinabox.utils import *
 
+import numpy as np 
 
 class PlaneWaveNeurons(Neurons):
     """
     Contributer: Tom George tomgeorge1@btinternet.com
     Date: 23/07/2022
 
-    The PlaneWaveNeurons class defines a population of PlaneWaveNeurons. This class is a subclass of Neurons() and inherits it properties/plotting functions.  
+    The PlaneWaveNeurons class defines a population of PlaneWaveNeurons. This class is a subclass of Neurons() and inherits it properties/plotting functions.
 
-    Must be initialised with an Agent and a 'params' dictionary. 
+    Must be initialised with an Agent and a 'params' dictionary.
 
     PlaneWaveNeurons defines a set of 'n' neurons whos firing rate is a plane cells with random orientations, lengthscales (around some mean) and offsets). If you want non random orientations and phase offsets just set self.w and self.phase_offsets and self.wavescales manually.
 
-    List of functions: 
+    List of functions:
         • get_state()
     """
 
@@ -60,7 +60,7 @@ class PlaneWaveNeurons(Neurons):
         By default position is taken from the Agent and used to calculate firing rates. This can also by passed directly (evaluate_at=None, pos=pass_array_of_positions) or you can use all the positions in the environment (evaluate_at="all").
 
         Returns:
-            firingrates: an array of firing rates 
+            firingrates: an array of firing rates
         """
         if evaluate_at == "agent":
             pos = self.Agent.pos

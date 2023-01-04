@@ -1,22 +1,22 @@
-import ratinabox
 from ratinabox.Environment import Environment
 from ratinabox.Agent import Agent
 from ratinabox.Neurons import *
 from ratinabox.utils import *
 
+import numpy as np 
 
 class ValueNeuron(FeedForwardLayer):
     """
     Contributer: Tom George tomgeorge1@btinternet.com
     Date: 23/07/2022
 
-    The ValueNeuron class defines a neuron which learns the "value" of a policy using temporally continuous TD learning . This class is a subclass of FeedForwardLayer() which is a subclass of Neurons() and inherits it properties/plotting functions from both of these.  
+    The ValueNeuron class defines a neuron which learns the "value" of a policy using temporally continuous TD learning . This class is a subclass of FeedForwardLayer() which is a subclass of Neurons() and inherits it properties/plotting functions from both of these.
 
     It takes as input a layer of neurons (these are the "features" over which value is calculated). You could pass in any ratinabox Neurons class here (a set of PlaceCells, BoundaryVectorCells, GridCells etc...or more complex things)
-    
-    It linearly sums these inputs to calculate its firing rate (this summation is all handled by the FeedForwardLayer class). 
-    
-    Weights are trained using TD learning, self.update_weights() should be called at each update step and passed the current reward density). For more infor see ratinabox/example_scripts/reinforcement_learning_example/  
+
+    It linearly sums these inputs to calculate its firing rate (this summation is all handled by the FeedForwardLayer class).
+
+    Weights are trained using TD learning, self.update_weights() should be called at each update step and passed the current reward density). For more infor see ratinabox/example_scripts/reinforcement_learning_example/
 
     Since this is a Neurons subclass, after (or even during) learning you can plot the value function just by querying the ValueNeurons rate map (ValueNeuron.plot_rate_map()), or check the estimate of value at a postion using ValueNeuron.get_state(evaluate_at=None, pos=np.array([[x,y]]))
 
@@ -76,7 +76,7 @@ class ValueNeuron(FeedForwardLayer):
 
 
 if __name__ == "__main__":
-    """Example use. 
+    """Example use.
     A reward is placed in the middle of the environment. Agent explores and learns "value" as linear sum of 100 place cells. Afterwarrd, the results are plotted. (If successful the value function should be higher in the centre of the environment (near reward) and lower at the edges))
     """
     from ratinabox.contribs.ValueNeuron import ValueNeuron
@@ -95,7 +95,7 @@ if __name__ == "__main__":
     Reward.plot_place_cell_locations(fig=fig, ax=ax[0])
     VN.plot_rate_map(fig=fig, ax=ax[1])
 
-    #explore/learn for 300 seconds 
+    #explore/learn for 300 seconds
     for i in tqdm(range(int(300 / Ag.dt))):
         Ag.update()
         Reward.update()
