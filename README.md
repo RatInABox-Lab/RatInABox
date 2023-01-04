@@ -1,4 +1,4 @@
-![Tests](https://github.com/TomGeorge1234/RatInABox/actions/workflows/build_and_test.yml/badge.svg) 
+![Tests](https://github.com/TomGeorge1234/RatInABox/actions/workflows/test.yml/badge.svg) 
 # RatInABox 
 
 `RatInABox` (paper [here](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v1)) is a toolkit for generating locomotion trajectories and complementary neural data for spatially and/or velocity selective cell types. With `RatInABox` you can: 
