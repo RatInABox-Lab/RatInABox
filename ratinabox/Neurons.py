@@ -1079,6 +1079,7 @@ class BoundaryVectorCells(Neurons):
             receptive_field = bvc_rf(
                 theta_meshgrid, r_meshgrid, mu_r, sigma_r, mu_theta, sigma_theta
             )
+            ax[i].grid(False)
             ax[i].pcolormesh(
                 theta, r, receptive_field, edgecolors="face", shading="nearest"
             )
