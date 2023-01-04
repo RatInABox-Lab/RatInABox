@@ -10,12 +10,9 @@ long_description = """
 For full details, tutorials, source code and more please see our [github repository](https://github.com/TomGeorge1234/RatInABox)
 """
 
-with open("requirements.txt") as f:
-    required = f.read().splitlines()
-
 setuptools.setup(
     name="ratinabox",
-    version="1.0.7",
+    version="1.0.9",
     description="RatInABox: A package for simulating motion and ephys data in continuous environments",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -24,8 +21,14 @@ setuptools.setup(
     url="https://github.com/TomGeorge1234/RatInABox",
     download_url="https://github.com/TomGeorge1234/RatInABox",
     packages=setuptools.find_packages(),
-    package_data={"ratinabox": ["data/*"]},
+    package_data={
+        "":["requirements.txt"],
+        "ratinabox": ["data/*"]},
     python_requires=">=3.7",
-    install_requires=required,
+    install_requires=[
+        'numpy~=1.23.3',
+        'matplotlib~=3.5.3',
+        'scipy~=1.9.3',
+    ],
     license="MIT License",
 )
