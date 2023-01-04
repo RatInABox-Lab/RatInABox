@@ -15,7 +15,7 @@ with open("requirements.txt") as f:
 
 setuptools.setup(
     name="ratinabox",
-    version="1.0.6",
+    version="1.0.7",
     description="RatInABox: A package for simulating motion and ephys data in continuous environments",
     long_description=long_description,
     long_description_content_type="text/markdown",
