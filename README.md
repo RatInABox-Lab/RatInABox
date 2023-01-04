@@ -1,7 +1,11 @@
 ![Tests](https://github.com/TomGeorge1234/RatInABox/actions/workflows/test.yml/badge.svg) 
 # RatInABox 
 
-`RatInABox` (paper [here](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v1)) is a toolkit for generating locomotion trajectories and complementary neural data for spatially and/or velocity selective cell types. With `RatInABox` you can: 
+`RatInABox` (paper [here](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v1)) is a toolkit for generating locomotion trajectories and complementary neural data for spatially and/or velocity selective cell types. 
+
+<img src=".images/readme/ratinabox.gif" width=850>
+
+With `RatInABox` you can: 
 
 * **Generate realistic trajectories** for rats exploring complex 1- and 2-dimensional environments under a smooth random policy, an external control signal, or your own trajectory data.
 * **Generate artificial neuronal data** Simulate various location or velocity selective cells found in the Hippocampal-Entorhinal system, or build your own more complex cell type. 
@@ -9,7 +13,6 @@
 
 `RatInABox` is an open source project welcoming [contributions](#contribute). If you use `RatInABox` please [cite](#cite) the paper and consider giving this repository a star ☆.
 
-<img src=".images/readme/ratinabox.gif" width=850>
 
 `RatInABox` contains three classes: 
 
