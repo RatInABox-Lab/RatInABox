@@ -597,11 +597,11 @@ class PlaceCells(Neurons):
 
         # Assertions (some combinations of boundary condition and wall geometries aren't allowed)
         if self.Agent.Environment.dimensionality == "2D":
-            if all[
+            if all([
                 ((self.wall_geometry == "line_of_sight") or ((self.wall_geometry == "geodesic"))),
                 (self.Agent.Environment.boundary_conditions == "periodic"),
                 (self.Agent.Environment.dimensionality == "2D")
-            ]:
+            ]):
                 print(
                     f"{self.wall_geometry} wall geometry only possible in 2D when the boundary conditions are solid. Using 'euclidean' instead."
                 )

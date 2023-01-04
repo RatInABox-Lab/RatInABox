@@ -352,12 +352,12 @@ class Environment:
         """
         pos = np.array(pos).reshape(-1)
         if self.dimensionality == "2D":
-            if all[
+            if all([
                 (pos[0] > self.extent[0]),
                 (pos[0] < self.extent[1]),
                 (pos[1] > self.extent[2]),
                 (pos[1] < self.extent[3]),
-            ]:
+            ]):
                 return True
             else:
                 return False
