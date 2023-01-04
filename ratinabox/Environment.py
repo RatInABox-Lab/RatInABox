@@ -1,17 +1,16 @@
-from ratinabox.utils import *
-
-verbose = False
-
+from ratinabox import utils
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
+
+verbose = False
 
 """ENVIRONMENT"""
 
 
 class Environment:
-    """Environment class: defines the Environment in which the Agent lives. 
-    This class needs no other classes to initialise it. It exists independently of any Agents or Neurons. 
+    """Environment class: defines the Environment in which the Agent lives.
+    This class needs no other classes to initialise it. It exists independently of any Agents or Neurons.
 
     A default parameters dictionary (with descriptions) can be found in __init__()
 
@@ -28,14 +27,14 @@ class Environment:
             • check_wall_collisions()
             • vectors_from_walls()
             • apply_boundary_conditions()
-    
+
     The default_params are
     default_params = {
-            "dimensionality": "2D",  
-            "boundary_conditions": "solid", 
-            "scale": 1,  
-            "aspect": 1, 
-            "dx": 0.01, 
+            "dimensionality": "2D",
+            "boundary_conditions": "solid",
+            "scale": 1,
+            "aspect": 1,
+            "dx": 0.01,
         }
     """
 
@@ -55,7 +54,7 @@ class Environment:
 
         default_params.update(params)
         self.params = default_params
-        update_class_params(self, self.params)
+        utils.update_class_params(self, self.params)
 
         if self.dimensionality == "1D":
             self.extent = np.array([0, self.scale])
@@ -95,7 +94,7 @@ class Environment:
 
     def add_wall(self, wall):
         """Add a wall to the (2D) environment.
-        Extends self.walls array to include one new wall. 
+        Extends self.walls array to include one new wall.
         Args:
             wall (np.array): 2x2 array [[x1,y1],[x2,y2]]
         """
@@ -109,7 +108,7 @@ class Environment:
 
     def plot_environment(self, fig=None, ax=None, height=1):
         """Plots the environment on the x axis, dark grey lines show the walls
-        Args:        
+        Args:
             fig,ax: the fig and ax to plot on (can be None)
             height: if 1D, how many line plots will be stacked (5.5mm per line)
         Returns:
@@ -159,14 +158,14 @@ class Environment:
         return fig, ax
 
     def sample_positions(self, n=10, method="uniform_jitter"):
-        """Scatters 'n' locations across the environment which can act as, for example, the centres of gaussian place fields, or as a random starting position. 
-        If method == "uniform" an evenly spaced grid of locations is returned.  If method == "uniform_jitter" these locations are jittered slightly (i.e. random but span the space). Note; if n doesn't uniformly divide the size (i.e. n is not a square number in a square environment) then the largest number that can be scattered uniformly are found, the remaining are randomly placed. 
+        """Scatters 'n' locations across the environment which can act as, for example, the centres of gaussian place fields, or as a random starting position.
+        If method == "uniform" an evenly spaced grid of locations is returned.  If method == "uniform_jitter" these locations are jittered slightly (i.e. random but span the space). Note; if n doesn't uniformly divide the size (i.e. n is not a square number in a square environment) then the largest number that can be scattered uniformly are found, the remaining are randomly placed.
         Args:
-            n (int): number of features 
+            n (int): number of features
             method: "uniform", "uniform_jittered" or "random" for how points are distributed
             true_random: if True, just randomly scatters point
         Returns:
-            array: (n x dimensionality) of positions 
+            array: (n x dimensionality) of positions
         """
         if self.dimensionality == "1D":
             if method == "random":
@@ -209,8 +208,8 @@ class Environment:
 
     def discretise_environment(self, dx=None):
         """Discretises the environment, for plotting purposes.
-        Returns an array of positions spanning the environment 
-        Important: this discretisation is not used for geometry or firing rate calculations which are precise and fundamentally continuous. Its typically used if you want to, say, display the receptive field of a neuron so you want to calculate its firing rate at all points across the environment and plot those. 
+        Returns an array of positions spanning the environment
+        Important: this discretisation is not used for geometry or firing rate calculations which are precise and fundamentally continuous. Its typically used if you want to, say, display the receptive field of a neuron so you want to calculate its firing rate at all points across the environment and plot those.
         Args:
             dx (float): discretisation distance
         Returns:
@@ -232,14 +231,14 @@ class Environment:
     def get_vectors_between___accounting_for_environment(
         self, pos1=None, pos2=None, line_segments=None
     ):
-        """Takes two position arrays and returns an array of pair-wise vectors from pos1's to pos2's, taking into account boundary conditions. Unlike the global function "get_vectors_between()' (which this calls) this additionally accounts for environment boundary conditions such that if two positions fall on either sides of the boundary AND boundary cons are periodic then the returned shortest-vector actually goes around the loop, not across the environment)... 
+        """Takes two position arrays and returns an array of pair-wise vectors from pos1's to pos2's, taking into account boundary conditions. Unlike the global function "utils.get_vectors_between()' (which this calls) this additionally accounts for environment boundary conditions such that if two positions fall on either sides of the boundary AND boundary cons are periodic then the returned shortest-vector actually goes around the loop, not across the environment)...
             pos1 (array): N x dimensionality array of poisitions
             pos2 (array): M x dimensionality array of positions
             line_segments: if you have already calculated line segments from pos1 to pos2 pass this here for quicker evaluation
         Returns:
-            N x M x dimensionality array of pairwise vectors 
+            N x M x dimensionality array of pairwise vectors
         """
-        vectors = get_vectors_between(pos1=pos1, pos2=pos2, line_segments=line_segments)
+        vectors = utils.get_vectors_between(pos1=pos1, pos2=pos2, line_segments=line_segments)
         if self.boundary_conditions == "periodic":
             flip = np.abs(vectors) > (self.scale / 2)
             vectors[flip] = -np.sign(vectors[flip]) * (
@@ -250,8 +249,8 @@ class Environment:
     def get_distances_between___accounting_for_environment(
         self, pos1, pos2, wall_geometry="euclidean"
     ):
-        """Takes two position arrays and returns the array of pair-wise distances between points, taking into account walls and boundary conditions. Unlike the global function get_distances_between() (which this one, at times, calls) this additionally accounts for the boundaries AND walls in the environment. 
-        
+        """Takes two position arrays and returns the array of pair-wise distances between points, taking into account walls and boundary conditions. Unlike the global function utils.get_distances_between() (which this one, at times, calls) this additionally accounts for the boundaries AND walls in the environment.
+
         For example, geodesic geometry estimates distance by shortest walk...line_of_sight geometry distance is euclidean but if there is a wall in between two positions (i.e. no line of sight) then the returned distance is "very high"...if boundary conditions are periodic distance is via the shortest possible route, which may or may not go around the back. euclidean geometry essentially ignores walls when calculating distances between two points.
         Allowed geometries, typically passed from the neurons class, are "euclidean", "geodesic" or "line_of_sight"
         Args:
@@ -259,10 +258,10 @@ class Environment:
             pos2 (array): M x dimensionality array of positions
             wall_geometry: how the distance calculation handles walls in the env (can be "euclidean", "line_of_sight" or "geodesic")
         Returns:
-            N x M array of pairwise distances 
+            N x M array of pairwise distances
         """
 
-        line_segments = get_line_segments_between(pos1=pos1, pos2=pos2)
+        line_segments = utils.get_line_segments_between(pos1=pos1, pos2=pos2)
         vectors = self.get_vectors_between___accounting_for_environment(
             pos1=None, pos2=None, line_segments=line_segments
         )
@@ -272,12 +271,12 @@ class Environment:
         boundary_conditions = self.boundary_conditions
 
         if dimensionality == "1D":
-            distances = get_distances_between(vectors=vectors)
+            distances = utils.get_distances_between(vectors=vectors)
 
         if dimensionality == "2D":
             walls = self.walls
             if wall_geometry == "euclidean":
-                distances = get_distances_between(vectors=vectors)
+                distances = utils.get_distances_between(vectors=vectors)
 
             if wall_geometry == "line_of_sight":
                 assert (
@@ -288,7 +287,7 @@ class Environment:
                     4:
                 ]  # only the internal walls (not room walls) are worth checking
                 line_segments_ = line_segments.reshape(-1, *line_segments.shape[-2:])
-                wall_obstructs_view_of_cell = vector_intercepts(
+                wall_obstructs_view_of_cell = utils.vector_intercepts(
                     line_segments_, internal_walls, return_collisions=True
                 )
                 wall_obstructs_view_of_cell = wall_obstructs_view_of_cell.sum(
@@ -298,17 +297,14 @@ class Environment:
                 wall_obstructs_view_of_cell = wall_obstructs_view_of_cell.reshape(
                     line_segments.shape[:2]
                 )
-                distances = get_distances_between(vectors=vectors)
+                distances = utils.get_distances_between(vectors=vectors)
                 distances[wall_obstructs_view_of_cell == True] = 1000
 
             if wall_geometry == "geodesic":
-                assert (
-                    boundary_conditions == "solid"
-                ), "geodesic geometry is not available for periodic boundary conditions"
-                assert (
-                    len(walls) <= 5
-                ), "unfortunately geodesic geomtry is only defined in closed rooms with one additional wall (efficient geometry calculations withh more than 1 wall are super hard I have discovered!) "
-                distances = get_distances_between(vectors=vectors)
+                assert (boundary_conditions == "solid"), "geodesic geometry is not available for periodic boundary conditions"
+                assert (len(walls) <= 5), """unfortunately geodesic geomtry is only defined in closed rooms with one additional wall
+                (efficient geometry calculations with more than 1 wall are super hard I have discovered!)"""
+                distances = utils.get_distances_between(vectors=vectors)
                 if len(walls) == 4:
                     pass
                 else:
@@ -317,15 +313,15 @@ class Environment:
                     for part_of_wall in wall:
                         wall_edge = np.expand_dims(part_of_wall, axis=0)
                         if self.check_if_position_is_in_environment(part_of_wall):
-                            distances_via_part_of_wall = get_distances_between(
+                            distances_via_part_of_wall = utils.get_distances_between(
                                 pos1, wall_edge
-                            ) + get_distances_between(wall_edge, pos2)
+                            ) + utils.get_distances_between(wall_edge, pos2)
                             via_wall_distances.append(distances_via_part_of_wall)
                     via_wall_distances = np.array(via_wall_distances)
                     line_segments_ = line_segments.reshape(
                         -1, *line_segments.shape[-2:]
                     )
-                    wall_obstructs_view_of_cell = vector_intercepts(
+                    wall_obstructs_view_of_cell = utils.vector_intercepts(
                         line_segments_,
                         np.expand_dims(wall, axis=0),
                         return_collisions=True,
@@ -356,12 +352,12 @@ class Environment:
         """
         pos = np.array(pos).reshape(-1)
         if self.dimensionality == "2D":
-            if (
-                (pos[0] > self.extent[0])
-                and (pos[0] < self.extent[1])
-                and (pos[1] > self.extent[2])
-                and (pos[1] < self.extent[3])
-            ):
+            if all([
+                (pos[0] > self.extent[0]),
+                (pos[0] < self.extent[1]),
+                (pos[1] > self.extent[2]),
+                (pos[1] < self.extent[3]),
+            ]):
                 return True
             else:
                 return False
@@ -372,7 +368,7 @@ class Environment:
                 return False
 
     def check_wall_collisions(self, proposed_step):
-        """Given proposed step [current_pos, next_pos] it returns two lists 
+        """Given proposed step [current_pos, next_pos] it returns two lists
         1. a list of all the walls in the environment #shape=(N_walls,2,2)
         2. a boolean list of whether the step directly crosses (collides with) any of these walls  #shape=(N_walls,)
         Args:
@@ -389,7 +385,7 @@ class Environment:
                 return (None, None)
             elif self.walls is not None:
                 walls = self.walls
-                wall_collisions = vector_intercepts(
+                wall_collisions = utils.vector_intercepts(
                     walls, proposed_step, return_collisions=True
                 ).reshape(-1)
                 return (walls, wall_collisions)
@@ -401,7 +397,7 @@ class Environment:
         Returns:
             vector array: np.array(shape=(N_walls,2))
         """
-        walls_to_pos_vectors = shortest_vectors_from_points_to_lines(pos, self.walls)[0]
+        walls_to_pos_vectors = utils.shortest_vectors_from_points_to_lines(pos, self.walls)[0]
         return walls_to_pos_vectors
 
     def apply_boundary_conditions(self, pos):

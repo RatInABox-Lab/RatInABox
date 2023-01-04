@@ -1,12 +1,9 @@
-from ratinabox.utils import *
-
-verbose = False
-
+from ratinabox import utils
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
-from matplotlib import animation
-import traceback
+
+verbose = False
 
 
 """NEURONS"""
@@ -14,11 +11,11 @@ import traceback
 
 
 class Neurons:
-    """The Neuron class defines a population of Neurons. All Neurons have firing rates which depend on the state of the Agent. As the Agent moves the firing rate of the cells adjust accordingly. 
+    """The Neuron class defines a population of Neurons. All Neurons have firing rates which depend on the state of the Agent. As the Agent moves the firing rate of the cells adjust accordingly.
 
     All Neuron classes must be initalised with the Agent (to whom these cells belong) since the Agent determines the firingrates through its position and velocity. The Agent class will itself contain the Environment. Both the Agent (position/velocity) and the Environment (geometry, walls etc.) determine the firing rates. Optionally (but likely) an input dictionary 'params' specifying other params will be given.
-    
-    This is a generic Parent class. We provide several SubClasses of it. These include: 
+
+    This is a generic Parent class. We provide several SubClasses of it. These include:
     • PlaceCells()
     • GridCells()
     • BoundaryVectorCells()
@@ -27,48 +24,48 @@ class Neurons:
     • SpeedCells()
     • FeedForwardLayer()
 
-    The unique function in each child classes is get_state(). Whenever Neurons.update() is called Neurons.get_state() is then called to calculate and returns the firing rate of the cells at the current moment in time. This is then saved. In order to make your own Neuron subclass you will need to write a class with the following mandatory structure: 
+    The unique function in each child classes is get_state(). Whenever Neurons.update() is called Neurons.get_state() is then called to calculate and returns the firing rate of the cells at the current moment in time. This is then saved. In order to make your own Neuron subclass you will need to write a class with the following mandatory structure:
 
     ============================================================================================
     MyNeuronClass(Neurons):
-        def __init__(self, 
+        def __init__(self,
                      Agent,
-                     params={}): #<-- do not change these 
+                     params={}): #<-- do not change these
 
-            default_params = {'a_default_param":3.14159} #note this params dictionary is passed upwards and used in all the parents classes of your class. 
-            
+            default_params = {'a_default_param":3.14159} #note this params dictionary is passed upwards and used in all the parents classes of your class.
+
             default_params.update(params)
             self.params = default_params
             super().__init__(Agent,self.params)
-        
+
         def get_state(self,
                       evaluate_at='agent',
-                      **kwargs) #<-- do not change these 
-            
+                      **kwargs) #<-- do not change these
+
             firingrate = .....
             ###
                 Insert here code which calculates the firing rate.
-                This may work differently depending on what you set evaluate_at as. For example, evaluate_at == 'agent' should means that the position or velocity (or whatever determines the firing rate) will by evaluated using the agents current state. You might also like to have an option like evaluate_at == "all" (all positions across an environment are tested simultaneously - plot_rate_map() tries to call this, for example) or evaluate_at == "last" (in a feedforward layer just look at the last firing rate saved in the input layers saves time over recalculating them.). **kwargs allows you to pass position or velocity in manually.  
+                This may work differently depending on what you set evaluate_at as. For example, evaluate_at == 'agent' should means that the position or velocity (or whatever determines the firing rate) will by evaluated using the agents current state. You might also like to have an option like evaluate_at == "all" (all positions across an environment are tested simultaneously - plot_rate_map() tries to call this, for example) or evaluate_at == "last" (in a feedforward layer just look at the last firing rate saved in the input layers saves time over recalculating them.). **kwargs allows you to pass position or velocity in manually.
 
-                By default, the Neurons.update() calls Neurons.get_state() rwithout passing any arguments. So write the default behaviour of get_state() to be what you want it to do in the main training loop. 
+                By default, the Neurons.update() calls Neurons.get_state() rwithout passing any arguments. So write the default behaviour of get_state() to be what you want it to do in the main training loop.
             ###
 
-            return firingrate 
-        
+            return firingrate
+
         def any_other_functions_you_might_want(self):...
     ============================================================================================
 
-    As we have written them, Neuron subclasses which have well defined ground truth spatial receptive fields (PlaceCells, GridCells but not VelocityCells etc.) can also be queried for any arbitrary pos/velocity (i.e. not just the Agents current state) by passing these in directly to the function "get_state(evaluate_at='all') or get_state(evaluate_at=None, pos=my_array_of_positons)". This calculation is vectorised and relatively fast, returning an array of firing rates one for each position. It is what is used when you try Neuron.plot_rate_map(). 
+    As we have written them, Neuron subclasses which have well defined ground truth spatial receptive fields (PlaceCells, GridCells but not VelocityCells etc.) can also be queried for any arbitrary pos/velocity (i.e. not just the Agents current state) by passing these in directly to the function "get_state(evaluate_at='all') or get_state(evaluate_at=None, pos=my_array_of_positons)". This calculation is vectorised and relatively fast, returning an array of firing rates one for each position. It is what is used when you try Neuron.plot_rate_map().
 
     List of key functions...
-        ..that you're likely to use: 
+        ..that you're likely to use:
             • update()
             • plot_rate_timeseries()
             • plot_rate_map()
         ...that you might not use but could be useful:
             • save_to_history()
-            • boundary_vector_preference_function()   
-        
+            • boundary_vector_preference_function()
+
     default_params = {
             "n": 10,
             "name": "Neurons",
@@ -81,8 +78,8 @@ class Neurons:
 
         Args:
             params (dict, optional). Defaults to {}.
-        
-        Typically you will not actually initialise a Neurons() class, instead you will initialised by one of it's subclasses. 
+
+        Typically you will not actually initialise a Neurons() class, instead you will initialised by one of it's subclasses.
         """
         default_params = {
             "n": 10,
@@ -92,7 +89,7 @@ class Neurons:
         self.Agent = Agent
         default_params.update(params)
         self.params = default_params
-        update_class_params(self, self.params)
+        utils.update_class_params(self, self.params)
 
         self.firingrate = np.zeros(self.n)
         self.history = {}
@@ -135,7 +132,7 @@ class Neurons:
             the below params I just added for help with animations
             • imshow - if True will not dispaly as mountain plot but as an image (plt.imshow)
             • fig, ax: the figure, axis to plot on (can be None)
-            xlim: fix xlim of plot irrespective of how much time you're plotting 
+            xlim: fix xlim of plot irrespective of how much time you're plotting
             • background_color: color of the background if not matplotlib default (probably white)
             • kwargs sent to mountain plot function, you can ignore these
 
@@ -161,7 +158,7 @@ class Neurons:
 
         if imshow == False:
             firingrates = rate_timeseries[:, chosen_neurons].T
-            fig, ax = mountain_plot(
+            fig, ax = utils.mountain_plot(
                 X=t / 60,
                 NbyX=firingrates,
                 color=self.color,
@@ -229,20 +226,20 @@ class Neurons:
         """Plots rate maps of neuronal firing rates across the environment
         Args:
             •chosen_neurons: Which neurons to plot. string "10" will plot 10 of them, "all" will plot all of them, a list like [1,4,5] will plot cells indexed 1, 4 and 5. Defaults to "10".
-            
-            • method: "groundtruth" "history" "neither": which method to use. If "analytic" (default) tries to calculate rate map by evaluating firing rate at all positions across the environment (note this isn't always well defined. in which case...). If "history", plots ratemap by a weighting a histogram of positions visited by the firingrate observed at that position. If "neither" (or anything else), then neither. 
+
+            • method: "groundtruth" "history" "neither": which method to use. If "analytic" (default) tries to calculate rate map by evaluating firing rate at all positions across the environment (note this isn't always well defined. in which case...). If "history", plots ratemap by a weighting a histogram of positions visited by the firingrate observed at that position. If "neither" (or anything else), then neither.
 
             • spikes: True or False. Whether to display the occurence of spikes. If False (default) no spikes are shown. If True both ratemap and spikes are shown.
 
-            • fig, ax (the fig and ax to draw on top of, optional) 
+            • fig, ax (the fig and ax to draw on top of, optional)
 
             • shape is the shape of the multiplanlle figure, must be compatible with chosen neurons
-            • colorbar: whether to show a colorbar 
-            • t_start, t_end: in the case where you are plotting spike, or using historical data to get rate map, this restricts the timerange of data you are using 
-            • kwargs are sent to get_state and mountain_plot and can be ignore if you don't need to use them
-        
+            • colorbar: whether to show a colorbar
+            • t_start, t_end: in the case where you are plotting spike, or using historical data to get rate map, this restricts the timerange of data you are using
+            • kwargs are sent to get_state and utils.mountain_plot and can be ignore if you don't need to use them
+
         Returns:
-            fig, ax 
+            fig, ax
         """
         # GET DATA
         if method == "groundtruth":
@@ -253,6 +250,8 @@ class Neurons:
                     "It was not possible to get the rate map by evaluating the firing rate at all positions across the Environment. This is probably because the Neuron class does not support, or it does not have an groundtruth receptive field. Instead, plotting rate map by weighted position histogram method. Here is the error:"
                 )
                 print("Error: ", e)
+                import traceback
+
                 traceback.print_exc()
                 method = "history"
 
@@ -342,7 +341,7 @@ class Neurons:
                         im = ax_.imshow(rate_map, extent=ex)
                     elif method == "history":
                         rate_timeseries_ = rate_timeseries[chosen_neurons[i], :]
-                        rate_map = bin_data_for_histogramming(
+                        rate_map = utils.bin_data_for_histogramming(
                             data=pos, extent=ex, dx=0.05, weights=rate_timeseries_
                         )
                         im = ax_.imshow(
@@ -387,13 +386,13 @@ class Neurons:
                 pos_ = pos[:, 0]
                 rate_maps = []
                 for neuron_id in chosen_neurons:
-                    rate_map, x = bin_data_for_histogramming(
+                    rate_map, x = utils.bin_data_for_histogramming(
                         data=pos_,
                         extent=ex,
                         dx=0.01,
                         weights=rate_timeseries[neuron_id, :],
                     )
-                    x, rate_map = interpolate_and_smooth(x, rate_map, sigma=0.03)
+                    x, rate_map = utils.interpolate_and_smooth(x, rate_map, sigma=0.03)
                     rate_maps.append(rate_map)
                 rate_maps = np.array(rate_maps)
 
@@ -403,7 +402,7 @@ class Neurons:
                 )
 
             if method != "neither":
-                fig, ax = mountain_plot(
+                fig, ax = utils.mountain_plot(
                     X=x, NbyX=rate_maps, color=self.color, fig=fig, ax=ax, **kwargs
                 )
 
@@ -442,15 +441,15 @@ class Neurons:
         speed_up=1,
         **kwargs,
     ):
-        """Returns an animation (anim) of the firing rates, 25fps. 
-        Should be saved using comand like 
+        """Returns an animation (anim) of the firing rates, 25fps.
+        Should be saved using comand like
         anim.save("./where_to_save/animations.gif",dpi=300)
 
         Args:
             • t_end (_type_, optional): _description_. Defaults to None.
             • chosen_neurons: Which neurons to plot. string "10" or 10 will plot ten of them, "all" will plot all of them, "12rand" will plot 12 random ones. A list like [1,4,5] will plot cells indexed 1, 4 and 5. Defaults to "all".
 
-            • speed_up: #times real speed animation should come out at. 
+            • speed_up: #times real speed animation should come out at.
 
         Returns:
             animation
@@ -461,7 +460,7 @@ class Neurons:
         if t_end == None:
             t_end = self.history["t"][-1]
 
-        def animate(i, fig, ax, chosen_neurons, t_max, dt, speed_up):
+        def animate_(i, fig, ax, chosen_neurons, t_max, dt, speed_up):
             t = self.history["t"]
             t_start = t[0]
             t_end = t[0] + (i + 1) * speed_up * dt
@@ -485,9 +484,10 @@ class Neurons:
             xlim=t_end,
             **kwargs,
         )
+        from matplotlib import animation
         anim = matplotlib.animation.FuncAnimation(
             fig,
-            animate,
+            animate_,
             interval=1000 * dt,
             frames=int((t_end - t_start) / (dt * speed_up)),
             blit=False,
@@ -496,7 +496,7 @@ class Neurons:
         return anim
 
     def return_list_of_neurons(self, chosen_neurons="all"):
-        """Returns a list of indices corresponding to neurons. 
+        """Returns a list of indices corresponding to neurons.
 
         Args:
             which (_type_, optional): _description_. Defaults to "all".
@@ -504,7 +504,7 @@ class Neurons:
                 • "15" or 15:  15 neurons even spread from index 0 to n
                 • "15rand": 15 randomly selected neurons
                 • [4,8,23,15]: this list is returned (convertde to integers in case)
-                • np.array([[4,8,23,15]]): the list [4,8,23,15] is returned 
+                • np.array([[4,8,23,15]]): the list [4,8,23,15] is returned
         """
         if type(chosen_neurons) is str:
             if chosen_neurons == "all":
@@ -513,7 +513,7 @@ class Neurons:
                 chosen_neurons = np.linspace(0, self.n - 1, int(chosen_neurons)).astype(
                     int
                 )
-            elif chosen_neuron[-4:] == "rand":
+            elif chosen_neurons[-4:] == "rand":
                 chosen_neurons = int(chosen_neurons[:-4])
                 chosen_neurons = np.random.choice(
                     np.arange(self.n), size=chosen_neurons, replace=False
@@ -533,9 +533,9 @@ class Neurons:
 
 
 class PlaceCells(Neurons):
-    """The PlaceCells class defines a population of PlaceCells. This class is a subclass of Neurons() and inherits it properties/plotting functions.  
+    """The PlaceCells class defines a population of PlaceCells. This class is a subclass of Neurons() and inherits it properties/plotting functions.
 
-    Must be initialised with an Agent and a 'params' dictionary. 
+    Must be initialised with an Agent and a 'params' dictionary.
 
     PlaceCells defines a set of 'n' place cells scattered across the environment. The firing rate is a functions of the distance from the Agent to the place cell centres. This function (params['description'])can be:
         • gaussian (default)
@@ -543,11 +543,11 @@ class PlaceCells(Neurons):
         • diff_of_gaussians
         • top_hat
         • one_hot
-    
-    List of functions: 
+
+    List of functions:
         • get_state()
         • plot_place_cell_locations()
-    
+
     default_params = {
             "n": 10,
             "name": "PlaceCells",
@@ -597,14 +597,11 @@ class PlaceCells(Neurons):
 
         # Assertions (some combinations of boundary condition and wall geometries aren't allowed)
         if self.Agent.Environment.dimensionality == "2D":
-            if (
-                (
-                    (self.wall_geometry == "line_of_sight")
-                    or ((self.wall_geometry == "geodesic"))
-                )
-                and (self.Agent.Environment.boundary_conditions == "periodic")
-                and (self.Agent.Environment.dimensionality == "2D")
-            ):
+            if all([
+                ((self.wall_geometry == "line_of_sight") or ((self.wall_geometry == "geodesic"))),
+                (self.Agent.Environment.boundary_conditions == "periodic"),
+                (self.Agent.Environment.dimensionality == "2D")
+            ]):
                 print(
                     f"{self.wall_geometry} wall geometry only possible in 2D when the boundary conditions are solid. Using 'euclidean' instead."
                 )
@@ -619,7 +616,7 @@ class PlaceCells(Neurons):
 
         if verbose is True:
             print(
-                f"PlaceCells successfully initialised. You can see where they are centred at using PlaceCells.plot_place_cell_locations()"
+                "PlaceCells successfully initialised. You can see where they are centred at using PlaceCells.plot_place_cell_locations()"
             )
         return
 
@@ -628,7 +625,7 @@ class PlaceCells(Neurons):
         By default position is taken from the Agent and used to calculate firinf rates. This can also by passed directly (evaluate_at=None, pos=pass_array_of_positions) or ou can use all the positions in the environment (evaluate_at="all").
 
         Returns:
-            firingrates: an array of firing rates 
+            firingrates: an array of firing rates
         """
         if evaluate_at == "agent":
             pos = self.Agent.pos
@@ -693,15 +690,15 @@ class PlaceCells(Neurons):
 
 
 class GridCells(Neurons):
-    """The GridCells class defines a population of GridCells. This class is a subclass of Neurons() and inherits it properties/plotting functions.  
+    """The GridCells class defines a population of GridCells. This class is a subclass of Neurons() and inherits it properties/plotting functions.
 
-    Must be initialised with an Agent and a 'params' dictionary. 
+    Must be initialised with an Agent and a 'params' dictionary.
 
-    GridCells defines a set of 'n' grid cells with random orientations, grid scales and offsets (these can be set non-randomly of coursse). Grids are modelled as the rectified sum of three cosine waves at 60 degrees to each other. 
+    GridCells defines a set of 'n' grid cells with random orientations, grid scales and offsets (these can be set non-randomly of coursse). Grids are modelled as the rectified sum of three cosine waves at 60 degrees to each other.
 
-    List of functions: 
+    List of functions:
         • get_state()
-    
+
     default_params = {
             "n": 10,
             "gridscale": 0.45,
@@ -747,9 +744,9 @@ class GridCells(Neurons):
         for i in range(self.n):
             w1 = np.array([1, 0])
             if self.random_orientations == True:
-                w1 = rotate(w1, np.random.uniform(0, 2 * np.pi))
-            w2 = rotate(w1, np.pi / 3)
-            w3 = rotate(w1, 2 * np.pi / 3)
+                w1 = utils.rotate(w1, np.random.uniform(0, 2 * np.pi))
+            w2 = utils.rotate(w1, np.pi / 3)
+            w3 = utils.rotate(w1, 2 * np.pi / 3)
             w.append(np.array([w1, w2, w3]))
         self.w = np.array(w)
         if self.random_gridscales == True:
@@ -767,7 +764,7 @@ class GridCells(Neurons):
         By default position is taken from the Agent and used to calculate firing rates. This can also by passed directly (evaluate_at=None, pos=pass_array_of_positions) or you can use all the positions in the environment (evaluate_at="all").
 
         Returns:
-            firingrates: an array of firing rates 
+            firingrates: an array of firing rates
         """
         if evaluate_at == "agent":
             pos = self.Agent.pos
@@ -780,7 +777,9 @@ class GridCells(Neurons):
 
         # grid cells are modelled as the thresholded sum of three cosines all at 60 degree offsets
         # vectors to grids cells "centred" at their (random) phase offsets
-        vecs = get_vectors_between(self.phase_offsets, pos)  # shape = (N_cells,N_pos,2)
+        vecs = utils.get_vectors_between(
+            self.phase_offsets, pos
+        )  # shape = (N_cells,N_pos,2)
         w1 = np.tile(np.expand_dims(self.w[:, 0, :], axis=1), reps=(1, pos.shape[0], 1))
         w2 = np.tile(np.expand_dims(self.w[:, 1, :], axis=1), reps=(1, pos.shape[0], 1))
         w3 = np.tile(np.expand_dims(self.w[:, 2, :], axis=1), reps=(1, pos.shape[0], 1))
@@ -808,8 +807,8 @@ class GridCells(Neurons):
         dy = self.gridscale / n_y
 
         grid = np.mgrid[
-            (0 + dx / 2) : (self.gridscale - dx / 2) : (n_x * 1j),
-            (0 + dy / 2) : (self.gridscale - dy / 2) : (n_y * 1j),
+            (0 + dx / 2): (self.gridscale - dx / 2): (n_x * 1j),
+            (0 + dy / 2): (self.gridscale - dy / 2): (n_y * 1j),
         ]
         grid = grid.reshape(2, -1).T
         remaining = np.random.uniform(0, self.gridscale, size=(n_remaining, 2))
@@ -820,15 +819,15 @@ class GridCells(Neurons):
 
 
 class BoundaryVectorCells(Neurons):
-    """The BoundaryVectorCells class defines a population of Boundary Vector Cells. This class is a subclass of Neurons() and inherits it properties/plotting functions.  
+    """The BoundaryVectorCells class defines a population of Boundary Vector Cells. This class is a subclass of Neurons() and inherits it properties/plotting functions.
 
-    Must be initialised with an Agent and a 'params' dictionary.  
+    Must be initialised with an Agent and a 'params' dictionary.
 
     BoundaryVectorCells defines a set of 'n' BVCs cells with random orientations preferences, distance preferences  (these can be set non-randomly of course). We use the model described firstly by Hartley et al. (2000) and more recently de Cothi and Barry (2000).
 
     BVCs can have allocentric (mec,subiculum) OR egocentric (ppc, retrosplenial cortex) reference frames.
 
-    List of functions: 
+    List of functions:
         • get_state()
         • boundary_vector_preference_function()
 
@@ -883,7 +882,9 @@ class BoundaryVectorCells(Neurons):
         # numerically discretise over 360 degrees
         self.n_test_angles = int(360 / self.dtheta)
         for i in range(self.n_test_angles - 1):
-            test_direction_ = rotate(test_direction, 2 * np.pi * i * self.dtheta / 360)
+            test_direction_ = utils.rotate(
+                test_direction, 2 * np.pi * i * self.dtheta / 360
+            )
             test_directions.append(test_direction_)
             test_angles.append(2 * np.pi * i * self.dtheta / 360)
         self.test_directions = np.array(test_directions)
@@ -910,16 +911,16 @@ class BoundaryVectorCells(Neurons):
         return
 
     def get_state(self, evaluate_at="agent", **kwargs):
-        """Here we implement the same type if boundary vector cells as de Cothi et al. (2020), who follow Barry & Burgess, (2007). See equations there. 
-    
+        """Here we implement the same type if boundary vector cells as de Cothi et al. (2020), who follow Barry & Burgess, (2007). See equations there.
+
         The way I do this is a little complex. I will describe how it works from a single position (but remember this can be called in a vectorised manner from an arary of positons in parallel)
             1. An array of normalised "test vectors" span, in all directions at 1 degree increments, from the position
             2. These define an array of line segments stretching from [pos, pos+test vector]
-            3. Where these line segments collide with all walls in the environment is established, this uses the function "vector_intercepts()"
+            3. Where these line segments collide with all walls in the environment is established, this uses the function "utils.vector_intercepts()"
             4. This pays attention to only consider the first (closest) wall forawrd along a line segment. Walls behind other walls are "shaded" by closer walls. Its a little complex to do this and requires the function "boundary_vector_preference_function()"
-            5. Now that, for every test direction, the closest wall is established it is simple a process of finding the response of the neuron to that wall at that angle (multiple of two gaussians, see de Cothi (2020)) and then summing over all the test angles. 
-        
-        We also apply a check in the middle to rotate teh reference frame into that of the head direction of the agent iff self.reference_frame='egocentric'.
+            5. Now that, for every test direction, the closest wall is established it is simple a process of finding the response of the neuron to that wall at that angle (multiple of two gaussians, see de Cothi (2020)) and then summing over all the test angles.
+
+        We also apply a check in the middle to utils.rotate teh reference frame into that of the head direction of the agent iff self.reference_frame='egocentric'.
 
         By default position is taken from the Agent and used to calculate firing rates. This can also by passed directly (evaluate_at=None, pos=pass_array_of_positions) or ou can use all the positions in the environment (evaluate_at="all").
         """
@@ -945,7 +946,7 @@ class BoundaryVectorCells(Neurons):
         pos_line_segments = pos_line_segments.reshape(-1, 2, 2)  # (N_pos x N_test,2,2)
         walls = self.Agent.Environment.walls  # (N_walls,2,2)
         N_walls = walls.shape[0]
-        pos_lineseg_wall_intercepts = vector_intercepts(
+        pos_lineseg_wall_intercepts = utils.vector_intercepts(
             pos_line_segments, walls
         )  # (N_pos x N_test,N_walls,2)
         pos_lineseg_wall_intercepts = pos_lineseg_wall_intercepts.reshape(
@@ -979,7 +980,7 @@ class BoundaryVectorCells(Neurons):
             else:
                 vel = kwargs["vel"]
             vel = np.array(vel)
-            head_direction_angle = get_angle(vel)
+            head_direction_angle = utils.get_angle(vel)
             test_angles = test_angles - head_direction_angle
 
         tuning_angles = np.tile(
@@ -1004,9 +1005,9 @@ class BoundaryVectorCells(Neurons):
             np.expand_dims(dist_to_first_wall, axis=0), reps=(N_cells, 1, 1)
         )  # (N_cell,N_pos,N_test)
 
-        g = gaussian(
+        g = utils.gaussian(
             dist_to_first_wall, tuning_distances, sigma_distances, norm=1
-        ) * von_mises(
+        ) * utils.von_mises(
             test_angles, tuning_angles, sigma_angles, norm=1
         )  # (N_cell,N_pos,N_test)
 
@@ -1018,7 +1019,7 @@ class BoundaryVectorCells(Neurons):
         return firingrate
 
     def boundary_vector_preference_function(self, x):
-        """This is a random function needed to efficiently produce boundary vector cells. x is any array of final dimension shape shape[-1]=2. As I use it here x has the form of the output of vector_intercepts. I.e. each point gives shape[-1]=2 lambda values (lam1,lam2) for where a pair of line segments intercept. This function gives a preference for each pair. Preference is -1 if lam1<0 (the collision occurs behind the first point) and if lam2>1 or lam2<0 (the collision occurs ahead of the first point but not on the second line segment). If neither of these are true it's 1/x (i.e. it prefers collisions which are closest).
+        """This is a random function needed to efficiently produce boundary vector cells. x is any array of final dimension shape shape[-1]=2. As I use it here x has the form of the output of utils.vector_intercepts. I.e. each point gives shape[-1]=2 lambda values (lam1,lam2) for where a pair of line segments intercept. This function gives a preference for each pair. Preference is -1 if lam1<0 (the collision occurs behind the first point) and if lam2>1 or lam2<0 (the collision occurs ahead of the first point but not on the second line segment). If neither of these are true it's 1/x (i.e. it prefers collisions which are closest).
 
         Args:
             x (array): shape=(any_shape...,2)
@@ -1065,8 +1066,10 @@ class BoundaryVectorCells(Neurons):
         [theta_meshgrid, r_meshgrid] = np.meshgrid(theta, r)
 
         def bvc_rf(theta, r, mu_r=0.5, sigma_r=0.2, mu_theta=0.5, sigma_theta=0.1):
-            theta = pi_domain(theta)
-            return gaussian(r, mu_r, sigma_r) * von_mises(theta, mu_theta, sigma_theta)
+            theta = utils.pi_domain(theta)
+            return utils.gaussian(r, mu_r, sigma_r) * utils.von_mises(
+                theta, mu_theta, sigma_theta
+            )
 
         for i, n in enumerate(chosen_neurons):
             mu_r = self.tuning_distances[n]
@@ -1076,6 +1079,7 @@ class BoundaryVectorCells(Neurons):
             receptive_field = bvc_rf(
                 theta_meshgrid, r_meshgrid, mu_r, sigma_r, mu_theta, sigma_theta
             )
+            ax[i].grid(False)
             ax[i].pcolormesh(
                 theta, r, receptive_field, edgecolors="face", shading="nearest"
             )
@@ -1086,15 +1090,15 @@ class BoundaryVectorCells(Neurons):
 
 
 class VelocityCells(Neurons):
-    """The VelocityCells class defines a population of Velocity cells. This class is a subclass of Neurons() and inherits it properties/plotting functions.  
+    """The VelocityCells class defines a population of Velocity cells. This class is a subclass of Neurons() and inherits it properties/plotting functions.
 
-    Must be initialised with an Agent and a 'params' dictionary. 
+    Must be initialised with an Agent and a 'params' dictionary.
 
     VelocityCells defines a set of 'dim x 2' velocity cells. Encoding the East, West (and North and South) velocities in 1D (2D). The velocities are scaled according to the expected velocity of he agent (max firing rate acheive when velocity = mean + std)
 
-    List of functions: 
+    List of functions:
         • get_state()
-    
+
     default_params = {
             "min_fr": 0,
             "max_fr": 1,
@@ -1158,15 +1162,15 @@ class VelocityCells(Neurons):
 
 
 class HeadDirectionCells(Neurons):
-    """The HeadDirectionCells class defines a population of head direction cells. This class is a subclass of Neurons() and inherits it properties/plotting functions.  
+    """The HeadDirectionCells class defines a population of head direction cells. This class is a subclass of Neurons() and inherits it properties/plotting functions.
 
-    Must be initialised with an Agent and a 'params' dictionary. 
+    Must be initialised with an Agent and a 'params' dictionary.
 
     HeadDirectionCells defines a set of 'dim x 2' velocity cells. Encoding the East, West (and North and South) heading directions in 1D (2D). The firing rates are scaled such that when agent travels due east/west/north,south the firing rate is  = [mfr,0,0,0]/[0,mfr,0,0]/[0,0,mfr,0]/[0,0,0,mfr] (mfr = max_fr)
 
-    List of functions: 
+    List of functions:
         • get_state()
-    
+
     default_params = {
             "min_fr": 0,
             "max_fr": 1,
@@ -1227,15 +1231,15 @@ class HeadDirectionCells(Neurons):
 
 
 class SpeedCell(Neurons):
-    """The SpeedCell class defines a single speed cell. This class is a subclass of Neurons() and inherits it properties/plotting functions.  
+    """The SpeedCell class defines a single speed cell. This class is a subclass of Neurons() and inherits it properties/plotting functions.
 
-    Must be initialised with an Agent and a 'params' dictionary. 
+    Must be initialised with an Agent and a 'params' dictionary.
 
     The firing rate is scaled according to the expected velocity of the agent (max firing rate acheive when velocity = mean + std)
 
-    List of functions: 
+    List of functions:
         • get_state()
-    
+
     default_params = {
             "min_fr": 0,
             "max_fr": 1,
@@ -1288,28 +1292,28 @@ class SpeedCell(Neurons):
 
 
 class FeedForwardLayer(Neurons):
-    """The FeedForwardLayer class defines a layer of Neurons() whos firing rates are an activated linear combination of downstream input layers. This class is a subclass of Neurons() and inherits it properties/plotting functions.  
+    """The FeedForwardLayer class defines a layer of Neurons() whos firing rates are an activated linear combination of downstream input layers. This class is a subclass of Neurons() and inherits it properties/plotting functions.
 
     *** Understanding this layer is crucial if you want to build multilayer networks of Neurons with RatInABox ***
 
-    Must be initialised with an Agent and a 'params' dictionary. 
+    Must be initialised with an Agent and a 'params' dictionary.
     Input params dictionary should contain a list of input_layers which feed into this layer. This list looks like [Input1, Input2,...] where each is a Neurons() class (typically this list will be length 1 but you can have arbitrariy many layers feed into this one if you want). You can also add inputs one-by-one using self.add_input()
 
-    Each layer which feeds into this one is assigned a set of weights 
-        firingrate = activation_function(sum_over_layers(sum_over_inputs_in_this_layer(w_i I_i)) + bias) 
-    (you my be interested in accessing these weights in order to write a function which "learns" them, for example). A dictionary stores all the inputs, the key for each input layer is its name (e.g Input1.name = "Input1"), so to get the weights call 
+    Each layer which feeds into this one is assigned a set of weights
+        firingrate = activation_function(sum_over_layers(sum_over_inputs_in_this_layer(w_i I_i)) + bias)
+    (you my be interested in accessing these weights in order to write a function which "learns" them, for example). A dictionary stores all the inputs, the key for each input layer is its name (e.g Input1.name = "Input1"), so to get the weights call
         FeedForwardLayer.inputs["Input1"]['w'] --> returns the weight matrix from Input1 to FFL
         FeedForwardLayer.inputs["Input2"]['w'] --> returns the weight matrix from Input1 to FFL
         ...
-    One set of biases are stored in self.biases (defaulting to an array of zeros), one for each neuron. 
-    
-    Currently supported activations include 'sigmoid' (paramterised by max_fr, min_fr, mid_x, width), 'relu' (gain, threshold) and 'linear' specified with the "activation_params" dictionary in the inout params dictionary. See also utils.activate() for full details. It is possible to write your own activatino function (not recommended) under the key {"function" : an_activation_function}, see utils.actvate for how one of these should be written. 
+    One set of biases are stored in self.biases (defaulting to an array of zeros), one for each neuron.
 
-    Check that the input layers are all named differently. 
-    List of functions: 
+    Currently supported activations include 'sigmoid' (paramterised by max_fr, min_fr, mid_x, width), 'relu' (gain, threshold) and 'linear' specified with the "activation_params" dictionary in the inout params dictionary. See also utils.utils.activate() for full details. It is possible to write your own activatino function (not recommended) under the key {"function" : an_activation_function}, see utils.actvate for how one of these should be written.
+
+    Check that the input layers are all named differently.
+    List of functions:
         • get_state()
         • add_input()
-    
+
     default_params = {
             "n": 10,
             "input_layers": [],  # a list of input layers, or add one by one using self.adD_inout
@@ -1324,7 +1328,7 @@ class FeedForwardLayer(Neurons):
         default_params = {
             "n": 10,
             "input_layers": [],  # a list of input layers, or add one by one using self.add_inout
-            "activation_params": {"activation": "linear",},  #
+            "activation_params": {"activation": "linear"},
             "name": "FeedForwardLayer",
             "biases": None,  # an array of biases, one for each neuron
         }
@@ -1346,13 +1350,13 @@ class FeedForwardLayer(Neurons):
             )
 
     def add_input(self, input_layer, w=None, w_init_scale=1, **kwargs):
-        """Adds an input layer to the class. Each input layer is stored in a dictionary of self.inputs. Each has an associated matrix of weights which are initialised randomly. 
+        """Adds an input layer to the class. Each input layer is stored in a dictionary of self.inputs. Each has an associated matrix of weights which are initialised randomly.
 
-        Note the inputs are stored in a dictionary. The keys are taken to be the name of each layer passed (input_layer.name). Make sure you set this correctly (and uniquely). 
+        Note the inputs are stored in a dictionary. The keys are taken to be the name of each layer passed (input_layer.name). Make sure you set this correctly (and uniquely).
 
         Args:
-            • input_layer (_type_): the layer intself. Must be a Neurons() class object (e.g. can be PlaceCells(), etc...). 
-            • w: the weight matrix. If None these will be drawn randomly, see next argument. 
+            • input_layer (_type_): the layer intself. Must be a Neurons() class object (e.g. can be PlaceCells(), etc...).
+            • w: the weight matrix. If None these will be drawn randomly, see next argument.
             • w_init_scale: initial weights drawn from zero-centred gaussian with std w_init_scale / sqrt(N_in)
             • **kwargs any extra kwargs will get saved into the inputs dictionary in case you need these
 
@@ -1382,13 +1386,13 @@ class FeedForwardLayer(Neurons):
             )
 
     def get_state(self, evaluate_at="last", **kwargs):
-        """Returns the firing rate of the feedforward layer cells. By default this layer uses the last saved firingrate from its input layers. Alternatively evaluate_at and kwargs can be set to be anything else which will just be passed to the input layer for evaluation. 
+        """Returns the firing rate of the feedforward layer cells. By default this layer uses the last saved firingrate from its input layers. Alternatively evaluate_at and kwargs can be set to be anything else which will just be passed to the input layer for evaluation.
         Once the firing rate of the inout layers is established these are multiplied by the weight matrices and then activated to obtain the firing rate of this FeedForwardLayer.
 
         Args:
             evaluate_at (str, optional). Defaults to 'last'.
         Returns:
-            firingrate: array of firing rates 
+            firingrate: array of firing rates
         """
 
         if evaluate_at == "last":
@@ -1414,8 +1418,8 @@ class FeedForwardLayer(Neurons):
             biases = biases.reshape((-1, 1))
         V += biases
 
-        firingrate = activate(V, other_args=self.activation_params)
-        firingrate_prime = activate(V, other_args=self.activation_params, deriv=True)
-
+        firingrate = utils.activate(V, other_args=self.activation_params)
+        # firingrate_prime = utils.activate(
+        #    V, other_args=self.activation_params, deriv=True
+        # )
         return firingrate
-
