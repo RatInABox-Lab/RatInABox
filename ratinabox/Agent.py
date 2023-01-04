@@ -140,7 +140,7 @@ class Agent:
             if self.Environment.dimensionality == "2D":
                 # UPDATE VELOCITY there are a number of contributing factors
                 # 1 Stochastically update the direction
-                self.rotational_velocity += utils.utilsornstein_uhlenbeck(
+                self.rotational_velocity += utils.ornstein_uhlenbeck(
                     dt=dt,
                     x=self.rotational_velocity,
                     drift=0,
@@ -153,7 +153,7 @@ class Agent:
                 # 2 Stochastically update the speed
                 speed = np.linalg.norm(self.velocity)
                 normal_variable = utils.rayleigh_to_normal(speed, sigma=self.speed_mean)
-                new_normal_variable = normal_variable + utils.utilsornstein_uhlenbeck(
+                new_normal_variable = normal_variable + utils.ornstein_uhlenbeck(
                     dt=dt,
                     x=normal_variable,
                     drift=0,
@@ -167,7 +167,7 @@ class Agent:
 
                 # Deterministically drift velocity towards the drift_velocity which has been passed into the update function
                 if drift_velocity is not None:
-                    self.velocity += utils.utilsornstein_uhlenbeck(
+                    self.velocity += utils.ornstein_uhlenbeck(
                         dt=dt,
                         x=self.velocity,
                         drift=drift_velocity,
@@ -289,7 +289,7 @@ class Agent:
                         self.velocity *= -1
                     self.pos = self.Environment.apply_boundary_conditions(self.pos)
 
-                self.velocity += utils.utilsornstein_uhlenbeck(
+                self.velocity += utils.ornstein_uhlenbeck(
                     dt=dt,
                     x=self.velocity,
                     drift=self.speed_mean,
