@@ -591,8 +591,7 @@ class Agent:
 
         fig, ax = self.plot_trajectory(0, 10 * self.dt, xlim=t_end / 60, **kwargs)
 
-        from matplotlib import animate
-
+        from matplotlib import animation
         anim = matplotlib.animation.FuncAnimation(
             fig,
             animate_,

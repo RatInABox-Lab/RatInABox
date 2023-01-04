@@ -1,7 +1,17 @@
 import scipy
+from scipy import stats as stats
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
+
+
+
+
+
+
+
+
+
 
 
 """OTHER USEFUL FUNCTIONS"""
@@ -334,7 +344,7 @@ def interpolate_and_smooth(x, y, sigma=None):
 def normal_to_rayleigh(x, sigma=1):
     """Converts a normally distributed variable (mean 0, var 1) to a rayleigh distributed variable (sigma)
     """
-    x = scipy.stats.norm.cdf(x)  # norm to uniform)
+    x = stats.norm.cdf(x)  # norm to uniform)
     x = sigma * np.sqrt(-2 * np.log(1 - x))  # uniform to rayleigh
     return x
 
@@ -344,7 +354,7 @@ def rayleigh_to_normal(x, sigma=1):
     """
     x = 1 - np.exp(-(x ** 2) / (2 * sigma ** 2))  # rayleigh to uniform
     x = min(max(1e-6, x), 1 - 1e-6)
-    x = scipy.stats.norm.ppf(x)  # uniform to normal
+    x = stats.norm.ppf(x)  # uniform to normal
     return x
 
 
