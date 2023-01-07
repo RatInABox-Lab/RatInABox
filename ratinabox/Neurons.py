@@ -147,17 +147,17 @@ class Neurons:
             t_end = t[-1]
         startid = np.argmin(np.abs(t - (t_start)))
         endid = np.argmin(np.abs(t - (t_end)))
-        rate_timeseries = np.array(self.history["firingrate"])
-        spike_data = np.array(self.history["spikes"])
+        rate_timeseries = np.array(self.history["firingrate"][startid:endid])
+        spike_data = np.array(self.history["spikes"][startid:endid])
         t = t[startid:endid]
-        rate_timeseries = rate_timeseries[startid:endid]
-        spike_data = spike_data[startid:endid]
 
         # neurons to plot
         chosen_neurons = self.return_list_of_neurons(chosen_neurons)
+        spike_data = spike_data[startid:endid,chosen_neurons]
+        rate_timeseries = rate_timeseries[:,chosen_neurons]
 
         if imshow == False:
-            firingrates = rate_timeseries[:, chosen_neurons].T
+            firingrates = rate_timeseries.T
             fig, ax = utils.mountain_plot(
                 X=t / 60,
                 NbyX=firingrates,
@@ -172,7 +172,7 @@ class Neurons:
 
             if spikes == True:
                 for i in range(len(chosen_neurons)):
-                    time_when_spiked = t[spike_data[:, chosen_neurons[i]]] / 60
+                    time_when_spiked = t[spike_data[:, i]] / 60
                     h = (i + 1 - 0.1) * np.ones_like(time_when_spiked)
                     ax.scatter(
                         time_when_spiked,
@@ -197,7 +197,7 @@ class Neurons:
         elif imshow == True:
             if fig is None and ax is None:
                 fig, ax = plt.subplots(figsize=(8, 4))
-            data = rate_timeseries[:, chosen_neurons].T
+            data = rate_timeseries.T
             ax.imshow(data[::-1], aspect=0.3 * data.shape[1] / data.shape[0])
             ax.spines["top"].set_visible(False)
             ax.spines["right"].set_visible(False)
@@ -460,10 +460,11 @@ class Neurons:
         if t_end == None:
             t_end = self.history["t"][-1]
 
-        def animate_(i, fig, ax, chosen_neurons, t_max, dt, speed_up):
+        def animate_(i, fig, ax, chosen_neurons, t_start, t_max, dt, speed_up):
             t = self.history["t"]
-            t_start = t[0]
-            t_end = t[0] + (i + 1) * speed_up * dt
+            # t_start = t[0]
+            # t_end = t[0] + (i + 1) * speed_up * dt
+            t_end = t_start + (i + 1) * speed_up * dt
             ax.clear()
             fig, ax = self.plot_rate_timeseries(
                 t_start=t_start,
@@ -484,6 +485,7 @@ class Neurons:
             xlim=t_end,
             **kwargs,
         )
+
         from matplotlib import animation
         anim = matplotlib.animation.FuncAnimation(
             fig,
@@ -491,7 +493,7 @@ class Neurons:
             interval=1000 * dt,
             frames=int((t_end - t_start) / (dt * speed_up)),
             blit=False,
-            fargs=(fig, ax, chosen_neurons, t_end, dt, speed_up),
+            fargs=(fig, ax, chosen_neurons, t_start, t_end, dt, speed_up),
         )
         return anim
 
@@ -587,10 +589,11 @@ class PlaceCells(Neurons):
             self.place_cell_centres = self.Agent.Environment.sample_positions(
                 n=self.n, method="uniform_jitter"
             )
-        elif self.place_cell_centres in ["random", "uniform", "uniform_jitter"]:
-            self.place_cell_centres = self.Agent.Environment.sample_positions(
-                n=self.n, method=self.place_cell_centres
-            )
+        elif type(self.place_cell_centres) is str: 
+            if self.place_cell_centres in ["random", "uniform", "uniform_jitter"]:
+                self.place_cell_centres = self.Agent.Environment.sample_positions(
+                    n=self.n, method=self.place_cell_centres
+                )
         else:
             self.n = self.place_cell_centres.shape[0]
         self.place_cell_widths = self.widths * np.ones(self.n)
