@@ -487,7 +487,7 @@ def mountain_plot(
     ax.spines["bottom"].set_position(("outward", 1))
     ax.spines["left"].set_position(("outward", 1))
     ax.set_yticks([1, len(NbyX)])
-    ax.set_ylim(1 - 0.5, len(NbyX) + overlap)
+    ax.set_ylim(1 - 0.5, len(NbyX) + 1.1*overlap)
     ax.set_xticks(np.arange(max(X + 0.1)))
     ax.spines["left"].set_color(None)
     ax.spines["right"].set_color(None)

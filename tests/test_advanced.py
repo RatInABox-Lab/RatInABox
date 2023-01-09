@@ -1,5 +1,5 @@
 # TO DO: write more detailed tests 
-# For now, test_advanced will simply try to run versions of the "simple", "extensive" and "decoding_position" demo scripts. Assuming no error is raised the test has passed. 
+# For now, test_advanced will simply try to run versions of the "simple", "extensive" and "decoding_position" demo scripts. Assuming no error is raised the test has passed. It will also test whether exteranl data (sargolini) can be imported to test data availability. 
 # This is an okay safety net for now but should be improved in future versions
 
 #this test requires scikitlearn 
@@ -194,3 +194,9 @@ def test_decoding_position():
     ax[0,1].set_title("GAUSSIAN PROCESSS REGRESSION\n\nGrid cells")
     ax[1,1].set_title("LINEAR REGRESSION")
 
+
+def test_data_importing():
+    Env = Environment()
+    Ag = Agent(Env)
+    Ag.import_trajectory(dataset="sargolini")
+    assert Ag.use_imported_trajectory == True
