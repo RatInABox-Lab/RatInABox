@@ -1,15 +1,15 @@
 # RatInABox 
 ![Tests](https://github.com/TomGeorge1234/RatInABox/actions/workflows/test.yml/badge.svg)   [![PyPI version](https://badge.fury.io/py/ratinabox.svg)](https://badge.fury.io/py/ratinabox)
 
-`RatInABox` (paper [here](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v1)) is a toolkit for generating locomotion trajectories and complementary neural data for spatially and/or velocity selective cell types. 
+`RatInABox` (paper [here](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v3)) is a toolkit for generating locomotion trajectories and complementary neural data for spatially and/or velocity selective cell types. 
 
 <img src=".images/readme/ratinabox.gif" width=850>
 
 With `RatInABox` you can: 
 
 * **Generate realistic trajectories** for rats exploring complex 1- and 2-dimensional environments under a smooth random policy, an external control signal, or your own trajectory data.
-* **Generate artificial neuronal data** Simulate various location or velocity selective cells found in the Hippocampal-Entorhinal system, or build your own more complex cell type. 
-* **Build and train complex networks** Build, train and analyse complex networks of cells, powered by data generated with `RatInABox`. 
+* **Generate artificial neuronal data** for various location- or velocity-selective cells found in the Hippocampal formation, or build your own more complex cell types. 
+* **Build and train complex multi-layer networks** of cells, powered by data generated with `RatInABox`. 
 
 `RatInABox` is an open source project welcoming [contributions](#contribute). If you use `RatInABox` please [cite](#cite) the paper and consider giving this repository a star ☆. It contains three classes: 
 
@@ -65,7 +65,7 @@ from ratinabox.Neurons import PlaceCells, GridCells #...
 ```
 
 ## Feature run-down
-Here is a list of features loosely organised into three categories: those pertaining to (i) the `Environment`, (ii) the `Agent` and (iii) the `Neurons`. Specific details can be found in the paper, [here](link/to/paper/on/arxiv). 
+Here is a list of features loosely organised into three categories: those pertaining to (i) the `Environment`, (ii) the `Agent` and (iii) the `Neurons`. Specific details can be found in the paper, [here](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v3). 
 
 
 ### (i) `Environment` features
@@ -140,7 +140,7 @@ Agent.update(drift_velocity=drift_velocity)
 <img src=".images/readme/motion.gif" width=600>
 
 #### Wall repelling 
-Under the random motion policy, walls in the environment mildly "repel" the agent. Coupled with the finite turning speed this replicates an effect (known as thigmotaxis, sometimes linked to anxiety) where the agent is biased to over-explore near walls and corners (as shown in these heatmaps) matching real rodent behaviour. It can be turned up or down with the `thigmotaxis` parameter.
+Under the random motion policy, walls in the environment mildly "repel" the `Agent`. Coupled with the finite turning speed this replicates an effect (known as thigmotaxis, sometimes linked to anxiety) where the `Agent` is biased to over-explore near walls and corners (as shown in these heatmaps) matching real rodent behaviour. It can be turned up or down with the `thigmotaxis` parameter.
 ```python 
 Αgent.thigmotaxis = 0.8 #1 = high thigmotaxis (left plot), 0 = low (right)
 ```
@@ -198,9 +198,9 @@ Neurons.plot_ratemap(spikes=True)
 #### Rate maps 
 `PlaceCells`, `GridCells` and allocentric `BoundaryVectorCells` (among others) have firing rates which depend exclusively on the position of the agent. These rate maps can be displayed by querying their firing rate at an array of positions spanning the environment, then plotting. This process is done for you using the function `Neurons.plot_rate_map()`. 
 
-More generally, however, cells firing is not only determined by position but potentially other factors (e.g. velocity or historical effects if the layer is part of a recurrent network). In these cases the above method of plotting rate maps will fail. A more robust way to display the receptive field is to plot a heatmap of the positions of the Agent has visited where each positions contribution to a bin is weighted by the firing rate observed at that position. Over time, as coverage become complete, the firing fields become visible.
+More generally, however, cells firing is not only determined by position but potentially other factors (e.g. velocity, or historical effects if the layer is part of a recurrent network). In these cases the above method of plotting rate maps will necessarily fail. A more robust way to display the receptive field is to plot a heatmap of the positions of the Agent has visited where each positions contribution to a bin is weighted by the firing rate observed at that position. Over time, as coverage become complete, the firing fields become visible.
 ```
-Neurons.plot_rate_map() #attempted to plot "ground truth" rate map 
+Neurons.plot_rate_map() #attempts to plot "ground truth" rate map 
 Neurons.plot_rate_map(method="history") #plots rate map by firing-rate-weighted position heatmap
 ``` 
 
