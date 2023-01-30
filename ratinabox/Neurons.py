@@ -980,8 +980,10 @@ class BoundaryVectorCells(Neurons):
         if self.reference_frame == "egocentric":
             if evaluate_at == "agent":
                 vel = self.Agent.pos
-            else:
+            elif 'vel' in kwargs.keys():
                 vel = kwargs["vel"]
+            else: 
+                vel = np.array([1,0])
             vel = np.array(vel)
             head_direction_angle = utils.get_angle(vel)
             test_angles = test_angles - head_direction_angle
