@@ -1,7 +1,9 @@
 # RatInABox 
 ![Tests](https://github.com/TomGeorge1234/RatInABox/actions/workflows/test.yml/badge.svg)   [![PyPI version](https://badge.fury.io/py/ratinabox.svg)](https://badge.fury.io/py/ratinabox)
 
-`RatInABox` (paper [here](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v3)) is a toolkit for generating locomotion trajectories and complementary neural data for spatially and/or velocity selective cell types. 
+`RatInABox` (see [paper](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v3)) is a toolkit for generating locomotion trajectories and complementary neural data for spatially and/or velocity selective cell types. 
+
+[Install](#installing-and-importing) | [Demos](#get-started) | [Features](#feature-run-down) | [Cite](#cite)
 
 <img src=".images/readme/ratinabox.gif" width=850>
 
@@ -41,7 +43,7 @@ The top animation shows an example use case: an `Agent` randomly explores a 2D `
 ## Get started 
 Many [demos](./demos/) are provided. Reading through the [example scripts](#example-scripts) (one simple and one extensive, duplicated at the bottom of the readme) these should be enough to get started. We also provide numerous interactive jupyter scripts as more in-depth case studies; for example one where `RatInABox` is used for [reinforcement learning](./demos/reinforcement_learning_example.ipynb), another for [neural decoding](./demos/decoding_position_example.ipynb) of position from firing rate. Jupyter scripts reproducing all figures in the [paper](./demos/paper_figures.ipynb) and [readme](./demos/readme_figures.ipynb) are also provided.
 
-## Requirements, Installing and Importing
+## Installing and Importing
 **Requirements** are minimal (`python3`, `numpy`, `scipy` and `matplotlib`, listed in `setup.cfg`) and will be installed automatically. 
 
 **Install** the latest, stable version using `pip` at the command line with
@@ -257,9 +259,10 @@ Bibtex:
 	title = {{RatInABox}: A toolkit for modelling locomotion and neuronal activity in continuous environments}
 }
 ```
+
 Formatted:
 ```
 Tom M George, William de Cothi, Claudia Clopath, Kimberly Stachenfeld, Caswell Barry. "RatInABox: A toolkit for modelling locomotion and neuronal activity in continuous environments" (2022).
 ``` 
-The research paper corresponding to the above citation can be found [here](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v1).
+The research paper corresponding to the above citation can be found [here](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v3).
 
