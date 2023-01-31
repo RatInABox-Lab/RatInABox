@@ -1093,79 +1093,6 @@ class BoundaryVectorCells(Neurons):
 
         return fig, ax
 
-
-class VelocityCells(Neurons):
-    """The VelocityCells class defines a population of Velocity cells. This class is a subclass of Neurons() and inherits it properties/plotting functions.
-
-    Must be initialised with an Agent and a 'params' dictionary.
-
-    VelocityCells defines a set of 'dim x 2' velocity cells. Encoding the East, West (and North and South) velocities in 1D (2D). The velocities are scaled according to the expected velocity of he agent (max firing rate acheive when velocity = mean + std)
-
-    List of functions:
-        • get_state()
-
-    default_params = {
-            "min_fr": 0,
-            "max_fr": 1,
-            "name": "VelocityCells",
-        }
-    """
-
-    def __init__(self, Agent, params={}):
-        """Initialise VelocityCells(), takes as input a parameter dictionary. Any values not provided by the params dictionary are taken from a default dictionary below.
-        Args:
-            params (dict, optional). Defaults to {}."""
-        default_params = {
-            "min_fr": 0,
-            "max_fr": 1,
-            "name": "VelocityCells",
-        }
-        self.Agent = Agent
-        default_params.update(params)
-        self.params = default_params
-        if self.Agent.Environment.dimensionality == "2D":
-            self.n = 4  # one up, one down, one left, one right
-        if self.Agent.Environment.dimensionality == "1D":
-            self.n = 2  # one left, one right
-        self.params["n"] = self.n
-        self.one_sigma_speed = self.Agent.speed_mean + self.Agent.speed_std
-
-        super().__init__(Agent, self.params)
-
-        if verbose is True:
-            print(
-                f"VelocityCells successfully initialised. Your environment is {self.Agent.Environment.dimensionality} therefore you have {self.n} velocity cells"
-            )
-        return
-
-    def get_state(self, evaluate_at="agent", **kwargs):
-        """In 2D 4 velocity cells report, respectively, the thresholded leftward, rightward, upward and downwards velocity. By default velocity is taken from the agent but this can also be passed as a kwarg 'vel'"""
-        if evaluate_at == "agent":
-            vel = self.Agent.history["vel"][-1]
-        else:
-            try:
-                vel = np.array(kwargs["vel"])
-            except KeyError:
-                vel = np.zeros_like(self.Agent.velocity)
-
-        if self.Agent.Environment.dimensionality == "1D":
-            vleft_fr = max(0, vel[0]) / self.one_sigma_speed
-            vright_fr = max(0, -vel[0]) / self.one_sigma_speed
-            firingrate = np.array([vleft_fr, vright_fr])
-        if self.Agent.Environment.dimensionality == "2D":
-            vleft_fr = max(0, vel[0]) / self.one_sigma_speed
-            vright_fr = max(0, -vel[0]) / self.one_sigma_speed
-            vup_fr = max(0, vel[1]) / self.one_sigma_speed
-            vdown_fr = max(0, -vel[1]) / self.one_sigma_speed
-            firingrate = np.array([vleft_fr, vright_fr, vup_fr, vdown_fr])
-
-        firingrate = (
-            firingrate * (self.max_fr - self.min_fr) + self.min_fr
-        )  # scales from being between [0,1] to [min_fr, max_fr]
-
-        return firingrate
-
-
 class HeadDirectionCells(Neurons):
     """The HeadDirectionCells class defines a population of head direction cells. This class is a subclass of Neurons() and inherits it properties/plotting functions.
 
@@ -1249,6 +1176,55 @@ class HeadDirectionCells(Neurons):
     
     def plot_HDC_receptive_field(self,):
         return 
+
+
+class VelocityCells(HeadDirectionCells):
+    """The VelocityCells class defines a population of Velocity cells. This basically takes the output from a population of HeadDirectionCells and scales it proportional to the speed (dependence on speed and direction --> velocity). 
+
+    Must be initialised with an Agent and a 'params' dictionary. Initalise tehse cells as if they are HeadDirectionCells 
+
+    VelocityCells defines a set of 'dim x 2' velocity cells. Encoding the East, West (and North and South) velocities in 1D (2D). The firing rates are scaled according to the multiple current_speed / expected_speed where expected_speed = Agent.speed_mean + self.Agent.speed_std is just some measure of speed approximately equal to a likely ``rough`` maximum for the Agent. 
+
+
+    List of functions:
+        • get_state()
+
+    default_params = {
+            "min_fr": 0,
+            "max_fr": 1,
+            "name": "VelocityCells",
+        }
+    """
+
+    def __init__(self, Agent, params={}):
+        """Initialise VelocityCells(), takes as input a parameter dictionary. Any values not provided by the params dictionary are taken from a default dictionary below.
+        Args:
+            params (dict, optional). Defaults to {}."""
+        default_params = {
+            "min_fr": 0,
+            "max_fr": 1,
+            "name": "VelocityCells",
+        }
+        self.Agent = Agent
+        default_params.update(params)
+        self.params = default_params
+        self.one_sigma_speed = self.Agent.speed_mean + self.Agent.speed_std
+
+        super().__init__(Agent, self.params)
+
+        if verbose is True:
+            print(
+                f"VelocityCells successfully initialised. Your environment is {self.Agent.Environment.dimensionality} and you have {self.n} velocity cells"
+            )
+        return
+
+    def get_state(self, evaluate_at="agent", **kwargs):
+        """Takes firing rate of equivalent set of head direction cells and scales by how fast teh speed is realtive to one_sigma_speed (likely rough maximum speed)"""
+
+        HDC_firingrates = super().get_state(evaluate_at, **kwargs)
+        speed_scale = np.linalg.norm(self.Agent.velocity) / self.one_sigma_speed
+        firingrate = HDC_firingrates * speed_scale
+        return firingrate
 
 
 class SpeedCell(Neurons):
