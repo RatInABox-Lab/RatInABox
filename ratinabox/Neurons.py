@@ -1171,7 +1171,9 @@ class HeadDirectionCells(Neurons):
 
     Must be initialised with an Agent and a 'params' dictionary.
 
-    HeadDirectionCells defines a set of 'dim x 2' velocity cells. Encoding the East, West (and North and South) heading directions in 1D (2D). The firing rates are scaled such that when agent travels due east/west/north,south the firing rate is  = [mfr,0,0,0]/[0,mfr,0,0]/[0,0,mfr,0]/[0,0,0,mfr] (mfr = max_fr)
+    HeadDirectionCells defines a set of 'n' head direction cells. Each cell has a preffered direction/angle (default evenly spaced across unit circle). In 1D there are always only n=2 cells preffering left and right directions. The firing rates are scaled such that when agent travels exactly along the preferred direction the firing rate of that cell is the max_fr. The firing field of a cell is a von mises centred around its preferred direction of default width 30 degrees (can be changed with parameter params["angular_spread_degrees"])
+
+    To print/set preffered direction: self.preferred_angles
 
     List of functions:
         • get_state()
@@ -1179,6 +1181,8 @@ class HeadDirectionCells(Neurons):
     default_params = {
             "min_fr": 0,
             "max_fr": 1,
+            "n":1,
+            "angle_spread_degrees":30,
             "name": "HeadDirectionCells",
         }
     """
@@ -1190,6 +1194,8 @@ class HeadDirectionCells(Neurons):
         default_params = {
             "min_fr": 0,
             "max_fr": 1,
+            "n":4,
+            "angular_spread_degrees":30, #width of HDC preference function (degrees) 
             "name": "HeadDirectionCells",
         }
         self.Agent = Agent
@@ -1198,41 +1204,51 @@ class HeadDirectionCells(Neurons):
         self.params = default_params
 
         if self.Agent.Environment.dimensionality == "2D":
-            self.n = 4  # one up, one down, one left, one right
+            self.n = self.params['n']
+            self.preferred_angles = np.linspace(0,2*np.pi,self.n+1)[:-1]
+            # self.preferred_directions = np.array([np.cos(angles),np.sin(angles)]).T #n HDCs even spaced on unit circle
+            self.angular_tunings = np.array([self.params['angular_spread_degrees']*np.pi/180]*self.n)
         if self.Agent.Environment.dimensionality == "1D":
             self.n = 2  # one left, one right
         self.params["n"] = self.n
         super().__init__(Agent, self.params)
         if verbose is True:
             print(
-                f"HeadDirectionCells successfully initialised. Your environment is {self.Agent.Environment.dimensionality} therefore you have {self.n} head direction cells"
+                f"HeadDirectionCells successfully initialised. Your environment is {self.Agent.Environment.dimensionality}, you have {self.n} head direction cells"
             )
 
     def get_state(self, evaluate_at="agent", **kwargs):
-        """In 2D 4 head direction cells report the head direction of the animal. For example a population vector of [1,0,0,0] implies due-east motion. By default velocity (which determines head direction) is taken from the agent but this can also be passed as a kwarg 'vel'"""
+        """In 2D n head direction cells encode the head direction of the animal. By default velocity (which determines head direction) is taken from the agent but this can also be passed as a kwarg 'vel'"""
 
         if evaluate_at == "agent":
             vel = self.Agent.history["vel"][-1]
-        else:
+        elif 'vel' in kwargs.keys():
             vel = np.array(kwargs["vel"])
-
+        else: 
+            print("HeadDirection cells need a velocity but not was given, taking...")
+            if self.Agent.Environment.dimensionality == "2D":
+                vel = np.array([1,0])
+                print("...[1,0] as default")
+            if self.Agent.Environment.dimensionality == "1D":
+                vel = np.array([1])
+                print("...[1] as default")
+            
         if self.Agent.Environment.dimensionality == "1D":
             hdleft_fr = max(0, np.sign(vel[0]))
             hdright_fr = max(0, -np.sign(vel[0]))
             firingrate = np.array([hdleft_fr, hdright_fr])
         if self.Agent.Environment.dimensionality == "2D":
-            vel = vel / np.linalg.norm(vel)
-            hdleft_fr = max(0, vel[0])
-            hdright_fr = max(0, -vel[0])
-            hdup_fr = max(0, vel[1])
-            hddown_fr = max(0, -vel[1])
-            firingrate = np.array([hdleft_fr, hdright_fr, hdup_fr, hddown_fr])
+            current_angle = utils.get_angle(vel)
+            firingrate = utils.von_mises(current_angle,self.preferred_angles,self.angular_tunings,norm=1)
 
         firingrate = (
             firingrate * (self.max_fr - self.min_fr) + self.min_fr
         )  # scales from being between [0,1] to [min_fr, max_fr]
 
         return firingrate
+    
+    def plot_HDC_receptive_field(self,):
+        return 
 
 
 class SpeedCell(Neurons):
