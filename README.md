@@ -1,15 +1,15 @@
 # RatInABox 
 ![Tests](https://github.com/TomGeorge1234/RatInABox/actions/workflows/test.yml/badge.svg)   [![PyPI version](https://badge.fury.io/py/ratinabox.svg)](https://badge.fury.io/py/ratinabox)
 
-`RatInABox` (see [paper](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v3)) is a toolkit for generating locomotion trajectories and complementary neural data for spatially and/or velocity selective cell types. 
+`RatInABox` (see [paper](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v3)) is a toolkit for generating locomotion trajectories and complementary neural data for spatially and/or velocity selective cell types in complex continuous environments. 
 
-[Install](#installing-and-importing) | [Demos](#get-started) | [Features](#feature-run-down) | [Cite](#cite)
+[Install](#installing-and-importing) | [Demos](#get-started) | [Features](#feature-run-down) | [Contributions and Questions](#contribute) | [Cite](#cite)
 
 <img src=".images/readme/ratinabox.gif" width=850>
 
 With `RatInABox` you can: 
 
-* **Generate realistic trajectories** for rats exploring complex 1- and 2-dimensional environments under a smooth random policy, an external control signal, or your own trajectory data.
+* **Generate realistic trajectories** for rats exploring complex 1 and 2D environments under a smooth random policy, an external control signal, or your own trajectory data.
 * **Generate artificial neuronal data** for various location- or velocity-selective cells found in the Hippocampal formation, or build your own more complex cell types. 
 * **Build and train complex multi-layer networks** of cells, powered by data generated with `RatInABox`. 
 
@@ -67,7 +67,31 @@ from ratinabox.Neurons import PlaceCells, GridCells #...
 ```
 
 ## Feature run-down
-Here is a list of features loosely organised into three categories: those pertaining to (i) the `Environment`, (ii) the `Agent` and (iii) the `Neurons`. Specific details can be found in the paper, [here](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v3). 
+Here is a list of features loosely organised into three categories: those pertaining to 
+
+(i) the [`Environment`](#i-environment-features)
+* [Adding walls](#walls)
+* [Boundary conditions](#boundary-conditions)
+* [1- or 2-dimensions](#1--or-2-dimensions) 
+
+
+(ii) the [`Agent`](#ii-agent-features)
+* [Random motion](#random-motion-model)
+* [Importing trajectories](#importing-trajectories)
+* [Policy control](#policy-control)
+* [Wall repelling](#wall-repelling)
+
+(iii) the [`Neurons`](#iii-neurons-features).
+* [Cell types](#multiple-cell-types) 
+* [Noise](#noise)
+* [Spikes vs rates](#spiking)
+* [Plotting rate maps](#rate-maps)
+* [Place cell models](#place-cell-models) 
+* [Place cell geometry](#geometry-of-placecells)
+* [Deep neural networks](#more-complex-neuron-types-and-networks-of-neurons)
+
+Specific details can be found in the [paper]](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v3). 
+
 
 
 ### (i) `Environment` features
@@ -105,7 +129,7 @@ Env = Environment(
 ### (ii) `Agent` features
 
 #### Random motion model
-Random motion is stochastic but smooth. The speed (and rotational speed, if in 2D) of an Agent take constrained random walks governed by Ornstein-Uhlenbeck processes. You can change the means, variance and coherence times of these processes to control the shape of the trajectory. Default parameters are fit to real rat locomotion data from Sargolini et al. (2006): 
+By defaut the `Agent` follows a random motion policy.  Random motion is stochastic but smooth. The speed (and rotational speed, if in 2D) of an Agent take constrained random walks governed by Ornstein-Uhlenbeck processes. You can change the means, variance and coherence times of these processes to control the shape of the trajectory. Default parameters are fit to real rat locomotion data from Sargolini et al. (2006): 
 
 <img src=".images/readme/riab_vs_sargolini.gif" width=500>
 
@@ -158,14 +182,48 @@ We provide a list of premade `Neurons` subclasses. These include:
 * `PlaceCells` 
 * `GridCells`
 * `BoundaryVectorCells` (can be egocentric or allocentric)
+* `HeadDirectionCells`
 * `VelocityCells`
 * `SpeedCells`
-* `HeadDirectionCells`
 * `FeedForwardLayer` - calculates activated weighted sum of inputs from a provide list of input `Neurons` layers.
 
 This last class, `FeedForwardLayer` deserves special mention. Instead of its firing rate being determined explicitly by the state of the `Agent` it summates synaptic inputs from a provided list of input layers (which can be any `Neurons` subclass). This layer is the building block for how more complex networks can be studied using `RatInABox`. 
 
-#### Place cell models: 
+
+#### Noise 
+Use the `Neurons.noise_std` and `Neurons.noise_coherence_time` parameters to control the amount of noise (Hz) and autocorrelation timescale of the noise (seconds). For example (work with all `Neurons` classes, not just `PlaceCells`): 
+
+```python
+PCs = PlaceCells(Ag,params={
+    'noise_std':0.1, #defaults to 0 i.e. no noise
+    'noise_coherence_time':0.5, #autocorrelation timescale of additive noise vector 
+})
+```
+
+<img src=".images/readme/noise.png" width="1000">
+
+#### Spiking 
+All neurons are rate based. However, at each update spikes are sampled as though neurons were Poisson neurons. These are stored in `Neurons.history['spikes']`. The max and min firing rates can be set with `Neurons.max_fr` and  `Neurons.min_fr`.
+```
+Neurons.plot_ratemap(spikes=True)
+```
+
+<img src=".images/readme/spikes.png" width="1000">
+
+
+#### Rate maps 
+`PlaceCells`, `GridCells` and allocentric `BoundaryVectorCells` (among others) have firing rates which depend exclusively on the position of the agent. These rate maps can be displayed by querying their firing rate at an array of positions spanning the environment, then plotting. This process is done for you using the function `Neurons.plot_rate_map()`. 
+
+More generally, however, cells firing is not only determined by position but potentially other factors (e.g. velocity, or historical effects if the layer is part of a recurrent network). In these cases the above method of plotting rate maps will necessarily fail. A more robust way to display the receptive field is to plot a heatmap of the positions of the Agent has visited where each positions contribution to a bin is weighted by the firing rate observed at that position. Over time, as coverage become complete, the firing fields become visible.
+```
+Neurons.plot_rate_map() #attempts to plot "ground truth" rate map 
+Neurons.plot_rate_map(method="history") #plots rate map by firing-rate-weighted position heatmap
+``` 
+
+<img src=".images/readme/rate_map.png" width=600>
+
+
+#### Place cell models
 
 Place cells come in multiple types (given by `params['description']`), or it would be easy to write your own:
 * `"gaussian"`: normal gaussian place cell 
@@ -188,28 +246,9 @@ Choose how you want `PlaceCells` to interact with walls in the `Environment`. We
 
 <img src=".images/readme/wall_geometry.png" width=900>
 
-#### Spiking 
-All neurons are rate based. However, at each update spikes are sampled as though neurons were Poisson neurons. These are stored in `Neurons.history['spikes']`. The max and min firing rates can be set with `Neurons.max_fr` and  `Neurons.min_fr`.
-```
-Neurons.plot_ratemap(spikes=True)
-```
-
-<img src=".images/readme/spikes.png" width="1000">
-
-
-#### Rate maps 
-`PlaceCells`, `GridCells` and allocentric `BoundaryVectorCells` (among others) have firing rates which depend exclusively on the position of the agent. These rate maps can be displayed by querying their firing rate at an array of positions spanning the environment, then plotting. This process is done for you using the function `Neurons.plot_rate_map()`. 
-
-More generally, however, cells firing is not only determined by position but potentially other factors (e.g. velocity, or historical effects if the layer is part of a recurrent network). In these cases the above method of plotting rate maps will necessarily fail. A more robust way to display the receptive field is to plot a heatmap of the positions of the Agent has visited where each positions contribution to a bin is weighted by the firing rate observed at that position. Over time, as coverage become complete, the firing fields become visible.
-```
-Neurons.plot_rate_map() #attempts to plot "ground truth" rate map 
-Neurons.plot_rate_map(method="history") #plots rate map by firing-rate-weighted position heatmap
-``` 
-
-<img src=".images/readme/rate_map.png" width=600>
 
 #### More complex Neuron types and networks of Neurons
-We encourage users to create their own subclasses of `Neurons`. This is easy to do, see comments in the `Neurons` class within the [code](./ratinabox/Neurons.py) for explanation. By forming these classes from the parent `Neurons` class, the plotting and analysis features described above remain available to these bespoke Neuron types. Additionally we provide a `Neurons` subclass called `FeedForwardLayer`. This neuron sums inputs from any proived list of other `Neurons` classes and can be used as the building block for constructing complex multilayer networks of `Neurons`, as we do [here](./demos/path_integration_example.ipynb) and [here](./demos/reinforcement_learning_example.ipynb). 
+We encourage users to create their own subclasses of `Neurons`. This is easy to do, see comments in the `Neurons` class within the [code](./ratinabox/Neurons.py) for explanation. By forming these classes from the parent `Neurons` class, the plotting and analysis features described above remain available to these bespoke Neuron types. Additionally we provide a `Neurons` subclass called `FeedForwardLayer`. This neuron sums inputs from any provied list of other `Neurons` classes and can be used as the building block for constructing complex multilayer networks of `Neurons`, as we do [here](./demos/path_integration_example.ipynb) and [here](./demos/reinforcement_learning_example.ipynb). 
 
 ## Example Scripts
 In the folder called [demos](./demos/) we provide numerous script and demos which will help when learning `RatInABox`. In approximate order of complexity, these include:
@@ -242,8 +281,13 @@ fig, ax = PCs.plot_rate_timeseries()
 * [path_integration_example.ipynb](./demos/path_integration_example.ipynb): RatInABox is use to construct, train and visualise a large multi-layer network capable of learning a "ring attractor" capable of path integrating a position estimate using only velocity inputs.
 
 ## Contribute 
-`RatInABox` is an open source project, and we actively encourage community contributions. These can take various forms, such as new movement policies, new cells types, new plotting functions, new geometries, bug fixes, documentation, citations of relevant work, or additional experiment notebooks. If there is a small contribution you would like to make, please feel free to open a pull request, and we can review it. For bugs and bug fixes please raise an issue. 
-If you would like to add a new `Neurons` class please pull request it into the [contribs](./ratinabox/contribs/) directory. If there is a larger contribution you are considering please contact the correponding author at `tomgeorge1@btinternet.com`. 
+`RatInABox` is an open source project, and we actively encourage community contributions, for example bug fixes, new cells types, new features, new plotting functions, new motion datasets, documentation, citations of relevant work, or additional experiment notebooks. Typically the best way to go about this is by opening an issue or feel free to make a pull request. 
+
+We have a dedicated [contribs](./ratinabox/contribs/) directory where you can safely add awesome scripts and new `Neurons` classes etc.
+
+*Questions?* Can't figure out how something works. If you can't fgure it out from the readme, demos, code comments etc. then ask me! Open an issue, I'm usually pretty quick to respond. 
+
+
 
 ## Cite
 If you use `RatInABox` in your research or educational material, please cite the work as follows: 
