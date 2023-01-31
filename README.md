@@ -3,7 +3,7 @@
 
 `RatInABox` (see [paper](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v3)) is a toolkit for generating locomotion trajectories and complementary neural data for spatially and/or velocity selective cell types in complex continuous environments. 
 
-[Install](#installing-and-importing) | [Demos](#get-started) | [Features](#feature-run-down) | [Contributions and Questions](#contribute) | [Cite](#cite)
+[**Install**](#installing-and-importing) | [**Demos**](#get-started) | [**Features**](#feature-run-down) | [**Contributions and Questions**](#contribute) | [**Cite**](#cite)
 
 <img src=".images/readme/ratinabox.gif" width=850>
 
@@ -21,6 +21,7 @@ With `RatInABox` you can:
     * `PlaceCells`
     * `GridCells`
     * `BoundaryVectorCells` (egocentric or allocentric)
+    * `ObjectVectorCells`
     * `VelocityCells`
     * `SpeedCells`
     * `HeadDirectionCells`
@@ -182,6 +183,7 @@ We provide a list of premade `Neurons` subclasses. These include:
 * `PlaceCells` 
 * `GridCells`
 * `BoundaryVectorCells` (can be egocentric or allocentric)
+* `ObjectVectorCells` (can be used as visual cues, i.e. only fire when `Agent` is looking towards them)
 * `HeadDirectionCells`
 * `VelocityCells`
 * `SpeedCells`
