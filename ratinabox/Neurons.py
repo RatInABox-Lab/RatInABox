@@ -85,6 +85,9 @@ class Neurons:
             "n": 10,
             "name": "Neurons",
             "color": None,  # just for plotting
+
+            "noise_std":0, #0 means no noise, std of the noise you want to add (Hz) 
+            "noise_coherence_time":0.5,
         }
         self.Agent = Agent
         default_params.update(params)
@@ -92,10 +95,13 @@ class Neurons:
         utils.update_class_params(self, self.params)
 
         self.firingrate = np.zeros(self.n)
+        self.noise = np.zeros(self.n)
+
         self.history = {}
         self.history["t"] = []
         self.history["firingrate"] = []
         self.history["spikes"] = []
+
 
         if verbose is True:
             print(
@@ -103,8 +109,18 @@ class Neurons:
             )
 
     def update(self):
+        #update noise vector
+        dnoise = utils.ornstein_uhlenbeck(dt=self.Agent.dt,
+                                          x = self.noise,
+                                          drift=0,
+                                          noise_scale = self.noise_std,
+                                          coherence_time = self.noise_coherence_time)
+        self.noise = self.noise + dnoise 
+
+        #update firing rate 
         firingrate = self.get_state()
         self.firingrate = firingrate.reshape(-1)
+        self.firingrate = self.firingrate + self.noise 
         self.save_to_history()
         return
 
