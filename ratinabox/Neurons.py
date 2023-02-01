@@ -339,7 +339,7 @@ class Neurons:
                         divider = make_axes_locatable(axes[-1])
                         cax = divider.append_axes("right", size="5%", pad=0.05)
             for (i, ax_) in enumerate(axes):
-                self.Agent.Environment.plot_environment(fig, ax_)
+                _, ax_ = self.Agent.Environment.plot_environment(fig, ax_)
             if len(chosen_neurons) != axes.size:
                 print(
                     f"You are trying to plot a different number of neurons {len(chosen_neurons)} than the number of axes provided {axes.size}. Some might be missed. Either change this with the chosen_neurons argument or pass in a list of axes to plot on"
@@ -1111,11 +1111,7 @@ class BoundaryVectorCells(Neurons):
 
 
 class ObjectVectorCells(Neurons):
-    """
-
-    """
-    def __init__(self, Agent, params={}):
-        """Initialises ObjectVectorCells(), takes as input a parameter dictionary. Any values not provided by the params dictionary are taken from a default dictionary below.
+    """Initialises ObjectVectorCells(), takes as input a parameter dictionary. Any values not provided by the params dictionary are taken from a default dictionary below.
 
         Each object vector cell has a preferred tuning_distance and tuning_angle. Only when the angle is (with gaussian spread) close to this distance and angle away from the OVC wll the cell fire. 
 
@@ -1134,7 +1130,9 @@ class ObjectVectorCells(Neurons):
             "xi": 0.08, #parameters determining the distance preferrence function std given the preferred distance. See BoundaryVectorCells or de cothi and barry 2020
             "beta": 12,
         }
-        """
+    """
+    def __init__(self, Agent, params={}):
+
         default_params = {
             "n": 10,
             "min_fr": 0,
@@ -1148,16 +1146,20 @@ class ObjectVectorCells(Neurons):
             "xi": 0.08,
             "beta": 12,
         }
+
         self.Agent = Agent
         default_params.update(params)
         self.params = default_params
-        super().__init__(Agent, self.params)
 
         assert (self.Agent.Environment.dimensionality == "2D"), "object vector cells only possible in 2D"
         
-        if self.object_locations is None: 
+        if params['object_locations'] is None: 
             self.object_locations = self.Agent.Environment.sample_positions(self.n)
             print(f"No object locations passed so {self.n} object locations have been randomly sampled across the environment")
+        else: self.params['n'] = len(params['object_locations'])
+
+        super().__init__(Agent, self.params)
+
         
         #preferred distance and angle to objects and their tuning widths (set these yourself if needed)
         self.tuning_angles = np.random.uniform(0, 2 * np.pi, size=self.n)
@@ -1206,9 +1208,10 @@ class ObjectVectorCells(Neurons):
         N_pos = pos.shape[0]
         N_cells = self.n
 
-        (distances_to_OVCs, vectors_to_OVCs) = self.Agent.Environment.get_distances_between___accounting_for_environment(self.object_locations,pos,return_vectors=True,wall_geometry=self.wall_geometry,) #(N_cells,N_pos) (N_cells,N_pos, 2)
+        
+        (distances_to_OVCs, vectors_to_OVCs) = self.Agent.Environment.get_distances_between___accounting_for_environment(pos,self.object_locations,return_vectors=True,wall_geometry=self.wall_geometry,) #(N_pos,N_cells) (N_pos,N_cells,2)
         flattened_vectors_to_OVCs = vectors_to_OVCs.reshape(-1,2) #(N_pos x N_cells, 2)
-        bearings_to_OVCs = utils.get_angle(flattened_vectors_to_OVCs,is_array=True).reshape(N_cells,N_pos) #(N_cells,N_pos)
+        bearings_to_OVCs = utils.get_angle(flattened_vectors_to_OVCs,is_array=True).reshape(N_pos,N_cells) #(N_cells,N_pos)
         if self.field_of_view == True: 
             if evaluate_at == "agent":
                 vel = self.Agent.velocity
@@ -1220,16 +1223,16 @@ class ObjectVectorCells(Neurons):
             head_bearing = utils.get_angle(vel)
             bearings_to_OVCs -= head_bearing
 
-        tuning_distances = np.tile(np.expand_dims(self.tuning_distances,axis=-1),reps=(1,N_pos)) #(N_cell,N_pos)
-        sigma_distances = np.tile(np.expand_dims(self.sigma_distances,axis=-1),reps=(1,N_pos)) #(N_cell,N_pos)
-        tuning_angles = np.tile(np.expand_dims(self.tuning_angles,axis=-1),reps=(1,N_pos)) #(N_cell,N_pos)
-        sigma_angles = np.tile(np.expand_dims(self.sigma_angles,axis=-1),reps=(1,N_pos)) #(N_cell,N_pos)
+        tuning_distances = np.tile(np.expand_dims(self.tuning_distances,axis=0),reps=(N_pos,1)) #(N_pos,N_cell)
+        sigma_distances = np.tile(np.expand_dims(self.sigma_distances,axis=0),reps=(N_pos,1)) #(N_pos,N_cell)
+        tuning_angles = np.tile(np.expand_dims(self.tuning_angles,axis=0),reps=(N_pos,1)) #(N_pos,N_cell)
+        sigma_angles = np.tile(np.expand_dims(self.sigma_angles,axis=0),reps=(N_pos,1)) #(N_pos,N_cell)
 
-        firingrate = utils.gaussian(
+        firingrate = (utils.gaussian(
             distances_to_OVCs, tuning_distances, sigma_distances, norm=1
         ) * utils.von_mises(
             bearings_to_OVCs, tuning_angles, sigma_angles, norm=1
-        ) #(N_cell,N_pos)
+        )).T #(N_cell,N_pos)
         firingrate = (
             firingrate * (self.max_fr - self.min_fr) + self.min_fr
         )  # scales from being between [0,1] to [min_fr, max_fr]

@@ -142,6 +142,7 @@ class Environment:
                 facecolor="lightgrey",
                 zorder=-1,
             )
+            setattr(background, 'name', 'background')
             ax.add_patch(background)
             for wall in walls:
                 ax.plot(
@@ -149,6 +150,8 @@ class Environment:
                     [wall[0][1], wall[1][1]],
                     color="grey",
                     linewidth=4,
+                    solid_capstyle='round',
+                    zorder=1.1,
                 )
             ax.set_aspect("equal")
             ax.grid(False)
@@ -231,7 +234,7 @@ class Environment:
     def get_vectors_between___accounting_for_environment(
         self, pos1=None, pos2=None, line_segments=None
     ):
-        """Takes two position arrays and returns an array of pair-wise vectors from pos1's to pos2's, taking into account boundary conditions. Unlike the global function "utils.get_vectors_between()' (which this calls) this additionally accounts for environment boundary conditions such that if two positions fall on either sides of the boundary AND boundary cons are periodic then the returned shortest-vector actually goes around the loop, not across the environment)...
+        """Takes two position arrays and returns an array of pair-wise vectors from pos2's to pos1's, taking into account boundary conditions. Unlike the global function "utils.get_vectors_between()' (which this calls) this additionally accounts for environment boundary conditions such that if two positions fall on either sides of the boundary AND boundary cons are periodic then the returned shortest-vector actually goes around the loop, not across the environment)...
             pos1 (array): N x dimensionality array of poisitions
             pos2 (array): M x dimensionality array of positions
             line_segments: if you have already calculated line segments from pos1 to pos2 pass this here for quicker evaluation
@@ -247,7 +250,7 @@ class Environment:
         return vectors
 
     def get_distances_between___accounting_for_environment(
-        self, pos1, pos2, wall_geometry="euclidean"
+        self, pos1, pos2, wall_geometry="euclidean", return_vectors=False
     ):
         """Takes two position arrays and returns the array of pair-wise distances between points, taking into account walls and boundary conditions. Unlike the global function utils.get_distances_between() (which this one, at times, calls) this additionally accounts for the boundaries AND walls in the environment.
 
@@ -257,6 +260,7 @@ class Environment:
             pos1 (array): N x dimensionality array of poisitions
             pos2 (array): M x dimensionality array of positions
             wall_geometry: how the distance calculation handles walls in the env (can be "euclidean", "line_of_sight" or "geodesic")
+            return_vectors (False): If True, returns the distances and the vectors as a tuple
         Returns:
             N x M array of pairwise distances
         """
@@ -340,7 +344,10 @@ class Environment:
                     ]
                     distances = flattened_distances.reshape(distances.shape)
 
-        return distances
+        if return_vectors:
+            return (distances, vectors)
+        else:
+            return distances
 
     def check_if_position_is_in_environment(self, pos):
         """Returns True if pos is INside the environment

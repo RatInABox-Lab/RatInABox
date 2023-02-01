@@ -197,7 +197,7 @@ def get_vectors_between(pos1=None, pos2=None, line_segments=None):
         pos2 (array): (M x dimensionality) array of positions
         line_segments: if you already have the line segments, just pass these
     Returns:
-            (N x M x dimensionality) array of vectors from pos1's to pos2's"""
+            (N x M x dimensionality) array of vectors from pos2's to pos1's"""
     if line_segments is None:
         line_segments = get_line_segments_between(pos1, pos2)
     vectors = line_segments[..., 0, :] - line_segments[..., 1, :]
