@@ -1153,7 +1153,7 @@ class ObjectVectorCells(Neurons):
 
         assert (self.Agent.Environment.dimensionality == "2D"), "object vector cells only possible in 2D"
         
-        if params['object_locations'] is None: 
+        if self.params['object_locations'] is None: 
             self.object_locations = self.Agent.Environment.sample_positions(self.n)
             print(f"No object locations passed so {self.n} object locations have been randomly sampled across the environment")
         else: self.params['n'] = len(params['object_locations'])
