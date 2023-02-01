@@ -1,10 +1,10 @@
-from ratinabox import utils
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
+import scipy
+from scipy import stats as stats
 
-verbose = False
-
+from ratinabox import utils
 
 """NEURONS"""
 """Parent Class"""
@@ -103,7 +103,7 @@ class Neurons:
         self.history["spikes"] = []
 
 
-        if verbose is True:
+        if ratinabox.verbose is True:
             print(
                 f"\nA Neurons() class has been initialised with parameters f{self.params}. Use Neurons.update() to update the firing rate of the Neurons to correspond with the Agent.Firing rates and spikes are saved into the Agent.history dictionary. Plot a timeseries of the rate using Neurons.plot_rate_timeseries(). Plot a rate map of the Neurons using Neurons.plot_rate_map()."
             )
@@ -633,7 +633,7 @@ class PlaceCells(Neurons):
                 )
                 self.wall_geometry = "line_of_sight"
 
-        if verbose is True:
+        if ratinabox.verbose is True:
             print(
                 "PlaceCells successfully initialised. You can see where they are centred at using PlaceCells.plot_place_cell_locations()"
             )
@@ -772,7 +772,7 @@ class GridCells(Neurons):
             self.gridscales = np.random.rayleigh(scale=self.gridscale, size=self.n)
         else:
             self.gridscales = np.full(self.n, fill_value=self.gridscale)
-        if verbose is True:
+        if ratinabox.verbose is True:
             print(
                 "GridCells successfully initialised. You can also manually set their gridscale (GridCells.gridscales), offsets (GridCells.phase_offset) and orientations (GridCells.w1, GridCells.w2,GridCells.w3 give the cosine vectors)"
             )
@@ -923,7 +923,7 @@ class BoundaryVectorCells(Neurons):
         self.cell_fr_norm = np.ones(self.n)
         self.cell_fr_norm = np.max(self.get_state(evaluate_at=None, pos=locs), axis=1)
 
-        if verbose is True:
+        if ratinabox.verbose is True:
             print(
                 "BoundaryVectorCells (BVCs) successfully initialised. You can also manually set their orientation preferences (BVCs.tuning_angles, BVCs.sigma_angles), distance preferences (BVCs.tuning_distances, BVCs.sigma_distances)."
             )
@@ -1177,7 +1177,7 @@ class ObjectVectorCells(Neurons):
         locs = self.Agent.Environment.discretise_environment(dx=0.04)
         locs = locs.reshape(-1, locs.shape[-1])
 
-        if verbose is True:
+        if ratinabox.verbose is True:
             print(
                 "ObjectVectorCells (OVCs) successfully initialised. You can also manually set their orientation preferences (OVCs.tuning_angles, OVCs.sigma_angles), distance preferences (OVCs.tuning_distances, OVCs.sigma_distances)."
             )
@@ -1287,7 +1287,7 @@ class HeadDirectionCells(Neurons):
             self.n = 2  # one left, one right
         self.params["n"] = self.n
         super().__init__(Agent, self.params)
-        if verbose is True:
+        if ratinabox.verbose is True:
             print(
                 f"HeadDirectionCells successfully initialised. Your environment is {self.Agent.Environment.dimensionality}, you have {self.n} head direction cells"
             )
@@ -1360,7 +1360,7 @@ class VelocityCells(HeadDirectionCells):
 
         super().__init__(Agent, self.params)
 
-        if verbose is True:
+        if ratinabox.verbose is True:
             print(
                 f"VelocityCells successfully initialised. Your environment is {self.Agent.Environment.dimensionality} and you have {self.n} velocity cells"
             )
@@ -1409,7 +1409,7 @@ class SpeedCell(Neurons):
         self.n = 1
         self.one_sigma_speed = self.Agent.speed_mean + self.Agent.speed_std
 
-        if verbose is True:
+        if ratinabox.verbose is True:
             print(
                 f"SpeedCell successfully initialised. The speed of the agent is encoded linearly by the firing rate of this cell. Speed = 0 --> min firing rate of of {self.min_fr}. Speed = mean + 1std (here {self.one_sigma_speed} --> max firing rate of {self.max_fr}."
             )
@@ -1489,7 +1489,7 @@ class FeedForwardLayer(Neurons):
         if self.biases is None:
             self.biases = np.zeros(self.n)
 
-        if verbose is True:
+        if ratinabox.verbose is True:
             print(
                 f"FeedForwardLayer initialised with {len(self.inputs.keys())} layers. To add another layer use FeedForwardLayer.add_input_layer().\nTo set the weights manually edit them by changing self.inputs['layer_name']['w']"
             )
@@ -1514,7 +1514,7 @@ class FeedForwardLayer(Neurons):
             )
         I = np.zeros(n)
         if name in self.inputs.keys():
-            if verbose is True:
+            if ratinabox.verbose is True:
                 print(
                     f"There already exists a layer called {name}. Overwriting it now."
                 )
@@ -1525,7 +1525,7 @@ class FeedForwardLayer(Neurons):
         self.inputs[name]["I"] = I
         for (key, value) in kwargs.items():
             self.inputs[name][key] = value
-        if verbose is True:
+        if ratinabox.verbose is True:
             print(
                 f'An input layer called {name} was added. The weights can be accessed with "self.inputs[{name}]["w"]"'
             )

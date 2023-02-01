@@ -1,18 +1,8 @@
-import scipy
-from scipy import stats as stats
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
-
-
-
-
-
-
-
-
-
-
+import scipy
+from scipy import stats as stats
 
 """OTHER USEFUL FUNCTIONS"""
 """Geometry functions"""

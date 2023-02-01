@@ -1,9 +1,10 @@
-from ratinabox import utils
+import ratinabox 
+
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
 
-verbose = False
+from ratinabox import utils
 
 """ENVIRONMENT"""
 
@@ -85,7 +86,7 @@ class Environment:
             -1, self.discrete_coords.shape[-1]
         )
 
-        if verbose is True:
+        if ratinabox.verbose is True:
             print(
                 f"\nAn Environment has been initialised with parameters: {self.params}. Use Env.add_wall() to add a wall into the Environment. Plot Environment using Env.plot_environment()."
             )
