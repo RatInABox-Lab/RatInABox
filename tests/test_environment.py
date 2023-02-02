@@ -14,8 +14,8 @@ def Env2D():
     return Environment(params={'dimensionality':'2D'})
 
 def test_env_init(Env1D,Env2D):
-    assert type(Env1D) == ratinabox.Environment.Environment
-    assert type(Env2D) == ratinabox.Environment.Environment
+    assert type(Env1D) == Environment
+    assert type(Env2D) == Environment
 
 def test_end_add_wall(Env2D):
     n_walls = len(Env2D.walls)
