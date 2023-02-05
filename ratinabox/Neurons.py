@@ -1,10 +1,12 @@
-from ratinabox import utils
+import ratinabox 
+
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
+import scipy
+from scipy import stats as stats
 
-verbose = False
-
+from ratinabox import utils
 
 """NEURONS"""
 """Parent Class"""
@@ -85,6 +87,9 @@ class Neurons:
             "n": 10,
             "name": "Neurons",
             "color": None,  # just for plotting
+
+            "noise_std":0, #0 means no noise, std of the noise you want to add (Hz) 
+            "noise_coherence_time":0.5,
         }
         self.Agent = Agent
         default_params.update(params)
@@ -92,19 +97,32 @@ class Neurons:
         utils.update_class_params(self, self.params)
 
         self.firingrate = np.zeros(self.n)
+        self.noise = np.zeros(self.n)
+
         self.history = {}
         self.history["t"] = []
         self.history["firingrate"] = []
         self.history["spikes"] = []
 
-        if verbose is True:
+
+        if ratinabox.verbose is True:
             print(
                 f"\nA Neurons() class has been initialised with parameters f{self.params}. Use Neurons.update() to update the firing rate of the Neurons to correspond with the Agent.Firing rates and spikes are saved into the Agent.history dictionary. Plot a timeseries of the rate using Neurons.plot_rate_timeseries(). Plot a rate map of the Neurons using Neurons.plot_rate_map()."
             )
 
     def update(self):
+        #update noise vector
+        dnoise = utils.ornstein_uhlenbeck(dt=self.Agent.dt,
+                                          x = self.noise,
+                                          drift=0,
+                                          noise_scale = self.noise_std,
+                                          coherence_time = self.noise_coherence_time)
+        self.noise = self.noise + dnoise 
+
+        #update firing rate 
         firingrate = self.get_state()
         self.firingrate = firingrate.reshape(-1)
+        self.firingrate = self.firingrate + self.noise 
         self.save_to_history()
         return
 
@@ -323,7 +341,7 @@ class Neurons:
                         divider = make_axes_locatable(axes[-1])
                         cax = divider.append_axes("right", size="5%", pad=0.05)
             for (i, ax_) in enumerate(axes):
-                self.Agent.Environment.plot_environment(fig, ax_)
+                _, ax_ = self.Agent.Environment.plot_environment(fig, ax_)
             if len(chosen_neurons) != axes.size:
                 print(
                     f"You are trying to plot a different number of neurons {len(chosen_neurons)} than the number of axes provided {axes.size}. Some might be missed. Either change this with the chosen_neurons argument or pass in a list of axes to plot on"
@@ -617,7 +635,7 @@ class PlaceCells(Neurons):
                 )
                 self.wall_geometry = "line_of_sight"
 
-        if verbose is True:
+        if ratinabox.verbose is True:
             print(
                 "PlaceCells successfully initialised. You can see where they are centred at using PlaceCells.plot_place_cell_locations()"
             )
@@ -756,7 +774,7 @@ class GridCells(Neurons):
             self.gridscales = np.random.rayleigh(scale=self.gridscale, size=self.n)
         else:
             self.gridscales = np.full(self.n, fill_value=self.gridscale)
-        if verbose is True:
+        if ratinabox.verbose is True:
             print(
                 "GridCells successfully initialised. You can also manually set their gridscale (GridCells.gridscales), offsets (GridCells.phase_offset) and orientations (GridCells.w1, GridCells.w2,GridCells.w3 give the cosine vectors)"
             )
@@ -907,7 +925,7 @@ class BoundaryVectorCells(Neurons):
         self.cell_fr_norm = np.ones(self.n)
         self.cell_fr_norm = np.max(self.get_state(evaluate_at=None, pos=locs), axis=1)
 
-        if verbose is True:
+        if ratinabox.verbose is True:
             print(
                 "BoundaryVectorCells (BVCs) successfully initialised. You can also manually set their orientation preferences (BVCs.tuning_angles, BVCs.sigma_angles), distance preferences (BVCs.tuning_distances, BVCs.sigma_distances)."
             )
@@ -916,14 +934,14 @@ class BoundaryVectorCells(Neurons):
     def get_state(self, evaluate_at="agent", **kwargs):
         """Here we implement the same type if boundary vector cells as de Cothi et al. (2020), who follow Barry & Burgess, (2007). See equations there.
 
-        The way I do this is a little complex. I will describe how it works from a single position (but remember this can be called in a vectorised manner from an arary of positons in parallel)
-            1. An array of normalised "test vectors" span, in all directions at 1 degree increments, from the position
+        The way we do this is a little complex. We will describe how it works from a single position (but remember this can be called in a vectorised manner from an array of positons in parallel)
+            1. An array of normalised "test vectors" span, in all directions at small increments, from the current position
             2. These define an array of line segments stretching from [pos, pos+test vector]
             3. Where these line segments collide with all walls in the environment is established, this uses the function "utils.vector_intercepts()"
             4. This pays attention to only consider the first (closest) wall forawrd along a line segment. Walls behind other walls are "shaded" by closer walls. Its a little complex to do this and requires the function "boundary_vector_preference_function()"
             5. Now that, for every test direction, the closest wall is established it is simple a process of finding the response of the neuron to that wall at that angle (multiple of two gaussians, see de Cothi (2020)) and then summing over all the test angles.
 
-        We also apply a check in the middle to utils.rotate teh reference frame into that of the head direction of the agent iff self.reference_frame='egocentric'.
+        We also apply a check in the middle to utils.rotate the reference frame into that of the head direction of the agent iff self.reference_frame='egocentric'.
 
         By default position is taken from the Agent and used to calculate firing rates. This can also by passed directly (evaluate_at=None, pos=pass_array_of_positions) or ou can use all the positions in the environment (evaluate_at="all").
         """
@@ -980,8 +998,10 @@ class BoundaryVectorCells(Neurons):
         if self.reference_frame == "egocentric":
             if evaluate_at == "agent":
                 vel = self.Agent.pos
-            else:
+            elif 'vel' in kwargs.keys():
                 vel = kwargs["vel"]
+            else: 
+                vel = np.array([1,0])
             vel = np.array(vel)
             head_direction_angle = utils.get_angle(vel)
             test_angles = test_angles - head_direction_angle
@@ -1092,12 +1112,229 @@ class BoundaryVectorCells(Neurons):
         return fig, ax
 
 
-class VelocityCells(Neurons):
-    """The VelocityCells class defines a population of Velocity cells. This class is a subclass of Neurons() and inherits it properties/plotting functions.
+class ObjectVectorCells(Neurons):
+    """Initialises ObjectVectorCells(), takes as input a parameter dictionary. Any values not provided by the params dictionary are taken from a default dictionary below.
+
+        Each object vector cell has a preferred tuning_distance and tuning_angle. Only when the angle is (with gaussian spread) close to this distance and angle away from the OVC wll the cell fire. 
+
+        It is possible for these cells to be "field_of_view" in which case the cell fires iff the agent is looking towards it. Essentially this is an egocentric OVC with tuning angle set to zero (head on). 
+
+        default_params = {
+            "n": 10,
+            "min_fr": 0,
+            "max_fr": 1,
+            "name": "ObjectVectorCell",
+            "walls_occlude":True, #whether walls occuled OVC firing
+            "field_of_view":False, #set to true for "field of view" OVC
+            "object_locations":None, #otherwise random across Env, the length of this will overwrite "n" 
+            "angle_spread_degrees":15, #can be an array, one for each object, spread of von Mises angular preferrence functinon for each OVC
+            "pref_object_dist": 0.25, #can be an array, one for each object, otherwise randomly drawn from a Rayleigh with this sigma. How far away from OVC the OVC fires. 
+            "xi": 0.08, #parameters determining the distance preferrence function std given the preferred distance. See BoundaryVectorCells or de cothi and barry 2020
+            "beta": 12,
+        }
+    """
+    def __init__(self, Agent, params={}):
+
+        default_params = {
+            "n": 10,
+            "min_fr": 0,
+            "max_fr": 1,
+            "name": "ObjectVectorCell",
+            "walls_occlude":True, 
+            "field_of_view":False,
+            "object_locations":None, 
+            "angle_spread_degrees":15, 
+            "pref_object_dist":0.25, 
+            "xi": 0.08,
+            "beta": 12,
+        }
+
+        self.Agent = Agent
+        default_params.update(params)
+        self.params = default_params
+
+        assert (self.Agent.Environment.dimensionality == "2D"), "object vector cells only possible in 2D"
+        
+        if self.params['object_locations'] is None: 
+            self.object_locations = self.Agent.Environment.sample_positions(self.n)
+            print(f"No object locations passed so {self.n} object locations have been randomly sampled across the environment")
+        else: self.params['n'] = len(params['object_locations'])
+
+        super().__init__(Agent, self.params)
+
+        
+        #preferred distance and angle to objects and their tuning widths (set these yourself if needed)
+        self.tuning_angles = np.random.uniform(0, 2 * np.pi, size=self.n)
+        self.tuning_distances = np.random.rayleigh(scale=self.pref_object_dist, size=self.n)
+        self.sigma_distances = self.tuning_distances / self.beta + self.xi
+        self.sigma_angles = np.array([(self.angle_spread_degrees / 360) * 2 * np.pi] * self.n)
+
+        if self.field_of_view == True:
+            self.tuning_angles = np.zeros(self.n)
+
+        if self.walls_occlude == True: self.wall_geometry = 'line_of_sight'
+        else: self.wall_geometry = 'euclidean'
+
+        # normalises activity over the environment 
+        locs = self.Agent.Environment.discretise_environment(dx=0.04)
+        locs = locs.reshape(-1, locs.shape[-1])
+
+        if ratinabox.verbose is True:
+            print(
+                "ObjectVectorCells (OVCs) successfully initialised. You can also manually set their orientation preferences (OVCs.tuning_angles, OVCs.sigma_angles), distance preferences (OVCs.tuning_distances, OVCs.sigma_distances)."
+            )
+        return
+
+    def get_state(self, evaluate_at="agent", **kwargs):
+        """Returns the firing rate of the ObjectVectorCells.
+
+        The way we do this is a little complex. We will describe how it works from a single position to a single OVC (but remember this can be called in a vectorised manner from an array of positons in parallel and there are in principle multiple OVCs)
+            1. A vector from the position to the OVC is calculated. 
+            2. The bearing of this vector is calculated and its length. Note if self.field_of_view == True then the bearing is relative to the heading direction of the agent (along its current velocity), not true-north.
+            3. Since the distance to the OVC is calculated taking the environment into account if there is a wall occluding the agent from the obvject this object will not fire. 
+            4. It is now simple to calculate the firing rate of the cell. Each OVC has a preferred distance and angle away from it which cause it to fire. Its a multiple of a gaussian (distance) and von mises (for angle) which creates teh eventual firing rate. 
+
+        By default position is taken from the Agent and used to calculate firing rates. This can also by passed directly (evaluate_at=None, pos=pass_array_of_positions) or you can use all the positions in the environment (evaluate_at="all").
+
+        Returns:
+            firingrates: an array of firing rates
+        """
+        if evaluate_at == "agent":
+            pos = self.Agent.pos
+        elif evaluate_at == "all":
+            pos = self.Agent.Environment.flattened_discrete_coords
+        else:
+            pos = kwargs["pos"]
+        pos = np.array(pos)
+        pos = pos.reshape(-1, pos.shape[-1]) #(N_pos, 2)
+        N_pos = pos.shape[0]
+        N_cells = self.n
+
+        
+        (distances_to_OVCs, vectors_to_OVCs) = self.Agent.Environment.get_distances_between___accounting_for_environment(pos,self.object_locations,return_vectors=True,wall_geometry=self.wall_geometry,) #(N_pos,N_cells) (N_pos,N_cells,2)
+        flattened_vectors_to_OVCs = vectors_to_OVCs.reshape(-1,2) #(N_pos x N_cells, 2)
+        bearings_to_OVCs = utils.get_angle(flattened_vectors_to_OVCs,is_array=True).reshape(N_pos,N_cells) #(N_cells,N_pos)
+        if self.field_of_view == True: 
+            if evaluate_at == "agent":
+                vel = self.Agent.velocity
+            elif 'vel' in kwargs.keys():
+                vel = kwargs["vel"]
+            else:
+                vel = np.array([1,0])
+                print("Field of view OVCs require a velocity vector but none was passed. Using [1,0]")
+            head_bearing = utils.get_angle(vel)
+            bearings_to_OVCs -= head_bearing
+
+        tuning_distances = np.tile(np.expand_dims(self.tuning_distances,axis=0),reps=(N_pos,1)) #(N_pos,N_cell)
+        sigma_distances = np.tile(np.expand_dims(self.sigma_distances,axis=0),reps=(N_pos,1)) #(N_pos,N_cell)
+        tuning_angles = np.tile(np.expand_dims(self.tuning_angles,axis=0),reps=(N_pos,1)) #(N_pos,N_cell)
+        sigma_angles = np.tile(np.expand_dims(self.sigma_angles,axis=0),reps=(N_pos,1)) #(N_pos,N_cell)
+
+        firingrate = (utils.gaussian(
+            distances_to_OVCs, tuning_distances, sigma_distances, norm=1
+        ) * utils.von_mises(
+            bearings_to_OVCs, tuning_angles, sigma_angles, norm=1
+        )).T #(N_cell,N_pos)
+        firingrate = (
+            firingrate * (self.max_fr - self.min_fr) + self.min_fr
+        )  # scales from being between [0,1] to [min_fr, max_fr]
+        return firingrate
+
+
+
+
+class HeadDirectionCells(Neurons):
+    """The HeadDirectionCells class defines a population of head direction cells. This class is a subclass of Neurons() and inherits it properties/plotting functions.
 
     Must be initialised with an Agent and a 'params' dictionary.
 
-    VelocityCells defines a set of 'dim x 2' velocity cells. Encoding the East, West (and North and South) velocities in 1D (2D). The velocities are scaled according to the expected velocity of he agent (max firing rate acheive when velocity = mean + std)
+    HeadDirectionCells defines a set of 'n' head direction cells. Each cell has a preffered direction/angle (default evenly spaced across unit circle). In 1D there are always only n=2 cells preffering left and right directions. The firing rates are scaled such that when agent travels exactly along the preferred direction the firing rate of that cell is the max_fr. The firing field of a cell is a von mises centred around its preferred direction of default width 30 degrees (can be changed with parameter params["angular_spread_degrees"])
+
+    To print/set preffered direction: self.preferred_angles
+
+    List of functions:
+        • get_state()
+
+    default_params = {
+            "min_fr": 0,
+            "max_fr": 1,
+            "n":1,
+            "angle_spread_degrees":30,
+            "name": "HeadDirectionCells",
+        }
+    """
+
+    def __init__(self, Agent, params={}):
+        """Initialise HeadDirectionCells(), takes as input a parameter dictionary. Any values not provided by the params dictionary are taken from a default dictionary below.
+        Args:
+            params (dict, optional). Defaults to {}."""
+        default_params = {
+            "min_fr": 0,
+            "max_fr": 1,
+            "n":4,
+            "angular_spread_degrees":30, #width of HDC preference function (degrees) 
+            "name": "HeadDirectionCells",
+        }
+        self.Agent = Agent
+        for key in params.keys():
+            default_params[key] = params[key]
+        self.params = default_params
+
+        if self.Agent.Environment.dimensionality == "2D":
+            self.n = self.params['n']
+            self.preferred_angles = np.linspace(0,2*np.pi,self.n+1)[:-1]
+            # self.preferred_directions = np.array([np.cos(angles),np.sin(angles)]).T #n HDCs even spaced on unit circle
+            self.angular_tunings = np.array([self.params['angular_spread_degrees']*np.pi/180]*self.n)
+        if self.Agent.Environment.dimensionality == "1D":
+            self.n = 2  # one left, one right
+        self.params["n"] = self.n
+        super().__init__(Agent, self.params)
+        if ratinabox.verbose is True:
+            print(
+                f"HeadDirectionCells successfully initialised. Your environment is {self.Agent.Environment.dimensionality}, you have {self.n} head direction cells"
+            )
+
+    def get_state(self, evaluate_at="agent", **kwargs):
+        """In 2D n head direction cells encode the head direction of the animal. By default velocity (which determines head direction) is taken from the agent but this can also be passed as a kwarg 'vel'"""
+
+        if evaluate_at == "agent":
+            vel = self.Agent.history["vel"][-1]
+        elif 'vel' in kwargs.keys():
+            vel = np.array(kwargs["vel"])
+        else: 
+            print("HeadDirection cells need a velocity but not was given, taking...")
+            if self.Agent.Environment.dimensionality == "2D":
+                vel = np.array([1,0])
+                print("...[1,0] as default")
+            if self.Agent.Environment.dimensionality == "1D":
+                vel = np.array([1])
+                print("...[1] as default")
+            
+        if self.Agent.Environment.dimensionality == "1D":
+            hdleft_fr = max(0, np.sign(vel[0]))
+            hdright_fr = max(0, -np.sign(vel[0]))
+            firingrate = np.array([hdleft_fr, hdright_fr])
+        if self.Agent.Environment.dimensionality == "2D":
+            current_angle = utils.get_angle(vel)
+            firingrate = utils.von_mises(current_angle,self.preferred_angles,self.angular_tunings,norm=1)
+
+        firingrate = (
+            firingrate * (self.max_fr - self.min_fr) + self.min_fr
+        )  # scales from being between [0,1] to [min_fr, max_fr]
+
+        return firingrate
+    
+    def plot_HDC_receptive_field(self,):
+        return 
+
+
+class VelocityCells(HeadDirectionCells):
+    """The VelocityCells class defines a population of Velocity cells. This basically takes the output from a population of HeadDirectionCells and scales it proportional to the speed (dependence on speed and direction --> velocity). 
+
+    Must be initialised with an Agent and a 'params' dictionary. Initalise tehse cells as if they are HeadDirectionCells 
+
+    VelocityCells defines a set of 'dim x 2' velocity cells. Encoding the East, West (and North and South) velocities in 1D (2D). The firing rates are scaled according to the multiple current_speed / expected_speed where expected_speed = Agent.speed_mean + self.Agent.speed_std is just some measure of speed approximately equal to a likely ``rough`` maximum for the Agent. 
+
 
     List of functions:
         • get_state()
@@ -1121,115 +1358,22 @@ class VelocityCells(Neurons):
         self.Agent = Agent
         default_params.update(params)
         self.params = default_params
-        if self.Agent.Environment.dimensionality == "2D":
-            self.n = 4  # one up, one down, one left, one right
-        if self.Agent.Environment.dimensionality == "1D":
-            self.n = 2  # one left, one right
-        self.params["n"] = self.n
         self.one_sigma_speed = self.Agent.speed_mean + self.Agent.speed_std
 
         super().__init__(Agent, self.params)
 
-        if verbose is True:
+        if ratinabox.verbose is True:
             print(
-                f"VelocityCells successfully initialised. Your environment is {self.Agent.Environment.dimensionality} therefore you have {self.n} velocity cells"
+                f"VelocityCells successfully initialised. Your environment is {self.Agent.Environment.dimensionality} and you have {self.n} velocity cells"
             )
         return
 
     def get_state(self, evaluate_at="agent", **kwargs):
-        """In 2D 4 velocity cells report, respectively, the thresholded leftward, rightward, upward and downwards velocity. By default velocity is taken from the agent but this can also be passed as a kwarg 'vel'"""
-        if evaluate_at == "agent":
-            vel = self.Agent.history["vel"][-1]
-        else:
-            try:
-                vel = np.array(kwargs["vel"])
-            except KeyError:
-                vel = np.zeros_like(self.Agent.velocity)
+        """Takes firing rate of equivalent set of head direction cells and scales by how fast teh speed is realtive to one_sigma_speed (likely rough maximum speed)"""
 
-        if self.Agent.Environment.dimensionality == "1D":
-            vleft_fr = max(0, vel[0]) / self.one_sigma_speed
-            vright_fr = max(0, -vel[0]) / self.one_sigma_speed
-            firingrate = np.array([vleft_fr, vright_fr])
-        if self.Agent.Environment.dimensionality == "2D":
-            vleft_fr = max(0, vel[0]) / self.one_sigma_speed
-            vright_fr = max(0, -vel[0]) / self.one_sigma_speed
-            vup_fr = max(0, vel[1]) / self.one_sigma_speed
-            vdown_fr = max(0, -vel[1]) / self.one_sigma_speed
-            firingrate = np.array([vleft_fr, vright_fr, vup_fr, vdown_fr])
-
-        firingrate = (
-            firingrate * (self.max_fr - self.min_fr) + self.min_fr
-        )  # scales from being between [0,1] to [min_fr, max_fr]
-
-        return firingrate
-
-
-class HeadDirectionCells(Neurons):
-    """The HeadDirectionCells class defines a population of head direction cells. This class is a subclass of Neurons() and inherits it properties/plotting functions.
-
-    Must be initialised with an Agent and a 'params' dictionary.
-
-    HeadDirectionCells defines a set of 'dim x 2' velocity cells. Encoding the East, West (and North and South) heading directions in 1D (2D). The firing rates are scaled such that when agent travels due east/west/north,south the firing rate is  = [mfr,0,0,0]/[0,mfr,0,0]/[0,0,mfr,0]/[0,0,0,mfr] (mfr = max_fr)
-
-    List of functions:
-        • get_state()
-
-    default_params = {
-            "min_fr": 0,
-            "max_fr": 1,
-            "name": "HeadDirectionCells",
-        }
-    """
-
-    def __init__(self, Agent, params={}):
-        """Initialise HeadDirectionCells(), takes as input a parameter dictionary. Any values not provided by the params dictionary are taken from a default dictionary below.
-        Args:
-            params (dict, optional). Defaults to {}."""
-        default_params = {
-            "min_fr": 0,
-            "max_fr": 1,
-            "name": "HeadDirectionCells",
-        }
-        self.Agent = Agent
-        for key in params.keys():
-            default_params[key] = params[key]
-        self.params = default_params
-
-        if self.Agent.Environment.dimensionality == "2D":
-            self.n = 4  # one up, one down, one left, one right
-        if self.Agent.Environment.dimensionality == "1D":
-            self.n = 2  # one left, one right
-        self.params["n"] = self.n
-        super().__init__(Agent, self.params)
-        if verbose is True:
-            print(
-                f"HeadDirectionCells successfully initialised. Your environment is {self.Agent.Environment.dimensionality} therefore you have {self.n} head direction cells"
-            )
-
-    def get_state(self, evaluate_at="agent", **kwargs):
-        """In 2D 4 head direction cells report the head direction of the animal. For example a population vector of [1,0,0,0] implies due-east motion. By default velocity (which determines head direction) is taken from the agent but this can also be passed as a kwarg 'vel'"""
-
-        if evaluate_at == "agent":
-            vel = self.Agent.history["vel"][-1]
-        else:
-            vel = np.array(kwargs["vel"])
-
-        if self.Agent.Environment.dimensionality == "1D":
-            hdleft_fr = max(0, np.sign(vel[0]))
-            hdright_fr = max(0, -np.sign(vel[0]))
-            firingrate = np.array([hdleft_fr, hdright_fr])
-        if self.Agent.Environment.dimensionality == "2D":
-            vel = vel / np.linalg.norm(vel)
-            hdleft_fr = max(0, vel[0])
-            hdright_fr = max(0, -vel[0])
-            hdup_fr = max(0, vel[1])
-            hddown_fr = max(0, -vel[1])
-            firingrate = np.array([hdleft_fr, hdright_fr, hdup_fr, hddown_fr])
-
-        firingrate = (
-            firingrate * (self.max_fr - self.min_fr) + self.min_fr
-        )  # scales from being between [0,1] to [min_fr, max_fr]
-
+        HDC_firingrates = super().get_state(evaluate_at, **kwargs)
+        speed_scale = np.linalg.norm(self.Agent.velocity) / self.one_sigma_speed
+        firingrate = HDC_firingrates * speed_scale
         return firingrate
 
 
@@ -1267,7 +1411,7 @@ class SpeedCell(Neurons):
         self.n = 1
         self.one_sigma_speed = self.Agent.speed_mean + self.Agent.speed_std
 
-        if verbose is True:
+        if ratinabox.verbose is True:
             print(
                 f"SpeedCell successfully initialised. The speed of the agent is encoded linearly by the firing rate of this cell. Speed = 0 --> min firing rate of of {self.min_fr}. Speed = mean + 1std (here {self.one_sigma_speed} --> max firing rate of {self.max_fr}."
             )
@@ -1347,7 +1491,7 @@ class FeedForwardLayer(Neurons):
         if self.biases is None:
             self.biases = np.zeros(self.n)
 
-        if verbose is True:
+        if ratinabox.verbose is True:
             print(
                 f"FeedForwardLayer initialised with {len(self.inputs.keys())} layers. To add another layer use FeedForwardLayer.add_input_layer().\nTo set the weights manually edit them by changing self.inputs['layer_name']['w']"
             )
@@ -1372,7 +1516,7 @@ class FeedForwardLayer(Neurons):
             )
         I = np.zeros(n)
         if name in self.inputs.keys():
-            if verbose is True:
+            if ratinabox.verbose is True:
                 print(
                     f"There already exists a layer called {name}. Overwriting it now."
                 )
@@ -1383,7 +1527,7 @@ class FeedForwardLayer(Neurons):
         self.inputs[name]["I"] = I
         for (key, value) in kwargs.items():
             self.inputs[name][key] = value
-        if verbose is True:
+        if ratinabox.verbose is True:
             print(
                 f'An input layer called {name} was added. The weights can be accessed with "self.inputs[{name}]["w"]"'
             )

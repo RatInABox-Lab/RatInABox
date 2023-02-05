@@ -1,18 +1,8 @@
-import scipy
-from scipy import stats as stats
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
-
-
-
-
-
-
-
-
-
-
+import scipy
+from scipy import stats as stats
 
 """OTHER USEFUL FUNCTIONS"""
 """Geometry functions"""
@@ -197,7 +187,7 @@ def get_vectors_between(pos1=None, pos2=None, line_segments=None):
         pos2 (array): (M x dimensionality) array of positions
         line_segments: if you already have the line segments, just pass these
     Returns:
-            (N x M x dimensionality) array of vectors from pos1's to pos2's"""
+            (N x M x dimensionality) array of vectors from pos2's to pos1's"""
     if line_segments is None:
         line_segments = get_line_segments_between(pos1, pos2)
     vectors = line_segments[..., 0, :] - line_segments[..., 1, :]
@@ -218,26 +208,40 @@ def get_distances_between(pos1=None, pos2=None, vectors=None):
     return distances
 
 
-def get_angle(segment):
+def get_angle(segment,is_array=False):
     """Given a 'segment' (either 2x2 start and end positions or 2x1 direction bearing)
          returns the 'angle' of this segment modulo 2pi
     Args:
         segment (array): The segment, (2,2) or (2,) array
+        is_array(bool): If array is True the first dimension is taken as the list dimension while the next 1 or 2 as the segment/vector dimensions. So, for example, you can pass in a list of vectors shape (5,2) or a list of segments shape (5,2,2,) as long as you set this True (or else a list of 2 vectors might get confused with a single segment!)
     Returns:
         float: angle of segment
     """
     segment = np.array(segment)
+    #decide if we are dealing with vectors or segments 
+    is_vec = True #whether we're dealing with vectors (2,) or segments (2,2,)
+    a_segment = segment
+    if is_array == True: 
+        a_segment = segment[0]
+        N = segment.shape[0]
+    if a_segment.shape == (2,2,): is_vec = False
+    # reshape so segments have shape (N,2,2,) and vectors have shape (N,2,)
+    if (not is_array and is_vec): segment = segment.reshape(1,2)
+    if (not is_array and not is_vec): segment = segment.reshape(1,2,2)
+
     eps = 1e-6
-    if segment.shape == (2,):
-        return np.mod(np.arctan2(segment[1], (segment[0] + eps)), 2 * np.pi)
-    elif segment.shape == (2, 2):
-        return np.mod(
+    if is_vec: angs = np.mod(np.arctan2(segment[:,1], (segment[:,0] + eps)), 2 * np.pi)
+    elif not is_vec:
+        angs = np.mod(
             np.arctan2(
-                (segment[1][1] - segment[0][1]), (segment[1][0] - segment[0][0] + eps)
+                (segment[:,1,1] - segment[:,0,1]), (segment[:,1,0] - segment[:,0,0] + eps)
             ),
             2 * np.pi,
         )
+    
+    if not is_array: angs = angs[0]
 
+    return angs
 
 def rotate(vector, theta):
     """rotates a vector shape (2,) by angle theta.

@@ -1,10 +1,10 @@
-from ratinabox import utils
+import ratinabox 
 
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
 
-verbose = False
+from ratinabox import utils
 
 """AGENT"""
 
@@ -101,7 +101,7 @@ class Agent:
                         "Warning you have solid 1D boundary conditions and non-zero speed mean. "
                     )
 
-        if verbose is True:
+        if ratinabox.verbose is True:
             print(
                 f"""An Agent has been successfully initialised with the following parameters {self.params}.
                 Use Ag.update() to move the Agent.
