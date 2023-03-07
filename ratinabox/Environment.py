@@ -1,8 +1,11 @@
-import ratinabox 
+import ratinabox
 
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
+import shapely
+
+import warnings
 
 from ratinabox import utils
 
@@ -49,8 +52,10 @@ class Environment:
             "dimensionality": "2D",  # 1D or 2D environment
             "boundary_conditions": "solid",  # solid vs periodic
             "scale": 1,  # scale of environment (in metres)
-            "aspect": 1,  # x/y aspect ratio for the (rectangular) 2D environment
+            "aspect": 1,  # x/y aspect ratio for the (rectangular) 2D environment (how wide this is relative to tall)
             "dx": 0.01,  # discretises the environment (for plotting purposes only)
+            "boundary": None,  # coordinates [[x0,y0],[x1,y1],...] of the corners of a 2D polygon bounding the Env (if None, Env defaults to rectangular). Corners must be ordered clockwise or anticlockwise, and the polygon must be a 'simple polygon' (no holes, doesn't self-intersect).
+            "holes": [],  # coordinates [[[x0,y0],[x1,y1],...],...] of corners of any holes inside the Env. These must be entirely inside the environment and not intersect one another. Corners must be ordered clockwise or anticlockwise. holes has 1-dimension more than boundary since there can be multiple holes
         }
 
         default_params.update(params)
@@ -58,27 +63,75 @@ class Environment:
         utils.update_class_params(self, self.params)
 
         if self.dimensionality == "1D":
+            self.D = 1
             self.extent = np.array([0, self.scale])
             self.centre = np.array([self.scale / 2, self.scale / 2])
 
-        self.walls = np.array([])
-        if self.dimensionality == "2D":
-            if self.boundary_conditions != "periodic":
+        elif self.dimensionality == "2D":
+            self.D = 2
+            self.is_rectangular = False
+            if (
+                self.boundary is None
+            ):  # Not passing coordinates of a boundary, fall back to default rectangular env
+                self.is_rectangular = True
+                self.boundary = [
+                    [0, 0],
+                    [self.aspect * self.scale, 0],
+                    [self.aspect * self.scale, self.scale],
+                    [0, self.scale],
+                ]
+            else:  # self.boundary coordinates passed in the input params
+                self.is_rectangular = False
+            b = self.boundary
+
+            # make the arena walls
+            self.walls = np.array([])
+            if (self.boundary_conditions == "periodic") and (
+                self.is_rectangular == False
+            ):
+                warnings.warn(
+                    "Periodic boundary conditions are only allowed in rectangual environments. Changing boundary conditions to 'solid'."
+                )
+                self.params["boundary_conditions"] = "solid"
+            elif self.boundary_conditions == "solid":
                 self.walls = np.array(
                     [
-                        [[0, 0], [0, self.scale]],
-                        [[0, self.scale], [self.aspect * self.scale, self.scale]],
-                        [
-                            [self.aspect * self.scale, self.scale],
-                            [self.aspect * self.scale, 0],
-                        ],
-                        [[self.aspect * self.scale, 0], [0, 0]],
+                        [b[(i + 1) if (i + 1) < len(b) else 0], b[i]]
+                        for i in range(len(b))
                     ]
-                )
-            self.centre = np.array([self.aspect * self.scale / 2, self.scale / 2])
-            self.extent = np.array([0, self.aspect * self.scale, 0, self.scale])
-        self.params["extent"] = self.extent
-        self.params["centre"] = self.centre
+                )  # constructs walls from points on polygon
+
+            # make the hole walls (if there are any)
+            self.holes_polygons = []
+            self.has_holes = False
+            if len(self.holes) > 0:
+                assert (
+                    np.array(self.holes).ndim == 3
+                ), "Incorrect dimensionality for holes list. It must be a list of lists of coordinates"
+
+                self.has_holes = True
+                for h in self.holes:
+                    hole_walls = np.array(
+                        [
+                            [h[(i + 1) if (i + 1) < len(h) else 0], h[i]]
+                            for i in range(len(h))
+                        ]
+                    )
+                    self.walls = np.append(
+                        self.walls.reshape(-1, 2, 2), hole_walls, axis=0
+                    )
+                    self.holes_polygons.append(shapely.Polygon(h))
+            self.boundary_polygon = shapely.Polygon(self.boundary)
+
+            # make some other attributes
+            left = min([c[0] for c in b])
+            right = max([c[0] for c in b])
+            bottom = min([c[1] for c in b])
+            top = max([c[1] for c in b])
+            self.centre = np.array([(left + right) / 2, (top + bottom) / 2])
+            self.extent = np.array(
+                [left, right, bottom, top]
+            )  # [left,right,bottom,top] ]the "extent" which will be plotted, always a rectilinear rectangle which will be the extent of all matplotlib plots
 
         # save some prediscretised coords (useful for plotting rate maps later)
         self.discrete_coords = self.discretise_environment(dx=self.dx)
@@ -136,23 +189,60 @@ class Environment:
                 fig, ax = plt.subplots(
                     figsize=(3 * (extent[1] - extent[0]), 3 * (extent[3] - extent[2]))
                 )
-            background = matplotlib.patches.Rectangle(
-                (extent[0], extent[2]),
-                extent[1],
-                extent[3],
-                facecolor="lightgrey",
-                zorder=-1,
+            # plot background/arena
+            background = matplotlib.patches.Polygon(
+                xy=np.array(self.boundary), facecolor="lightgrey", zorder=-1
             )
-            setattr(background, 'name', 'background')
+            setattr(background, "name", "background")
             ax.add_patch(background)
+
+            # plot holes
+            for hole in self.holes:
+                hole_ = matplotlib.patches.Polygon(
+                    xy=np.array(hole),
+                    facecolor="white",
+                    linewidth=1.0,
+                    edgecolor="white",
+                    zorder=1,
+                )
+                setattr(background, "name", "hole")
+                ax.add_patch(hole_)
+
+            # plot anti-arena (difference between area and the full extent shown)
+            if self.is_rectangular is False:
+                # size = self.extent[1]-self.extent[0]
+                extent_corners = np.array(
+                    [
+                        [self.extent[0], self.extent[2]],
+                        [self.extent[1], self.extent[2]],
+                        [self.extent[1], self.extent[3]],
+                        [self.extent[0], self.extent[3]],
+                    ]
+                )
+                extent_poly = shapely.Polygon(extent_corners)
+                arena_poly = shapely.Polygon(np.array(self.boundary))
+                anti_arena_multipoly = extent_poly.difference(arena_poly)
+                for poly in anti_arena_multipoly.geoms:
+                    (x, y) = poly.exterior.coords.xy
+                    coords = np.stack((list(x), list(y)), axis=1)
+                    anti_arena_segment = matplotlib.patches.Polygon(
+                        xy=np.array(coords),
+                        facecolor="white",
+                        linewidth=1.0,
+                        edgecolor="white",
+                        zorder=1,
+                    )
+                    setattr(background, "name", "hole")
+                    ax.add_patch(anti_arena_segment)
+
             for wall in walls:
                 ax.plot(
                     [wall[0][0], wall[1][0]],
                     [wall[0][1], wall[1][1]],
                     color="grey",
-                    linewidth=4,
-                    solid_capstyle='round',
-                    zorder=1.1,
+                    linewidth=4.0,
+                    solid_capstyle="round",
+                    zorder=2,
                 )
             ax.set_aspect("equal")
             ax.grid(False)
@@ -186,6 +276,7 @@ class Environment:
             return positions
 
         elif self.dimensionality == "2D":
+
             if method == "random":
                 positions = np.random.uniform(size=(n, 2))
                 positions[:, 0] *= self.extent[1] - self.extent[0]
@@ -208,6 +299,15 @@ class Environment:
                         n=n_remaining, method="random"
                     )
                     positions = np.vstack((positions, positions_remaining))
+
+            if (self.is_rectangular) or (self.has_holes is True):
+                # in this case, the positions you have sampled within the extent of the environment may not actually fall within it's legal area (i.e. they could be outside the polygon boundary or inside a hole). Brute for this by randomly resampling these oints until all fall within the env.
+                for (i, pos) in enumerate(positions):
+                    if self.check_if_position_is_in_environment(pos) == False:
+                        pos = self.sample_positions(n=1, method="random").reshape(
+                            -1
+                        )  # this recursive call must pass eventually, assuming the env is sufficiently large. this is why we don't need a while loop
+                        positions[i] = pos
             return positions
 
     def discretise_environment(self, dx=None):
@@ -242,7 +342,9 @@ class Environment:
         Returns:
             N x M x dimensionality array of pairwise vectors
         """
-        vectors = utils.get_vectors_between(pos1=pos1, pos2=pos2, line_segments=line_segments)
+        vectors = utils.get_vectors_between(
+            pos1=pos1, pos2=pos2, line_segments=line_segments
+        )
         if self.boundary_conditions == "periodic":
             flip = np.abs(vectors) > (self.scale / 2)
             vectors[flip] = -np.sign(vectors[flip]) * (
@@ -306,8 +408,12 @@ class Environment:
                 distances[wall_obstructs_view_of_cell == True] = 1000
 
             if wall_geometry == "geodesic":
-                assert (boundary_conditions == "solid"), "geodesic geometry is not available for periodic boundary conditions"
-                assert (len(walls) <= 5), """unfortunately geodesic geomtry is only defined in closed rooms with one additional wall
+                assert (
+                    boundary_conditions == "solid"
+                ), "geodesic geometry is not available for periodic boundary conditions"
+                assert (
+                    len(walls) <= 5
+                ), """unfortunately geodesic geomtry is only defined in closed rooms with one additional wall
                 (efficient geometry calculations with more than 1 wall are super hard I have discovered!)"""
                 distances = utils.get_distances_between(vectors=vectors)
                 if len(walls) == 4:
@@ -335,8 +441,8 @@ class Environment:
                         line_segments.shape[:2]
                     )
                     flattened_distances = distances.reshape(-1)
-                    flattened_wall_obstructs_view_of_cell = wall_obstructs_view_of_cell.reshape(
-                        -1
+                    flattened_wall_obstructs_view_of_cell = (
+                        wall_obstructs_view_of_cell.reshape(-1)
                     )
                     flattened_distances[
                         flattened_wall_obstructs_view_of_cell
@@ -359,21 +465,35 @@ class Environment:
             bool: True if pos is inside environment.
         """
         pos = np.array(pos).reshape(-1)
-        if self.dimensionality == "2D":
-            if all([
-                (pos[0] > self.extent[0]),
-                (pos[0] < self.extent[1]),
-                (pos[1] > self.extent[2]),
-                (pos[1] < self.extent[3]),
-            ]):
-                return True
-            else:
-                return False
-        elif self.dimensionality == "1D":
+        if self.dimensionality == "1D":
             if (pos[0] > self.extent[0]) and (pos[0] < self.extent[1]):
                 return True
             else:
                 return False
+
+        if self.dimensionality == "2D":
+            if (
+                self.is_rectangular == True and self.holes is None
+            ):  # fast way (don't use shapely)
+                return all(
+                    [
+                        (pos[0] > self.extent[0]),
+                        (pos[0] < self.extent[1]),
+                        (pos[1] > self.extent[2]),
+                        (pos[1] < self.extent[3]),
+                    ]
+                )
+            else:  # the slow way (polygon check for environment boundaries and each hole within env)
+                is_in = True
+                is_in *= self.boundary_polygon.contains(
+                    shapely.Point(pos)
+                )  # assert inside area
+                if self.has_holes is True:
+                    for hole_poly in self.holes_polygons:
+                        is_in *= not hole_poly.contains(
+                            shapely.Point(pos)
+                        )  # assert inside area, "not" because if it's in the hole it isn't in the environment
+                return bool(is_in)
 
     def check_wall_collisions(self, proposed_step):
         """Given proposed step [current_pos, next_pos] it returns two lists
@@ -405,7 +525,9 @@ class Environment:
         Returns:
             vector array: np.array(shape=(N_walls,2))
         """
-        walls_to_pos_vectors = utils.shortest_vectors_from_points_to_lines(pos, self.walls)[0]
+        walls_to_pos_vectors = utils.shortest_vectors_from_points_to_lines(
+            pos, self.walls
+        )[0]
         return walls_to_pos_vectors
 
     def apply_boundary_conditions(self, pos):
@@ -421,16 +543,28 @@ class Environment:
                 if self.boundary_conditions == "solid":
                     pos = min(max(pos, self.extent[0] + 0.01), self.extent[1] - 0.01)
                     pos = np.reshape(pos, (-1))
-            if self.dimensionality == "2D":
-                if self.boundary_conditions == "periodic":
-                    pos[0] = pos[0] % self.extent[1]
-                    pos[1] = pos[1] % self.extent[3]
-                if self.boundary_conditions == "solid":
-                    # in theory this wont be used as wall bouncing catches it earlier on
-                    pos[0] = min(
-                        max(pos[0], self.extent[0] + 0.01), self.extent[1] - 0.01
-                    )
-                    pos[1] = min(
-                        max(pos[1], self.extent[2] + 0.01), self.extent[3] - 0.01
-                    )
+            elif self.dimensionality == "2D":
+                if self.is_rectangular == True:
+                    if not (
+                        matplotlib.path.Path(self.boundary).contains_point(
+                            pos, radius=-1e-10
+                        )
+                    ):  # outside the bounding environment (i.e. not just in a hole), apply BCs
+                        if self.boundary_conditions == "periodic":
+                            pos[0] = pos[0] % self.extent[1]
+                            pos[1] = pos[1] % self.extent[3]
+                        if self.boundary_conditions == "solid":
+                            # in theory this wont be used as wall bouncing catches it earlier on
+                            pos[0] = min(
+                                max(pos[0], self.extent[0] + 0.01),
+                                self.extent[1] - 0.01,
+                            )
+                            pos[1] = min(
+                                max(pos[1], self.extent[2] + 0.01),
+                                self.extent[3] - 0.01,
+                            )
+                    else:  # in this case, must just be in a hole. sample new position (there should be a better way to do this but, in theory, this isn't used)
+                        pos = self.sample_positions(n=1, method="random").reshape(-1)
+                else:  # polygon shaped env, just resample random position
+                    pos = self.sample_positions(n=1, method="random").reshape(-1)
         return pos

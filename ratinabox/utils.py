@@ -92,7 +92,12 @@ def vector_intercepts(vector_list_a, vector_list_b, return_collisions=False):
 
     intercepts = np.stack((l_a, l_b), axis=-1)
     if return_collisions == True:
-        direct_collision = ((intercepts[:, :, 0] > 0) * (intercepts[:, :, 0] < 1) * (intercepts[:, :, 1] > 0) * (intercepts[:, :, 1] < 1))
+        direct_collision = (
+            (intercepts[:, :, 0] > 0)
+            * (intercepts[:, :, 0] < 1)
+            * (intercepts[:, :, 1] > 0)
+            * (intercepts[:, :, 1] < 1)
+        )
         return direct_collision
     else:
         return intercepts
@@ -208,7 +213,7 @@ def get_distances_between(pos1=None, pos2=None, vectors=None):
     return distances
 
 
-def get_angle(segment,is_array=False):
+def get_angle(segment, is_array=False):
     """Given a 'segment' (either 2x2 start and end positions or 2x1 direction bearing)
          returns the 'angle' of this segment modulo 2pi
     Args:
@@ -218,30 +223,40 @@ def get_angle(segment,is_array=False):
         float: angle of segment
     """
     segment = np.array(segment)
-    #decide if we are dealing with vectors or segments 
-    is_vec = True #whether we're dealing with vectors (2,) or segments (2,2,)
+    # decide if we are dealing with vectors or segments
+    is_vec = True  # whether we're dealing with vectors (2,) or segments (2,2,)
     a_segment = segment
-    if is_array == True: 
+    if is_array == True:
         a_segment = segment[0]
         N = segment.shape[0]
-    if a_segment.shape == (2,2,): is_vec = False
+    if a_segment.shape == (
+        2,
+        2,
+    ):
+        is_vec = False
     # reshape so segments have shape (N,2,2,) and vectors have shape (N,2,)
-    if (not is_array and is_vec): segment = segment.reshape(1,2)
-    if (not is_array and not is_vec): segment = segment.reshape(1,2,2)
+    if not is_array and is_vec:
+        segment = segment.reshape(1, 2)
+    if not is_array and not is_vec:
+        segment = segment.reshape(1, 2, 2)
 
     eps = 1e-6
-    if is_vec: angs = np.mod(np.arctan2(segment[:,1], (segment[:,0] + eps)), 2 * np.pi)
+    if is_vec:
+        angs = np.mod(np.arctan2(segment[:, 1], (segment[:, 0] + eps)), 2 * np.pi)
     elif not is_vec:
         angs = np.mod(
             np.arctan2(
-                (segment[:,1,1] - segment[:,0,1]), (segment[:,1,0] - segment[:,0,0] + eps)
+                (segment[:, 1, 1] - segment[:, 0, 1]),
+                (segment[:, 1, 0] - segment[:, 0, 0] + eps),
             ),
             2 * np.pi,
         )
-    
-    if not is_array: angs = angs[0]
+
+    if not is_array:
+        angs = angs[0]
 
     return angs
+
 
 def rotate(vector, theta):
     """rotates a vector shape (2,) by angle theta.
@@ -315,7 +330,7 @@ def ornstein_uhlenbeck(dt, x, drift=0.0, noise_scale=0.2, coherence_time=5.0):
     drift = drift * np.ones_like(x)
     noise_scale = noise_scale * np.ones_like(x)
     coherence_time = coherence_time * np.ones_like(x)
-    sigma = np.sqrt((2 * noise_scale ** 2) / (coherence_time * dt))
+    sigma = np.sqrt((2 * noise_scale**2) / (coherence_time * dt))
     theta = 1 / coherence_time
     dx = theta * (drift - x) * dt + sigma * np.random.normal(size=x.shape, scale=dt)
     return dx
@@ -346,17 +361,15 @@ def interpolate_and_smooth(x, y, sigma=None):
 
 
 def normal_to_rayleigh(x, sigma=1):
-    """Converts a normally distributed variable (mean 0, var 1) to a rayleigh distributed variable (sigma)
-    """
+    """Converts a normally distributed variable (mean 0, var 1) to a rayleigh distributed variable (sigma)"""
     x = stats.norm.cdf(x)  # norm to uniform)
     x = sigma * np.sqrt(-2 * np.log(1 - x))  # uniform to rayleigh
     return x
 
 
 def rayleigh_to_normal(x, sigma=1):
-    """Converts a rayleigh distributed variable (sigma) to a normally distributed variable (mean 0, var 1)
-    """
-    x = 1 - np.exp(-(x ** 2) / (2 * sigma ** 2))  # rayleigh to uniform
+    """Converts a rayleigh distributed variable (sigma) to a normally distributed variable (mean 0, var 1)"""
+    x = 1 - np.exp(-(x**2) / (2 * sigma**2))  # rayleigh to uniform
     x = min(max(1e-6, x), 1 - 1e-6)
     x = stats.norm.ppf(x)  # uniform to normal
     return x
@@ -372,9 +385,9 @@ def gaussian(x, mu, sigma, norm=None):
     Returns gaussian(x;mu,sigma)
     """
     g = -((x - mu) ** 2)
-    g = g / (2 * sigma ** 2)
+    g = g / (2 * sigma**2)
     g = np.exp(g)
-    norm = norm or (1 / (np.sqrt(2 * np.pi * sigma ** 2)))
+    norm = norm or (1 / (np.sqrt(2 * np.pi * sigma**2)))
     g = g * norm
     return g
 
@@ -390,7 +403,7 @@ def von_mises(theta, mu, sigma, norm=None):
         norm: if provided the maximum (i.e. in the centre) value will be the norm
     Returns von_mises(x;mu,sigma)
     """
-    kappa = 1 / (sigma ** 2)
+    kappa = 1 / (sigma**2)
     v = np.exp(kappa * np.cos(theta - mu))
     norm = norm or (np.exp(kappa) / (2 * np.pi * scipy.special.i0(kappa)))
     norm = norm / np.exp(kappa)
@@ -485,13 +498,15 @@ def mountain_plot(
     for i in range(len(NbyX)):
         ax.plot(X, NbyX[i] + i + 1, c=c, zorder=zorder)
         zorder -= 0.01
-        ax.fill_between(X, NbyX[i] + i + 1, i + 1, color=fc, zorder=zorder, alpha=0.9)
+        ax.fill_between(
+            X, NbyX[i] + i + 1, i + 1, color=fc, zorder=zorder, alpha=0.9, linewidth=0
+        )
         zorder -= 0.01
     ax.spines["left"].set_bounds(1, len(NbyX))
     ax.spines["bottom"].set_position(("outward", 1))
     ax.spines["left"].set_position(("outward", 1))
     ax.set_yticks([1, len(NbyX)])
-    ax.set_ylim(1 - 0.5, len(NbyX) + 1.1*overlap)
+    ax.set_ylim(1 - 0.5, len(NbyX) + 1.1 * overlap)
     ax.set_xticks(np.arange(max(X + 0.1)))
     ax.spines["left"].set_color(None)
     ax.spines["right"].set_color(None)
@@ -613,4 +628,7 @@ def activate(x, activation="sigmoid", deriv=False, other_args={}):
             )
         elif deriv == True:
             return (
-                other_args["gain"] * (1 - np.tanh(x) ** 2) * ((x - other_args["threshold"]) > 0))
+                other_args["gain"]
+                * (1 - np.tanh(x) ** 2)
+                * ((x - other_args["threshold"]) > 0)
+            )

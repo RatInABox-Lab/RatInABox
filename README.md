@@ -72,15 +72,17 @@ Here is a list of features loosely organised into three categories: those pertai
 
 (i) the [`Environment`](#i-environment-features)
 * [Adding walls](#walls)
+* [Polygon-shaped Environments](#polygon-shaped-environments)
+* [Holes](#holes)
 * [Boundary conditions](#boundary-conditions)
 * [1- or 2-dimensions](#1--or-2-dimensions) 
-
 
 (ii) the [`Agent`](#ii-agent-features)
 * [Random motion](#random-motion-model)
 * [Importing trajectories](#importing-trajectories)
 * [Policy control](#policy-control)
 * [Wall repelling](#wall-repelling)
+* [Advanced `Agent` classes](#advanced-agent-classes)
 
 (iii) the [`Neurons`](#iii-neurons-features).
 * [Cell types](#multiple-cell-types) 
@@ -105,8 +107,28 @@ Here are some easy to make examples.
 
 <img src=".images/readme/walls.png" width=1000>
 
+#### Polygon-shaped `Environments`
+By default, `Environments` in RatInABox are square (or rectangular if `aspect != 1`). It is possible to create arbitrary environment shapes using the `"boundary"` parameter at initialisation: 
+```python 
+Env = Environment(params={'boundary':[[0,-0.2],[0,0.2],[1.5,0.5],[1.5,-0.5]]})
+```
+<img src=".images/readme/trapezium.png" width=300>
+
+
+#### Holes
+One can add holes to the `Environment` using the `"holes"` parameter at initialisation
+```python
+Env = Environment(params={
+    'aspect':1.8,
+    'holes' : [[[0.2,0.2],[0.8,0.2],[0.8,0.8],[0.2,0.8]],
+               [[1,0.2],[1.6,0.2],[1.6,0.8],[1,0.8]]]
+})
+```
+<img src=".images/readme/fig_of_eight.png" width=300>
+
+
 #### Boundary conditions 
-Boundary conditions can be "periodic" or "solid". Place cells and the motion of the Agent will respect these boundaries accordingly. 
+Boundary conditions (for default square/rectangular environments) can be "periodic" or "solid". Place cells and the motion of the Agent will respect these boundaries accordingly. 
 ```python
 Env = Environment(
     params = {'boundary_conditions':'periodic'} #or 'solid' (default)
@@ -172,7 +194,13 @@ Under the random motion policy, walls in the environment mildly "repel" the `Age
 Αgent.thigmotaxis = 0.8 #1 = high thigmotaxis (left plot), 0 = low (right)
 ```
 
-<img src=".images/readme/wall_repel.png" width=400>
+<img src=".images/readme/wall_repel.png" width=900>
+
+
+#### Advanced `Agent` classes
+One can make more advanced Agent classes, for example `ThetaSequenceAgent()` where the position "sweeps" (blue) over the position of an underlying true (regular) `Agent()` (purple), highly reminiscent of theta sequences observed when one decodes position from the hippocampal populaton code on sub-theta (10 Hz) timescales. This class can be found in the [`contribs`](./ratinabox/contribs/) directory. 
+
+<img src=".images/readme/theta_sequences.gif" width=350>
 
 
 ### (iii) `Neurons` features 
