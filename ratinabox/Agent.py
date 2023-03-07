@@ -1,4 +1,4 @@
-import ratinabox 
+import ratinabox
 
 import numpy as np
 import matplotlib
@@ -36,6 +36,10 @@ class Agent:
             "rotational_velocity_coherence_time": 0.08,
             "rotational_velocity_std": 120 * (np.pi / 180),
             "thigmotaxis": 0.5,
+            "wall_repel_distance": 0.1,
+            "walls_repel": True,
+
+
         }
     """
 
@@ -113,22 +117,22 @@ class Agent:
 
     def update(self, dt=None, drift_velocity=None, drift_to_random_strength_ratio=1):
         """Movement policy update.
-            In principle this does a very simple thing:
-            • updates time by dt
-            • updates velocity (speed and direction) according to a movement policy
-            • updates position along the velocity direction
-            In reality it's a complex function as the policy requires checking for immediate or upcoming collisions with all walls at each step as well as
-            handling boundary conditions.
-            Specifically the full loop looks like this:
-            1) Update time by dt
-            2) Update velocity for the next time step.
-               In 2D this is done by varying the agents heading direction and speed according to ornstein-uhlenbeck processes.
-               In 1D, simply the velocity is varied according to ornstein-uhlenbeck. This includes, if turned on, being repelled by the walls.
-            3) Propose a new position (x_new =? x_old + velocity.dt)
-            3.1) Check if this step collides with any walls (and act accordingly)
-            3.2) Check you distance and direction from walls and be repelled by them is necessary
-            4) Check position is still within maze and handle boundary conditions appropriately
-            6) Store new position and time in history data frame
+        In principle this does a very simple thing:
+        • updates time by dt
+        • updates velocity (speed and direction) according to a movement policy
+        • updates position along the velocity direction
+        In reality it's a complex function as the policy requires checking for immediate or upcoming collisions with all walls at each step as well as
+        handling boundary conditions.
+        Specifically the full loop looks like this:
+        1) Update time by dt
+        2) Update velocity for the next time step.
+           In 2D this is done by varying the agents heading direction and speed according to ornstein-uhlenbeck processes.
+           In 1D, simply the velocity is varied according to ornstein-uhlenbeck. This includes, if turned on, being repelled by the walls.
+        3) Propose a new position (x_new =? x_old + velocity.dt)
+        3.1) Check if this step collides with any walls (and act accordingly)
+        3.2) Check you distance and direction from walls and be repelled by them is necessary
+        4) Check position is still within maze and handle boundary conditions appropriately
+        6) Store new position and time in history data frame
         """
         if dt == None:
             dt = self.dt
@@ -172,7 +176,8 @@ class Agent:
                         x=self.velocity,
                         drift=drift_velocity,
                         noise_scale=0,
-                        coherence_time=self.speed_coherence_time / drift_to_random_strength_ratio,  # <--- this controls how "powerful" this signal is
+                        coherence_time=self.speed_coherence_time
+                        / drift_to_random_strength_ratio,  # <--- this controls how "powerful" this signal is
                     )
 
                 # Deterministically drift the velocity away from any nearby walls
@@ -183,7 +188,9 @@ class Agent:
                     if len(self.Environment.walls) > 0:
                         distance_to_walls = np.linalg.norm(vectors_from_walls, axis=-1)
                         normalised_vectors_from_walls = (
-                            vectors_from_walls / np.expand_dims(distance_to_walls, axis=-1))
+                            vectors_from_walls
+                            / np.expand_dims(distance_to_walls, axis=-1)
+                        )
                         x, d, v = (
                             distance_to_walls,
                             self.wall_repel_distance,
@@ -206,17 +213,21 @@ class Agent:
 
                         See paper for full details"""
 
-                        spring_constant = v ** 2 / d ** 2
+                        spring_constant = v**2 / d**2
                         wall_accelerations = np.piecewise(
                             x=x,
-                            condlist=[(x <= d), (x > d),],
+                            condlist=[
+                                (x <= d),
+                                (x > d),
+                            ],
                             funclist=[
                                 lambda x: spring_constant * (d - x),
                                 lambda x: 0,
                             ],
                         )
                         wall_acceleration_vecs = (
-                            np.expand_dims(wall_accelerations, axis=-1) * normalised_vectors_from_walls
+                            np.expand_dims(wall_accelerations, axis=-1)
+                            * normalised_vectors_from_walls
                         )
                         wall_acceleration = wall_acceleration_vecs.sum(axis=0)
                         dv = wall_acceleration * dt
@@ -229,18 +240,22 @@ class Agent:
                         As a result the agent which is walking into the wall will continue to barge hopelessly into the wall causing it the "hug" close to the wall."""
                         wall_speeds = np.piecewise(
                             x=x,
-                            condlist=[(x <= d), (x > d),],
+                            condlist=[
+                                (x <= d),
+                                (x > d),
+                            ],
                             funclist=[
-                                lambda x: v * (1 - np.sqrt(1 - (d - x) ** 2 / d ** 2)),
+                                lambda x: v * (1 - np.sqrt(1 - (d - x) ** 2 / d**2)),
                                 lambda x: 0,
                             ],
                         )
                         wall_speed_vecs = (
-                            np.expand_dims(wall_speeds, axis=-1) * normalised_vectors_from_walls
+                            np.expand_dims(wall_speeds, axis=-1)
+                            * normalised_vectors_from_walls
                         )
                         wall_speed = wall_speed_vecs.sum(axis=0)
                         dx = wall_speed * dt
-                        self.pos += 6 * (self.thigmotaxis ** 2) * dx
+                        self.pos += 6 * (self.thigmotaxis**2) * dx
 
                 # proposed position update
                 proposed_new_pos = self.pos + self.velocity * dt
@@ -344,7 +359,9 @@ class Agent:
 
         if len(self.history["pos"]) >= 1:
             self.distance_travelled += np.linalg.norm(
-                self.pos - self.history["pos"][-1]
+                self.Environment.get_vectors_between___accounting_for_environment(
+                    self.pos, np.array(self.history["pos"][-1])
+                )
             )
             tau_speed = 10
             self.average_measured_speed = (
@@ -434,7 +451,10 @@ class Agent:
         if self.Environment.dimensionality == "2D":
             positions = positions.reshape(-1, 2)
             if (
-                (max(positions[:, 0]) > ex[1]) or (min(positions[:, 0]) < ex[0]) or (max(positions[:, 1]) > ex[3]) or (min(positions[:, 1]) < ex[2])
+                (max(positions[:, 0]) > ex[1])
+                or (min(positions[:, 0]) < ex[0])
+                or (max(positions[:, 1]) > ex[3])
+                or (min(positions[:, 1]) < ex[2])
             ):
                 print(
                     f"""WARNING: the size of the trajectory is significantly larger than the environment you are using.
@@ -468,12 +488,16 @@ class Agent:
         framerate=10,
         fig=None,
         ax=None,
+        point_size=15,
         decay_point_size=False,
+        decay_point_timescale=10,
         plot_agent=True,
         color=None,
         alpha=0.7,
         xlim=None,
         background_color=None,
+        axis_labels=True,
+        **kwargs,
     ):
 
         """Plots the trajectory between t_start (seconds) and t_end (defaulting to the last time available)
@@ -483,12 +507,15 @@ class Agent:
             • framerate: how many scatter points / per second of motion to display
             • fig, ax: the fig, ax to plot on top of, optional, if not provided used self.Environment.plot_Environment().
               This can be used to plot trajectory on top of receptive fields etc.
+            • point_size: size of scatter points
             • decay_point_size: decay trajectory point size over time (recent times = largest)
+            • decay_point_timescale: if decay_point_size is True, this is the timescale over which sizes decay
             • plot_agent: dedicated point show agent current position
             • color: plot point color
             • alpha: plot point opaqness
             • xlim: In 1D, forces the xlim to be a certain time (minutes) (useful if animating this function)
             • background_color: color of the background if not matplotlib default, only for 1D (probably white)
+            • axis_labels: whether to show axes labels
 
         Returns:
             fig, ax
@@ -499,8 +526,8 @@ class Agent:
         t, pos = np.array(self.history["t"]), np.array(self.history["pos"])
         if t_end == None:
             t_end = t[-1]
-        startid = np.argmin(np.abs(t - (t_start)))
-        endid = np.argmin(np.abs(t - (t_end)))
+        startid = np.nanargmin(np.abs(t - (t_start)))
+        endid = np.nanargmin(np.abs(t - (t_end)))
         if self.Environment.dimensionality == "2D":
             skiprate = max(1, int((1 / framerate) / dt))
             trajectory = pos[startid:endid, :][::skiprate]
@@ -511,20 +538,21 @@ class Agent:
 
         if self.Environment.dimensionality == "2D":
             fig, ax = self.Environment.plot_environment(fig=fig, ax=ax)
-            s = 15 * np.ones_like(time)
+            s = point_size * np.ones_like(time)
             if decay_point_size == True:
-                s = 15 * np.exp((time - time[-1]) / 10)
-                s[(time[-1] - time) > 15] *= 0
+                s = point_size * np.exp((time - time[-1]) / decay_point_timescale)
+                s[(time[-1] - time) > (1.5 * decay_point_timescale)] *= 0
             c = [color] * len(time)
             if plot_agent == True:
                 s[-1] = 40
                 c[-1] = "r"
+
             ax.scatter(
                 trajectory[:, 0],
                 trajectory[:, 1],
                 s=s,
                 alpha=alpha,
-                zorder=2,
+                zorder=0,
                 c=c,
                 linewidth=0,
             )
@@ -533,8 +561,9 @@ class Agent:
                 fig, ax = plt.subplots(figsize=(3, 1.5))
             ax.scatter(time / 60, trajectory, alpha=alpha, linewidth=0, c=color, s=5)
             ax.spines["left"].set_position(("data", t_start / 60))
-            ax.set_xlabel("Time / min")
-            ax.set_ylabel("Position / m")
+            if axis_labels == True:
+                ax.set_xlabel("Time / min")
+                ax.set_ylabel("Position / m")
             ax.set_xlim([t_start / 60, t_end / 60])
             if xlim is not None:
                 ax.set_xlim(right=xlim)
@@ -562,6 +591,7 @@ class Agent:
             t_end (_type_, optional): _description_. Defaults to None.
             fps: frames per second of end video
             speed_up: #times real speed animation should come out at
+            kwargs: passed to trajectory plotting function (chuck anything you wish in here)
 
         Returns:
             animation
@@ -589,9 +619,12 @@ class Agent:
             plt.close()
             return
 
-        fig, ax = self.plot_trajectory(0, 10 * self.dt, xlim=t_end / 60, **kwargs)
+        fig, ax = self.plot_trajectory(
+            t_start=0, t_end=10 * self.dt, xlim=t_end / 60, **kwargs
+        )
 
         from matplotlib import animation
+
         anim = matplotlib.animation.FuncAnimation(
             fig,
             animate_,
@@ -616,7 +649,9 @@ class Agent:
             ex = self.Environment.extent
             if fig is None and ax is None:
                 fig, ax = self.Environment.plot_environment(height=1)
-            heatmap, centres = utils.bin_data_for_histogramming(data=pos, extent=ex, dx=dx)
+            heatmap, centres = utils.bin_data_for_histogramming(
+                data=pos, extent=ex, dx=dx
+            )
             # maybe do smoothing?
             ax.plot(centres, heatmap)
             ax.fill_between(centres, 0, heatmap, alpha=0.3)
@@ -635,7 +670,14 @@ class Agent:
                 _, _ = self.Environment.plot_environment(fig=fig, ax=ax)
             vmin = 0
             vmax = np.max(heatmap)
-            ax.imshow(heatmap, extent=ex, interpolation="bicubic", vmin=vmin, vmax=vmax)
+            ax.imshow(
+                heatmap,
+                extent=ex,
+                interpolation="bicubic",
+                vmin=vmin,
+                vmax=vmax,
+                zorder=0,
+            )
         return fig, ax
 
     def plot_histogram_of_speeds(

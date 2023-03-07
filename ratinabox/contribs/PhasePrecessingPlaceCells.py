@@ -116,8 +116,7 @@ class PhasePrecessingPlaceCells(PlaceCells):
 
 
 if __name__ == "__main__":
-    """Example of use
-    """
+    """Example of use"""
     from ratinabox.contribs.PhasePrecessingPlaceCells import PhasePrecessingPlaceCells
 
     Env = Environment()
