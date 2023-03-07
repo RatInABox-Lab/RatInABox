@@ -315,7 +315,7 @@ fig, ax = PCs.plot_rate_timeseries()
 
 We have a dedicated [contribs](./ratinabox/contribs/) directory where you can safely add awesome scripts and new `Neurons` classes etc.
 
-*Questions?* If you can't figure out how something works from the readme, demos, code comments etc. then ask! Open an issue, I'm usually pretty quick to respond. Here's our [official theme tune](https://www.youtube.com/watch?v=dY-FOI-9SOE)] by the way. 
+*Questions?* If you can't figure out how something works from the readme, demos, code comments etc. then ask! Open an issue, I'm usually pretty quick to respond. Here's our [official theme tune](https://www.youtube.com/watch?v=dY-FOI-9SOE) by the way. 
 
 
 
