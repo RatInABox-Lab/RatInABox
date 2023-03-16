@@ -3,6 +3,8 @@ import ratinabox
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
+plt.rcParams["animation.html"] = "jshtml" #for animations 
+
 
 from ratinabox import utils
 
@@ -65,6 +67,7 @@ class Agent:
             "thigmotaxis": 0.5,  # tendency for agents to linger near walls [0 = not at all, 1 = max]
             "wall_repel_distance": 0.1,
             "walls_repel": True,  # whether or not the walls repel
+            
         }
         self.Environment = Environment
         default_params.update(params)
@@ -370,6 +373,7 @@ class Agent:
                 save_velocity
             )
 
+        # TO DO: make this a function call 
         # write to history
         self.history["t"].append(self.t)
         self.history["pos"].append(list(self.pos))
@@ -583,8 +587,10 @@ class Agent:
         self, t_start=None, t_end=None, fps=15, speed_up=1, **kwargs
     ):
         """Returns an animation (anim) of the trajectory, 25fps.
-        Should be saved using comand like
-        anim.save("./where_to_save/animations.gif",dpi=300)
+        Should be saved using command like
+            >>> anim.save("./where_to_save/animations.gif",dpi=300)
+        To display in jupyter notebook, call it: 
+            >>> anim
 
         Args:
             t_start: Agent time at which to start animation
@@ -602,7 +608,7 @@ class Agent:
         if t_end == None:
             t_end = self.history["t"][-1]
 
-        def animate_(i, fig, ax, t_start, t_max, speed_up, dt):
+        def animate_(i, fig, ax, t_start, t_max, speed_up, dt, additional_plot_func, **kwargs):
             t_end = t_start + (i + 1) * speed_up * dt
             ax.clear()
             if self.Environment.dimensionality == "2D":
@@ -616,6 +622,12 @@ class Agent:
                 xlim=t_max / 60,
                 **kwargs,
             )
+            if additional_plot_func is not None:
+                fig, ax = additional_plot_func(fig=fig, 
+                                                ax=ax,
+                                                t=t_end, #the current time
+                                                **kwargs)
+
             plt.close()
             return
 
@@ -624,6 +636,11 @@ class Agent:
         )
 
         from matplotlib import animation
+        # if passed, after plotting the trajectory fig, ax are passed through this function. 
+        # use it to add other things ontop of the animation
+        additional_plot_func = None 
+        if 'additional_plot_func' in kwargs.keys():
+            additional_plot_func = kwargs['additional_plot_func']
 
         anim = matplotlib.animation.FuncAnimation(
             fig,
@@ -631,7 +648,7 @@ class Agent:
             interval=1000 * dt,
             frames=int((t_end - t_start) / (dt * speed_up)),
             blit=False,
-            fargs=(fig, ax, t_start, t_end, speed_up, dt),
+            fargs=(fig, ax, t_start, t_end, speed_up, dt, additional_plot_func),
         )
         return anim
 

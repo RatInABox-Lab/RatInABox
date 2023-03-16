@@ -315,7 +315,7 @@ fig, ax = PCs.plot_rate_timeseries()
 
 We have a dedicated [contribs](./ratinabox/contribs/) directory where you can safely add awesome scripts and new `Neurons` classes etc.
 
-*Questions?* Can't figure out how something works. If you can't fgure it out from the readme, demos, code comments etc. then ask me! Open an issue, I'm usually pretty quick to respond. 
+*Questions?* If you can't figure out how something works from the readme, demos, code comments etc. then ask! Open an issue, I'm usually pretty quick to respond. Here's our [official theme tune](https://www.youtube.com/watch?v=dY-FOI-9SOE) by the way. 
 
 
 
@@ -339,4 +339,3 @@ Formatted:
 Tom M George, William de Cothi, Claudia Clopath, Kimberly Stachenfeld, Caswell Barry. "RatInABox: A toolkit for modelling locomotion and neuronal activity in continuous environments" (2022).
 ``` 
 The research paper corresponding to the above citation can be found [here](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v3).
-
