@@ -15,6 +15,21 @@ from typing import List, Union
 from ratinabox.Environment import Environment
 from ratinabox.Agent import Agent
 
+class Objective():
+    """
+    Abstract `Objective` class that can be used to define finishing coditions
+    for a task
+    """
+    def __init__(self, env:TaskEnvironment, *pos, **kws):
+        self.env = env
+
+    def check(self):
+        """
+        Check if the objective is satisfied
+        """
+        raise NotImplementedError("check() must be implemented")
+
+
 class TaskEnvironment(Environment, gym.Env):
     """
     Environment with task structure: there is an objective, and when the
@@ -26,12 +41,13 @@ class TaskEnvironment(Environment, gym.Env):
     environment inherits from both ratinabox.Environment and openai's widely
     used gym environment.
     """
-    def __init__(self, *pos, **kws):
+    def __init__(self, Agents:List[Agent]|Agent, *pos, **kws):
         super().__init__(*pos, **kws)
         self.episode_history:List[pd.Series] = [] # Written to upon completion of an episode
-        self.dynamic_walls = []      # List of walls that can change
-        self.dynamic_objects = []    # List of current objects
-        self.dynamic_objectives = [] # List of current objectives to saitsfy
+        self.objectives:List[Objective] = [] # List of current objectives to saitsfy
+        self.dynamic_walls = []      # List of walls that can change/move
+        self.dynamic_objects = []    # List of current objects that can move
+        self.Agents = Agents if isinstance(Agents, list) else [Agents]
 
     def add_agents(self, agents:Union[List[Agent], Agent]):
         if isinstance(agents, list):
@@ -41,7 +57,7 @@ class TaskEnvironment(Environment, gym.Env):
         else:
             raise TypeError("agents must be a list of agents or an agent type")
 
-    def finshed(self):
+    def is_done(self):
         """
         Whether the current state is a terminal state
         """
@@ -57,10 +73,10 @@ class TaskEnvironment(Environment, gym.Env):
         """
         If the environment is dynamic, use this
         """
-        pass
+        raise NotImplementedError("update() must be implemented")
 
     def step(self, *pos, **kws):
-        """Alias to satisfy openai"""
+        """Alias to satisfy openai compatibility"""
         self.update(*pos, **kws)
 
     # ----------------------------------------------
@@ -73,52 +89,100 @@ class TaskEnvironment(Environment, gym.Env):
     def read_episodes(self)->pd.DataFrame:
         pass
 
+
+class SpatialGoalObjective(Objective):
+    """
+    Spatial goal objective: agent must reach a specific position
+
+    Parameters
+    ----------
+    env : TaskEnvironment
+        The environment that the objective is defined in
+    goal_pos : np.ndarray | None
+        The position that the agent must reach
+    """
+    def __init__(self, *pos, goal_pos:Union[np.ndarray,None], **kws):
+        super().__init__(*pos, **kws)
+        self.goal_pos = goal_pos
+
+    def check(self, agents:List[Agent]):
+        """
+        Check if the objective is satisfied
+        """
+        agents_reached_goal = [(agent.pos == self.goal_pos).all(axis=1).any()
+                               for agent in agents]
+        return any(agents_reached_goal)
+
 class SpatialGoalEnvironment(TaskEnvironment):
     """
     Creates a spatial goal-directed task
+
+    Parameters
+    ----------
+    possible_goal_pos : List[np.ndarray] | np.ndarray
+        List of possible goal positions
+    current_goal_state : np.ndarray | None
+        The current goal position
+    n_goals : int
+        The number of goals to set
     """
 
     def __init__(self, *pos, 
                  possible_goal_pos:Union[List[np.ndarray], np.ndarray]=[], 
                  current_goal_state:Union[NoneType,np.ndarray,List[np.ndarray]]=None, 
+                 n_goals:int=1,
                  **kws):
         super().__init__(*pos, **kws)
         self.possible_goal_pos = possible_goal_pos
+        self.n_goals = n_goals
         if current_goal_state is None:
             self.reset()
 
-    def reset(self):
+    def _propose_spatial_goal(self):
+        """
+        Propose a new spatial goal from the possible goal positions
+        """
+        if len(self.possible_goal_pos):
+            goal_pos = np.random.choice(self.possible_goal_pos, 1)
+        else:
+            goal_pos = None # No goal state (this could be, e.g., a lockout time)
+        return goal_pos
+
+    def reset(self, n_goals=None):
         """
             reset
 
-        resets the environement
+        resets the environement to a new episode
         """
-        if len(self.possible_goal_pos):
-            self.goal_pos = np.random.choice(self.possible_goal_pos, 1)
-        else:
-            self.goal_pos = [] # No goal state (this could be, e.g., a lockout time)
-        self.dynamic_objectives.append(self.one_agent_reached_target)
-        self.terminal_state_reached = False
+        ng = n_goals if n_goals is not None else self.n_goals
+        for _ in range(ng):
+            self.goal_pos = self._propose_spatial_goal()
+            objective = SpatialGoalObjective(self, goal_pos=self.goal_pos)
+            self.objectives.append(objective)
 
-    def one_agent_reached_target(self):
+    def is_done(self):
         """
-        any agent reaches one of the goal positions
+        Whether the current state is a terminal state
         """
-        agents_reached_goal = [(pos == self.goal_pos).all(axis=1).any() for Agent in self.agents]
-        return any(agents_reached_goal)
-
-    def finished(self):
         # Check our objectives
-        checked_position = 0
-        while check_position < len(self.dynamic_objectives):
-            if self.dynamic_objectives[checked_position]():
-                self.dynamic_objectives.pop(checked_position)
+        i_objective = 0
+        # Loop through objectives, checking if they are satisfied
+        while i_objective < len(self.objectives):
+            if self.objectives[i_objective].check():
+                self.objectives.pop(i_objective)
             else:
-                checked_position += 1
+                i_objective += 1
         # Return if no objectives left
-        no_objectives_left = len(self.dynamic_objectives) == 0
+        no_objectives_left = len(self.objectives) == 0
         return no_objectives_left
 
+    def update(self, *pos, **kws):
+        """
+        Update the environment
+        """
+        # Check if we are done
+        if self.is_done():
+            self.reset()
 
 if __name__ == "__main__":
     pass
