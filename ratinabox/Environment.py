@@ -301,7 +301,7 @@ class Environment:
                     positions = np.vstack((positions, positions_remaining))
 
             if (self.is_rectangular) or (self.has_holes is True):
-                # in this case, the positions you have sampled within the extent of the environment may not actually fall within it's legal area (i.e. they could be outside the polygon boundary or inside a hole). Brute for this by randomly resampling these oints until all fall within the env.
+                # in this case, the positions you have sampled within the extent of the environment may not actually fall within it's legal area (i.e. they could be outside the polygon boundary or inside a hole). Brute force this by randomly resampling these points until all fall within the env.
                 for (i, pos) in enumerate(positions):
                     if self.check_if_position_is_in_environment(pos) == False:
                         pos = self.sample_positions(n=1, method="random").reshape(
