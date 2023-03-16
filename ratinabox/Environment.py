@@ -278,9 +278,9 @@ class Environment:
         elif self.dimensionality == "2D":
 
             if method == "random":
-                positions = np.random.uniform(size=(n, 2))
-                positions[:, 0] *= self.extent[1] - self.extent[0]
-                positions[:, 1] *= self.extent[3] - self.extent[2]
+                positions = np.zeros((n, 2))
+                positions[:, 0] = np.random.uniform(self.extent[0], self.extent[1], size=n)
+                positions[:, 1] = np.random.uniform(self.extent[2], self.extent[3], size=n)
             elif method[:7] == "uniform":
                 ex = self.extent
                 area = (ex[1] - ex[0]) * (ex[3] - ex[2])
@@ -300,7 +300,7 @@ class Environment:
                     )
                     positions = np.vstack((positions, positions_remaining))
 
-            if (self.is_rectangular) or (self.has_holes is True):
+            if (self.is_rectangular is False) or (self.has_holes is True):
                 # in this case, the positions you have sampled within the extent of the environment may not actually fall within it's legal area (i.e. they could be outside the polygon boundary or inside a hole). Brute for this by randomly resampling these oints until all fall within the env.
                 for (i, pos) in enumerate(positions):
                     if self.check_if_position_is_in_environment(pos) == False:
