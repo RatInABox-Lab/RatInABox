@@ -587,8 +587,10 @@ class Agent:
         self, t_start=None, t_end=None, fps=15, speed_up=1, **kwargs
     ):
         """Returns an animation (anim) of the trajectory, 25fps.
-        Should be saved using comand like
-        anim.save("./where_to_save/animations.gif",dpi=300)
+        Should be saved using command like
+            >>> anim.save("./where_to_save/animations.gif",dpi=300)
+        To display in jupyter notebook, call it: 
+            >>> anim
 
         Args:
             t_start: Agent time at which to start animation
@@ -620,8 +622,6 @@ class Agent:
                 xlim=t_max / 60,
                 **kwargs,
             )
-            # if passed, after plotting the trajectory fig, ax are passed through this function. 
-            # use it to add other things onto the animation 
             if additional_plot_func is not None:
                 fig, ax = additional_plot_func(fig=fig, 
                                                 ax=ax,
@@ -636,6 +636,8 @@ class Agent:
         )
 
         from matplotlib import animation
+        # if passed, after plotting the trajectory fig, ax are passed through this function. 
+        # use it to add other things ontop of the animation
         additional_plot_func = None 
         if 'additional_plot_func' in kwargs.keys():
             additional_plot_func = kwargs['additional_plot_func']

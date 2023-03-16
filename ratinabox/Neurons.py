@@ -466,8 +466,10 @@ class Neurons:
         **kwargs,
     ):
         """Returns an animation (anim) of the firing rates, 25fps.
-        Should be saved using comand like
-        anim.save("./where_to_save/animations.gif",dpi=300)
+        Should be saved using command like:
+            >>> anim.save("./where_to_save/animations.gif",dpi=300) #or ".mp4" etc...
+        To display within jupyter notebook, just call it:
+            >>> anim
 
         Args:
             • t_end (_type_, optional): _description_. Defaults to None.
@@ -478,6 +480,9 @@ class Neurons:
         Returns:
             animation
         """
+
+        plt.rcParams["animation.html"] = "jshtml" #for animation rendering in jupyter
+
         dt = 1 / fps
         if t_start == None:
             t_start = self.history["t"][0]
