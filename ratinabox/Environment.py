@@ -39,6 +39,8 @@ class Environment:
             "scale": 1,
             "aspect": 1,
             "dx": 0.01,
+            "boundary":None #defaults to rectangular
+            "holes":[],#defaults to no holes
         }
     """
 
@@ -221,8 +223,12 @@ class Environment:
                 )
                 extent_poly = shapely.Polygon(extent_corners)
                 arena_poly = shapely.Polygon(np.array(self.boundary))
-                anti_arena_multipoly = extent_poly.difference(arena_poly)
-                for poly in anti_arena_multipoly.geoms:
+                anti_arena_poly = extent_poly.difference(arena_poly)
+                if type(anti_arena_poly) == shapely.Polygon:
+                    polys = [anti_arena_poly]
+                elif type(anti_arena_poly) == shapely.MultiPolygon:
+                    polys = anti_arena_poly.geoms
+                for poly in polys:
                     (x, y) = poly.exterior.coords.xy
                     coords = np.stack((list(x), list(y)), axis=1)
                     anti_arena_segment = matplotlib.patches.Polygon(
