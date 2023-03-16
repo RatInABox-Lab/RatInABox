@@ -570,6 +570,7 @@ class PlaceCells(Neurons):
         • diff_of_gaussians
         • top_hat
         • one_hot
+ #TO-DO • tanni_harland  https://pubmed.ncbi.nlm.nih.gov/33770492/
 
     List of functions:
         • get_state()
@@ -1013,7 +1014,7 @@ class BoundaryVectorCells(Neurons):
         # if egocentric references frame shift angle into coordinate from of heading direction of agent
         if self.reference_frame == "egocentric":
             if evaluate_at == "agent":
-                vel = self.Agent.pos
+                vel = self.Agent.velocity
             elif "vel" in kwargs.keys():
                 vel = kwargs["vel"]
             else:
