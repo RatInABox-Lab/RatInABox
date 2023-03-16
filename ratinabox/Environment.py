@@ -284,9 +284,9 @@ class Environment:
         elif self.dimensionality == "2D":
 
             if method == "random":
-                positions = np.random.uniform(size=(n, 2))
-                positions[:, 0] *= self.extent[1] - self.extent[0]
-                positions[:, 1] *= self.extent[3] - self.extent[2]
+                positions = np.zeros((n, 2))
+                positions[:, 0] = np.random.uniform(self.extent[0], self.extent[1], size=n)
+                positions[:, 1] = np.random.uniform(self.extent[2], self.extent[3], size=n)
             elif method[:7] == "uniform":
                 ex = self.extent
                 area = (ex[1] - ex[0]) * (ex[3] - ex[2])
