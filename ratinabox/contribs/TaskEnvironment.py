@@ -317,15 +317,25 @@ class SpatialGoalEnvironment(TaskEnvironment):
 
         if "agents" not in R:
             R["agents"] = []
+            R["agent_history"] = []
             for agent in self.Agents:
-                pos = agent.pos
                 # set 🐀 location
+                pos = agent.pos
+                poshist = np.vstack((
+                    np.reshape(agent.history["pos"],(-1,2)),
+                    np.atleast_2d(pos)))
+                if not len(agent.history['pos']):
+                    his = plt.plot(*poshist.T, 'k', linewidth=0.2,
+                                   linestyle='dotted')
+                R["agent_history"].append(his)
                 ag = plt.scatter(*pos.T, **ag_scatter_default)
                 R["agents"].append(ag)
         else:
             for i, agent in enumerate(self.Agents):
                 scat = R["agents"][i]
                 scat.set_offsets(agent.pos)
+                his = R["agent_history"][i]
+                his[0].set_data(*np.array(agent.history["pos"]).T)
 
         if "spat_goals" not in R:
             R["spat_goals"] = []
