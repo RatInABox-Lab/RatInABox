@@ -144,7 +144,7 @@ class SpatialGoalObjective(Objective):
         if self.env.verbose:
             print("new SpatialGoalObjective: goal_pos = {}".format(goal_pos))
         self.goal_pos = goal_pos
-        self.radius = self.env.dx if goal_radius is None else goal_radius
+        self.radius = self.env.dx * 5 if goal_radius is None else goal_radius
     
     def _in_goal_radius(self, pos, goal_pos):
         """
@@ -339,14 +339,21 @@ class SpatialGoalEnvironment(TaskEnvironment):
 
         if "spat_goals" not in R:
             R["spat_goals"] = []
+            R["spat_goal_radius"] = []
             for spat_goal in self.objectives:
                 sg = plt.scatter(*spat_goal().T, **sg_scatter_default)
+                ci = plt.Circle(spat_goal().ravel(), spat_goal.radius,
+                                facecolor="red", alpha=0.2)
+                ax.add_patch(ci)
                 R["spat_goals"].append(sg)
+                R["spat_goal_radius"].append(sg)
         else:
             for i, obj in enumerate(self.objectives):
                 scat = R["spat_goals"][i]
                 scat.set_offsets(obj())
-
+                ci = R["spat_goal_radius"][i]
+                ci.set_center(obj())
+                ci.set_radius(obj.radius)
 
     def _render_pygame(self, *pos, **kws):
         pass
