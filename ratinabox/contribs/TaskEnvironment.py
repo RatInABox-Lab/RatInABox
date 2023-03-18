@@ -267,6 +267,8 @@ class SpatialGoalEnvironment(TaskEnvironment):
             objective = SpatialGoalObjective(self, 
                                              goal_pos=self.goal_pos)
             self.objectives.append(objective)
+        # Clear rendering cache
+        self.clear_render_cache()
 
     def render(self, render_mode=None, *pos, **kws):
         """
@@ -340,7 +342,7 @@ class SpatialGoalEnvironment(TaskEnvironment):
         if "spat_goals" not in R:
             R["spat_goals"] = []
             R["spat_goal_radius"] = []
-            for spat_goal in self.objectives:
+            for spat_goal in self.objectives:                
                 sg = plt.scatter(*spat_goal().T, **sg_scatter_default)
                 ci = plt.Circle(spat_goal().ravel(), spat_goal.radius,
                                 facecolor="red", alpha=0.2)
@@ -352,11 +354,19 @@ class SpatialGoalEnvironment(TaskEnvironment):
                 scat = R["spat_goals"][i]
                 scat.set_offsets(obj())
                 ci = R["spat_goal_radius"][i]
-                ci.set_center(obj())
-                ci.set_radius(obj.radius)
+                # TODO blitting circles?
+                # ci.set_center(obj().ravel())
+                # ci.set_radius(obj.radius)
 
     def _render_pygame(self, *pos, **kws):
         pass
+
+    def clear_render_cache(self):
+        if "matplotlib" in self._stable_render_objects:
+            R = self._stable_render_objects["matplotlib"]
+            R["ax"].cla()
+            for item in (set(R.keys()) - set(("fig","ax"))):
+                R.pop(item)
 
     def is_done(self):
         """
