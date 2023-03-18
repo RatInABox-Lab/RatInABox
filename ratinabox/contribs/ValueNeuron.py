@@ -3,7 +3,8 @@ from ratinabox.Agent import Agent
 from ratinabox.Neurons import *
 from ratinabox.utils import *
 
-import numpy as np 
+import numpy as np
+
 
 class ValueNeuron(FeedForwardLayer):
     """
@@ -11,6 +12,12 @@ class ValueNeuron(FeedForwardLayer):
     Date: 23/07/2022
 
     The ValueNeuron class defines a neuron which learns the "value" of a policy using temporally continuous TD learning . This class is a subclass of FeedForwardLayer() which is a subclass of Neurons() and inherits it properties/plotting functions from both of these.
+
+    Ιt learn the value function defined by:
+
+    \begin{equation}
+        V(x) = \int_{t}^{\infty}e^{-\frac{t^{\prime}-t}{\tau}}R(x(t^{\prime}))) dt^{\prime} | x(t) = x
+    \end{equation}
 
     It takes as input a layer of neurons (these are the "features" over which value is calculated). You could pass in any ratinabox Neurons class here (a set of PlaceCells, BoundaryVectorCells, GridCells etc...or more complex things)
 
@@ -29,6 +36,7 @@ class ValueNeuron(FeedForwardLayer):
             "tau": 10,  # discount time horizon
             "tau_e": 1,  # eligibility trace timescale
             "eta": 0.001,  # learning rate
+            "L2": 0.001,  # L2 regularisation
         }
 
         default_params.update(params)
@@ -46,17 +54,20 @@ class ValueNeuron(FeedForwardLayer):
         self.max_fr = 1  # will update this with each episode later
 
     def update(self):
-        """Updates firing rate as weighted linear sum of feature inputs
-        """
+        """Updates firing rate as weighted linear sum of feature inputs"""
         firingrate_last = self.firingrate
         # update the firing rate
-        super().update()  # FeedForwardLayer builtin function. this sums the inouts from the input features over the weight matrix and saves the firingrate.
+        super().update()  # FeedForwardLayer builtin function. this sums the inputs from the input features over the weight matrix and saves the firingrate.
         # calculate temporal derivative of the firing rate
         self.firingrate_deriv = (self.firingrate - firingrate_last) / self.Agent.dt
         # update eligibility trace
-        self.et = (self.Agent.dt / self.tau_e) * self.input_layer.firingrate + (
-            1 - self.Agent.dt / self.tau_e
-        ) * self.et
+        if self.tau_e == 0:
+            self.et = self.input_layer.firingrate
+        else:
+            self.et = (
+                self.Agent.dt * self.input_layer.firingrate
+                + (1 - self.Agent.dt / self.tau_e) * self.et
+            )
         return
 
     def update_weights(self, reward):
@@ -65,11 +76,12 @@ class ValueNeuron(FeedForwardLayer):
         w = self.inputs[self.input_layer.name]["w"]  # weights
         V = self.firingrate  # current value estimate
         dVdt = self.firingrate_deriv  # currrent value derivative estimate
-        td_error = (
-            reward + self.tau * dVdt - V
+        self.td_error = (
+            reward + dVdt - V / self.tau
         )  # this is the continuous analog of the TD error
         dw = (
-            self.Agent.dt * self.eta * (np.outer(td_error, self.et)) - 0.01 * w
+            self.Agent.dt * self.eta * (np.outer(self.td_error, self.et))
+            - self.eta * self.Agent.dt * self.L2 * w
         )  # note L2 regularisation
         self.inputs[self.input_layer.name]["w"] += dw
         return
@@ -82,20 +94,26 @@ if __name__ == "__main__":
     from ratinabox.contribs.ValueNeuron import ValueNeuron
     from tqdm import tqdm
 
-    #initialise
+    # initialise
     Env = Environment()
     Ag = Agent(Env, params={"speed_mean": 0.2})
     PCs = PlaceCells(Ag, params={"n": 100})
     Reward = PlaceCells(
         Ag, params={"n": 1, "place_cell_centres": np.array([[0.5, 0.5]])}
     )
-    VN = ValueNeuron(Ag, params={"input_layer": PCs, "tau": 1,})
+    VN = ValueNeuron(
+        Ag,
+        params={
+            "input_layer": PCs,
+            "tau": 1,
+        },
+    )
 
     fig, ax = plt.subplots(1, 4, figsize=(16, 4))
     Reward.plot_place_cell_locations(fig=fig, ax=ax[0])
     VN.plot_rate_map(fig=fig, ax=ax[1])
 
-    #explore/learn for 300 seconds
+    # explore/learn for 300 seconds
     for i in tqdm(range(int(300 / Ag.dt))):
         Ag.update()
         Reward.update()

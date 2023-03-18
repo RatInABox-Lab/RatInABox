@@ -3,7 +3,8 @@ from ratinabox.Agent import Agent
 from ratinabox.Neurons import *
 from ratinabox.utils import *
 
-import numpy as np 
+import numpy as np
+
 
 class PlaneWaveNeurons(Neurons):
     """
@@ -87,8 +88,7 @@ class PlaneWaveNeurons(Neurons):
 
 
 if __name__ == "__main__":
-    """Example of use
-    """
+    """Example of use"""
     from ratinabox.contribs.PlaneWaveNeurons import PlaneWaveNeurons
 
     Env = Environment()
