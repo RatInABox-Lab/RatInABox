@@ -370,6 +370,7 @@ active = True
 if active and __name__ == "__main__":
 
     env = SpatialGoalEnvironment(n_goals=1, params={'dimensionality':'2D'},
+                                 render_every=100,
                                  verbose=False)
     Ag = Agent(env)
     env.add_agents(Ag)
