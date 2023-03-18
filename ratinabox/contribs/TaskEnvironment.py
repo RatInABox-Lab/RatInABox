@@ -5,29 +5,20 @@
 # (1) step()
 # (2) reset()
 
+import warnings
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.font_manager import FontProperties
+import time
+
 import gym
 
-import numpy as np
 from types import NoneType
 from typing import List, Union
 
 from ratinabox.Environment import Environment
 from ratinabox.Agent import Agent
-
-class Objective():
-    """
-    Abstract `Objective` class that can be used to define finishing coditions
-    for a task
-    """
-    def __init__(self, env:TaskEnvironment, *pos, **kws):
-        self.env = env
-
-    def check(self):
-        """
-        Check if the objective is satisfied
-        """
-        raise NotImplementedError("check() must be implemented")
 
 
 class TaskEnvironment(Environment, gym.Env):
@@ -40,20 +31,45 @@ class TaskEnvironment(Environment, gym.Env):
     In order to be more useful with other Reinforcement Learning pacakges, this
     environment inherits from both ratinabox.Environment and openai's widely
     used gym environment.
+
+    # Inputs
+    --------
+    verbose : bool
+        Whether to print out information about the environment
+    render_mode : str
+        How to render the environment. Options are 'matplotlib', 'pygame', or
+        'none'
+    render_every : int
+        How often to render the environment (in time steps)
     """
-    def __init__(self, Agents:List[Agent]|Agent, *pos, **kws):
+    def __init__(self, *pos, verbose=False, render_mode='matplotlib',
+                 render_every=2, **kws):
         super().__init__(*pos, **kws)
         self.episode_history:List[pd.Series] = [] # Written to upon completion of an episode
         self.objectives:List[Objective] = [] # List of current objectives to saitsfy
         self.dynamic_walls = []      # List of walls that can change/move
         self.dynamic_objects = []    # List of current objects that can move
-        self.Agents = Agents if isinstance(Agents, list) else [Agents]
+        self.Agents:List[Agent] = [] # List of agents in the environment
+        self.t = 0                   # Current time step
+        self.render_every = render_every # How often to render
+        self.verbose = verbose
+        self.render_mode:str = render_mode # options 'matplotlib'|'pygame'|'none'
+        self._stable_render_objects:dict = {} # objects that are stable across
+                                         # a rendering type
 
     def add_agents(self, agents:Union[List[Agent], Agent]):
+        """
+        Add agents to the environment
+
+        Parameters
+        ----------
+        agents : List[Agent] | Agent
+            The agents to add to the environment
+        """
         if isinstance(agents, list):
-            self.agents += agents
+            self.Agents = self.Agents + agents
         elif isinstance(agents, Agent):
-            self.agents.append(agents)
+            self.Agents.append(agents)
         else:
             raise TypeError("agents must be a list of agents or an agent type")
 
@@ -71,9 +87,9 @@ class TaskEnvironment(Environment, gym.Env):
 
     def update(self):
         """
-        If the environment is dynamic, use this
+        How to update the task over time
         """
-        raise NotImplementedError("update() must be implemented")
+        self.t += 1 # base task class only has a clock
 
     def step(self, *pos, **kws):
         """Alias to satisfy openai compatibility"""
@@ -89,6 +105,27 @@ class TaskEnvironment(Environment, gym.Env):
     def read_episodes(self)->pd.DataFrame:
         pass
 
+class Objective():
+    """
+    Abstract `Objective` class that can be used to define finishing coditions
+    for a task
+    """
+    def __init__(self, env:TaskEnvironment, *pos, **kws):
+        self.env = env
+
+    def check(self):
+        """
+        Check if the objective is satisfied
+        """
+        raise NotImplementedError("check() must be implemented")
+
+    def __call__(self):
+        """
+        Can be used to report its value to the environment
+        (Not required -- just a convenience)
+        """
+        raise NotImplementedError("__call__() must be implemented")
+
 
 class SpatialGoalObjective(Objective):
     """
@@ -101,17 +138,41 @@ class SpatialGoalObjective(Objective):
     goal_pos : np.ndarray | None
         The position that the agent must reach
     """
-    def __init__(self, *pos, goal_pos:Union[np.ndarray,None], **kws):
+    def __init__(self, *pos, goal_pos:Union[np.ndarray,None], 
+                 goal_radius=None, **kws):
         super().__init__(*pos, **kws)
+        if self.env.verbose:
+            print("new SpatialGoalObjective: goal_pos = {}".format(goal_pos))
         self.goal_pos = goal_pos
+        self.radius = self.env.dx if goal_radius is None else goal_radius
+    
+    def _in_goal_radius(self, pos, goal_pos):
+        """
+        Check if a position is within a radius of a goal position
+        """
+        radius = self.radius
+        return np.linalg.norm(pos - goal_pos, axis=1) < radius
 
     def check(self, agents:List[Agent]):
         """
         Check if the objective is satisfied
+
+        Parameters
+        ----------
+        agents : List[Agent]
+            The agents to check the objective for (usually just one)
         """
-        agents_reached_goal = [(agent.pos == self.goal_pos).all(axis=1).any()
+        agents_reached_goal = [
+            self._in_goal_radius(agent.pos, self.goal_pos).all().any()
                                for agent in agents]
         return any(agents_reached_goal)
+
+    def __call__(self)->np.ndarray:
+        """
+        Can be used to report its value to the environment
+        (Not required -- just a convenience)
+        """
+        return self.goal_pos
 
 class SpatialGoalEnvironment(TaskEnvironment):
     """
@@ -128,37 +189,157 @@ class SpatialGoalEnvironment(TaskEnvironment):
     """
 
     def __init__(self, *pos, 
-                 possible_goal_pos:Union[List[np.ndarray], np.ndarray]=[], 
+                 possible_goal_pos:List[np.ndarray]|np.ndarray|str='random_4', 
                  current_goal_state:Union[NoneType,np.ndarray,List[np.ndarray]]=None, 
                  n_goals:int=1,
                  **kws):
         super().__init__(*pos, **kws)
-        self.possible_goal_pos = possible_goal_pos
+        self.possible_goal_pos = self._init_poss_goals(possible_goal_pos)
         self.n_goals = n_goals
+        self.objectives:List[SpatialGoalObjective] = []
         if current_goal_state is None:
             self.reset()
+
+    def _init_poss_goals(self, possible_goal_pos:List[np.ndarray]|np.ndarray|str):
+        """ 
+        Initialize the possible goal positions 
+
+
+        Parameters
+        ----------
+        possible_goal_pos : List[np.ndarray] | np.ndarray | str
+            List of possible goal positions or a string to generate random
+            goal positions
+
+        Returns
+        -------
+        possible_goal_pos : np.ndarray
+        """
+
+        if isinstance(possible_goal_pos, str):
+            if possible_goal_pos.startswith('random'):
+                n = int(possible_goal_pos.split('_')[1])
+                ext = [env.extent[i:i+2] for i in np.arange(0, len(env.extent), 2)]
+                possible_goal_pos = [np.random.random(n) * \
+                                     (ext[i][1] - ext[i][0]) + ext[i][0]
+                                     for i in range(len(ext))]
+                possible_goal_pos = np.array(possible_goal_pos).T
+            else:
+                raise ValueError("possible_goal_pos string must start with "
+                                 "'random'")
+        else:
+            raise ValueError("possible_goal_pos must be a list of np.ndarrays, "
+                         "a string, or None")
+        return possible_goal_pos
 
     def _propose_spatial_goal(self):
         """
         Propose a new spatial goal from the possible goal positions
         """
         if len(self.possible_goal_pos):
-            goal_pos = np.random.choice(self.possible_goal_pos, 1)
+            g = np.random.choice(np.arange(len(self.possible_goal_pos)), 1)
+            goal_pos = self.possible_goal_pos[g]
         else:
+            warnings.warn("No possible goal positions specified yet")
             goal_pos = None # No goal state (this could be, e.g., a lockout time)
         return goal_pos
 
-    def reset(self, n_goals=None):
+    def reset(self, goal_locations:np.ndarray|None=None, n_goals=None):
         """
             reset
 
         resets the environement to a new episode
         """
-        ng = n_goals if n_goals is not None else self.n_goals
-        for _ in range(ng):
-            self.goal_pos = self._propose_spatial_goal()
-            objective = SpatialGoalObjective(self, goal_pos=self.goal_pos)
+        # How many goals to set?
+        if goal_locations is not None:
+            ng = len(goal_locations)
+        elif n_goals is not None:
+            ng = n_goals
+        else:
+            ng = self.n_goals
+        self.objectives = [] # blank slate
+        # Set the number of required spatial spatial goals
+        for g in range(ng):
+            if goal_locations is None:
+                self.goal_pos = self._propose_spatial_goal()
+            else:
+                self.goal_pos = goal_locations[g]
+            objective = SpatialGoalObjective(self, 
+                                             goal_pos=self.goal_pos)
             self.objectives.append(objective)
+
+    def render(self, render_mode=None, *pos, **kws):
+        """
+        Render the environment
+        """
+        if render_mode is None:
+            render_mode = self.render_mode
+        if self.verbose:
+            print("rendering environment with mode: {}".format(render_mode))
+        if render_mode == 'matplotlib':
+            self._render_matplotlib(*pos, **kws)
+        elif render_mode == 'pygame':
+            self._render_pygame(*pos, **kws)
+        elif render_mode == 'none':
+            pass
+        else:
+            raise ValueError("method must be 'matplotlib' or 'pygame'")
+
+    def _render_matplotlib(self, *pos, **kws):
+        """
+        Render the environment using matplotlib
+        """
+        ag_annotate_default={'fontsize':10}
+        ag_scatter_default={'marker':'o'}
+        sg_scatter_default={'marker':'x', 'c':'r'}
+
+        if np.mod(self.t, self.render_every) != 0:
+            # Skip rendering unless this is redraw time
+            return None
+
+        if "matplotlib" not in self._stable_render_objects:
+            R = self._stable_render_objects["matplotlib"] = {}
+        else:
+            R = self._stable_render_objects["matplotlib"]
+
+        if "fig" not in R:
+            fig, ax = plt.subplots(1,1)
+            R["fig"] = fig
+            R["ax"] = ax
+        else:
+            fig, ax = R["fig"], R["ax"]
+
+        if "environment" not in R:
+            R["environment"] = self.plot_environment(fig=fig, ax=ax)
+            R["title"] = fig.suptitle("t={}".format(self.t))
+        else:
+            R["title"].set_text("t={}".format(self.t))
+
+        if "agents" not in R:
+            R["agents"] = []
+            for agent in self.Agents:
+                pos = agent.pos
+                # set 🐀 location
+                ag = plt.scatter(*pos.T, **ag_scatter_default)
+                R["agents"].append(ag)
+        else:
+            for i, agent in enumerate(self.Agents):
+                scat = R["agents"][i]
+                scat.set_offsets(agent.pos)
+
+        if "spat_goals" not in R:
+            R["spat_goals"] = []
+            for spat_goal in self.objectives:
+                sg = plt.scatter(*spat_goal().T, **sg_scatter_default)
+                R["spat_goals"].append(sg)
+        else:
+            for i, obj in enumerate(self.objectives):
+                scat = R["spat_goals"][i]
+                scat.set_offsets(obj())
+
+
+    def _render_pygame(self, *pos, **kws):
+        pass
 
     def is_done(self):
         """
@@ -168,7 +349,7 @@ class SpatialGoalEnvironment(TaskEnvironment):
         i_objective = 0
         # Loop through objectives, checking if they are satisfied
         while i_objective < len(self.objectives):
-            if self.objectives[i_objective].check():
+            if self.objectives[i_objective].check(self.Agents):
                 self.objectives.pop(i_objective)
             else:
                 i_objective += 1
@@ -180,9 +361,36 @@ class SpatialGoalEnvironment(TaskEnvironment):
         """
         Update the environment
         """
+        super().update()
         # Check if we are done
         if self.is_done():
             self.reset()
 
-if __name__ == "__main__":
-    pass
+active = True
+if active and __name__ == "__main__":
+
+    env = SpatialGoalEnvironment(n_goals=1, params={'dimensionality':'2D'},
+                                 verbose=False)
+    Ag = Agent(env)
+    env.add_agents(Ag)
+    # Note: if Agent() class detects if its env is a TaskEnvironment,
+    # we could have the agent's code automate this last step. In other words,
+    # after setting the agent's environment, it could automatically add itself
+    # to the environment's list of agents.
+    env.reset()
+
+    plt.ion()
+    env.render()
+    plt.show()
+    plt.pause(0.1)
+    
+    while True:
+        env.update()
+        env.render()
+        Ag.update()
+        plt.pause(0.1)
+        if env.is_done():
+            print("goal reached!")
+            break
+    
+    # env.render()
