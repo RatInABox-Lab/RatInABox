@@ -5,21 +5,41 @@
 # (1) step()
 # (2) reset()
 
-import warnings
 import pandas as pd
 import numpy as np
+
 import matplotlib.pyplot as plt
-from matplotlib.font_manager import FontProperties
-import time
 
 import gym
+from gym.spaces import Box, Space
 
 from types import NoneType
 from typing import List, Union
+import warnings
 
 from ratinabox.Environment import Environment
 from ratinabox.Agent import Agent
 
+class Objective():
+    """
+    Abstract `Objective` class that can be used to define finishing coditions
+    for a task
+    """
+    def __init__(self, env:TaskEnvironment):
+        self.env = env
+
+    def check(self):
+        """
+        Check if the objective is satisfied
+        """
+        raise NotImplementedError("check() must be implemented")
+
+    def __call__(self):
+        """
+        Can be used to report its value to the environment
+        (Not required -- just a convenience)
+        """
+        raise NotImplementedError("__call__() must be implemented")
 
 class TaskEnvironment(Environment, gym.Env):
     """
@@ -42,8 +62,8 @@ class TaskEnvironment(Environment, gym.Env):
     render_every : int
         How often to render the environment (in time steps)
     """
-    def __init__(self, *pos, verbose=False, render_mode='matplotlib',
-                 render_every=2, **kws):
+    def __init__(self, *pos, verbose=False,
+                 render_mode='matplotlib', render_every=2, **kws):
         super().__init__(*pos, **kws)
         self.episode_history:List[pd.Series] = [] # Written to upon completion of an episode
         self.objectives:List[Objective] = [] # List of current objectives to saitsfy
@@ -57,6 +77,20 @@ class TaskEnvironment(Environment, gym.Env):
         self._stable_render_objects:dict = {} # objects that are stable across
                                          # a rendering type
 
+        # ----------------------------------------------
+        # Setup gym primatives
+        # ----------------------------------------------
+        # Setup observation space from the Environment space
+        ext = [env.extent[i:i+2] for i in np.arange(0, len(env.extent), 2)]
+        lows, highs = np.array(list(zip(*ext)), dtype=np.float_)
+        self.observation_space:Space = \
+                Box(low=lows, high=highs, dtype=np.float_)
+
+        # Setup action spaces, SET WHEN AGENTS ARE ADDED
+        # ----------------------------------------------
+        # Not yet clear how this ought to be implemented        
+        # ----------------------------------------------
+
     def add_agents(self, agents:Union[List[Agent], Agent]):
         """
         Add agents to the environment
@@ -66,12 +100,13 @@ class TaskEnvironment(Environment, gym.Env):
         agents : List[Agent] | Agent
             The agents to add to the environment
         """
-        if isinstance(agents, list):
-            self.Agents = self.Agents + agents
-        elif isinstance(agents, Agent):
-            self.Agents.append(agents)
-        else:
+        if not isinstance(agents, (list, Agent)):
             raise TypeError("agents must be a list of agents or an agent type")
+        if isinstance(agents, Agent):
+            agents = [agents]
+        # Enlist agents
+        for agent in agents:
+            self.Agents.append(agent)
 
     def is_done(self):
         """
@@ -85,11 +120,18 @@ class TaskEnvironment(Environment, gym.Env):
         """
         raise NotImplementedError("reset() must be implemented")
 
-    def update(self):
+    def update(self, update_agents=True):
         """
         How to update the task over time
         """
         self.t += 1 # base task class only has a clock
+        # ---------------------------------------------------------------
+        # Task environments in OpenAI's gym interface update their agents
+        # ---------------------------------------------------------------
+        if update_agents:
+            for agent in self.Agents:
+                agent.update()
+        # ---------------------------------------------------------------
 
     def step(self, *pos, **kws):
         """Alias to satisfy openai compatibility"""
@@ -105,26 +147,6 @@ class TaskEnvironment(Environment, gym.Env):
     def read_episodes(self)->pd.DataFrame:
         pass
 
-class Objective():
-    """
-    Abstract `Objective` class that can be used to define finishing coditions
-    for a task
-    """
-    def __init__(self, env:TaskEnvironment, *pos, **kws):
-        self.env = env
-
-    def check(self):
-        """
-        Check if the objective is satisfied
-        """
-        raise NotImplementedError("check() must be implemented")
-
-    def __call__(self):
-        """
-        Can be used to report its value to the environment
-        (Not required -- just a convenience)
-        """
-        raise NotImplementedError("__call__() must be implemented")
 
 
 class SpatialGoalObjective(Objective):
@@ -144,7 +166,7 @@ class SpatialGoalObjective(Objective):
         if self.env.verbose:
             print("new SpatialGoalObjective: goal_pos = {}".format(goal_pos))
         self.goal_pos = goal_pos
-        self.radius = self.env.dx * 5 if goal_radius is None else goal_radius
+        self.radius = self.env.dx * 10 if goal_radius is None else goal_radius
     
     def _in_goal_radius(self, pos, goal_pos):
         """
@@ -362,6 +384,11 @@ class SpatialGoalEnvironment(TaskEnvironment):
         pass
 
     def clear_render_cache(self):
+        """
+            clear_render_cache
+        
+        clears the cache of objects held for render()
+        """
         if "matplotlib" in self._stable_render_objects:
             R = self._stable_render_objects["matplotlib"]
             R["ax"].cla()
@@ -396,6 +423,7 @@ class SpatialGoalEnvironment(TaskEnvironment):
 active = True
 if active and __name__ == "__main__":
 
+    plt.close('all')
     env = SpatialGoalEnvironment(n_goals=1, params={'dimensionality':'2D'},
                                  render_every=100,
                                  verbose=False)
