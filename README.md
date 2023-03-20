@@ -107,24 +107,36 @@ Here are some easy to make examples.
 
 <img src=".images/readme/walls.png" width=1000>
 
-#### Polygon-shaped `Environments`
-By default, `Environments` in RatInABox are square (or rectangular if `aspect != 1`). It is possible to create arbitrary environment shapes using the `"boundary"` parameter at initialisation: 
+
+#### Complex `Environment`s: Polygons, curves, and holes
+By default, `Environments` in RatInABox are square (or rectangular if `aspect != 1`). It is possible to create arbitrary environment shapes using the `"boundary"` parameter at initialisation. 
+
+One can all add holes to the `Environment` using the `"holes"` parameter at initialisation. Positions sampled from the Environment (e.g. at initialisation) won't be inside holes.
+
+Any curved environments can be made by creating a boundary of many small walls (uyse sparingly, walls may slow down computations)
+
 ```python 
-Env = Environment(params={'boundary':[[0,-0.2],[0,0.2],[1.5,0.5],[1.5,-0.5]]})
-```
-<img src=".images/readme/trapezium.png" width=300>
+#A trapezium shaped Environment
+Env = Environment(params={
+    'boundary':[[0,-0.2],[0,0.2],[1.5,0.5],[1.5,-0.5]],
+    })
 
-
-#### Holes
-One can add holes to the `Environment` using the `"holes"` parameter at initialisation
-```python
+#An environment with two holes makign a figure of 8
 Env = Environment(params={
     'aspect':1.8,
     'holes' : [[[0.2,0.2],[0.8,0.2],[0.8,0.8],[0.2,0.8]],
-               [[1,0.2],[1.6,0.2],[1.6,0.8],[1,0.8]]]
-})
+               [[1,0.2],[1.6,0.2],[1.6,0.8],[1,0.8]]],
+    })
+
+#A circular environment made from many small walls
+Env = Environment(params = {
+    'boundary':[[0.5*np.cos(t),0.5*np.sin(t)] for t in np.linspace(0,2*np.pi,100)],
+    })
 ```
-<img src=".images/readme/fig_of_eight.png" width=300>
+
+
+<img src=".images/readme/complex_envs.png" width=1000>
+
 
 
 #### Boundary conditions 
