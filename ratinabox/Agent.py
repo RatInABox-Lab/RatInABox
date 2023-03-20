@@ -3,7 +3,6 @@ import ratinabox
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
-plt.rcParams["animation.html"] = "jshtml" #for animations 
 
 
 from ratinabox import utils
@@ -159,6 +158,9 @@ class Agent:
 
                 # 2 Stochastically update the speed
                 speed = np.linalg.norm(self.velocity)
+                if speed == 0: #add tiny velocity in [1,0] direction to avoid nans
+                    self.velocity,speed = 1e-8 * np.array([1,0]), 1e-8
+
                 normal_variable = utils.rayleigh_to_normal(speed, sigma=self.speed_mean)
                 new_normal_variable = normal_variable + utils.ornstein_uhlenbeck(
                     dt=dt,
@@ -602,6 +604,8 @@ class Agent:
         Returns:
             animation
         """
+        plt.rcParams["animation.html"] = "jshtml" #for animation rendering in juypter
+
         dt = 1 / fps
         if t_start == None:
             t_start = self.history["t"][0]
