@@ -9,21 +9,22 @@ import numpy as np
 class ValueNeuron(FeedForwardLayer):
     """
     Contributer: Tom George tomgeorge1@btinternet.com
-    Date: 23/07/2022
 
-    The ValueNeuron class defines a neuron which learns the "value" of a policy using temporally continuous TD learning . This class is a subclass of FeedForwardLayer() which is a subclass of Neurons() and inherits it properties/plotting functions from both of these.
+    The ValueNeuron class defines neuron(s) which learns the "value" of a policy using TD learning. For n > 1 the reward function is assumed to be multidimensional and n value functions (one neuron for each reward function) will be learned under the current policy.  
 
-    Ιt learn the value function defined by:
+    The true value function, V, is approximated, \hat{V}, as a non-linearly activated (default relu) linear sum of input features (i.e. one layer neural network, in later classes we may generalise this):
 
-    \begin{equation}
-        V(x) = \int_{t}^{\infty}e^{-\frac{t^{\prime}-t}{\tau}}R(x(t^{\prime}))) dt^{\prime} | x(t) = x
-    \end{equation}
+    V_i(x) = \int_{t}^{\infty}e^{-\frac{t^{\prime}-t}{\tau}}R_(x(t^{\prime}))) dt^{\prime} | x(t) = x    \\
+    \hat{V}_i(x) \approx \psi_{nonlinearity} ( \w_{ij} \cdot \phi_j(x) )
 
-    It takes as input a layer of neurons (these are the "features" over which value is calculated). You could pass in any ratinabox Neurons class here (a set of PlaceCells, BoundaryVectorCells, GridCells etc...or more complex things)
+    For this we calculate the (temporally continuous) temporal difference error and apply it to the weights:
+    
+    td_error(t) = R(t) + dV(t)/dt - V(t) 
+    d w_i = \eta td_error(t) \z_i(t) \psi_prime(t)
 
-    It linearly sums these inputs to calculate its firing rate (this summation is all handled by the FeedForwardLayer class).
+    where z is the eligibility trace of the i^th feature (psi_prime accounts for the non-linearrity in the learning rule and is caluclated by the parent class. 
 
-    Weights are trained using TD learning, self.update_weights() should be called at each update step and passed the current reward density). For more infor see ratinabox/example_scripts/reinforcement_learning_example/
+    Input features can be any RatInABox Neurons class here (a set of PlaceCells, BoundaryVectorCells, GridCells etc...or more complex things). It linearly sums these inputs to calculate its firing rate (this summation is all handled by the FeedForwardLayer class). Weights are trained using TD learning, self.update_weights() should be called at each update step and passed the current reward density or reward density vector. For more infor see ratinabox/example_scripts/reinforcement_learning_example/
 
     Since this is a Neurons subclass, after (or even during) learning you can plot the value function just by querying the ValueNeurons rate map (ValueNeuron.plot_rate_map()), or check the estimate of value at a postion using ValueNeuron.get_state(evaluate_at=None, pos=np.array([[x,y]]))
 
@@ -33,25 +34,24 @@ class ValueNeuron(FeedForwardLayer):
     def __init__(self, Agent, params={}):
         default_params = {
             "input_layer": None,  # the features it is using as inputs
-            "tau": 10,  # discount time horizon
-            "tau_e": 1,  # eligibility trace timescale
-            "eta": 0.001,  # learning rate
-            "L2": 0.001,  # L2 regularisation
+            "tau": 2,  # discount time horizon (equivalent to gamma in discrete RL)
+            "tau_e": None,  # eligibility trace timescale, must be <= tau (defaults to tau/2)
+            "eta": 0.1,  # learning rate
+            "L2": 0.01,  # L2 regularisation
+            "activation_params": {"activation": "relu"}, #non-linearity for 
+            "n":1, #how many rewards there will be and thus how many Values function (each represented by one ValueNeuron) there are
         }
 
         default_params.update(params)
         self.params = default_params
-        self.params["activation_params"] = {
-            "activation": "linear"
-        }  # we use linear func approx
-        self.params["n"] = 1  # one value neuron
+
         self.params["input_layers"] = [self.params["input_layer"]]
         super().__init__(Agent, self.params)  # initialise parent class
 
+        if self.tau_e == None: self.tau_e = self.tau/2
         self.et = np.zeros(params["input_layer"].n)  # initialise eligibility trace
         self.firingrate = np.zeros(1)  # initialise firing rate
         self.firingrate_deriv = np.zeros(1)  # initialise firing rate derivative
-        self.max_fr = 1  # will update this with each episode later
 
     def update(self):
         """Updates firing rate as weighted linear sum of feature inputs"""
@@ -72,7 +72,9 @@ class ValueNeuron(FeedForwardLayer):
 
     def update_weights(self, reward):
         """Trains the weights by implementing the TD learning rule,
-        reward is the current reward density"""
+        reward is the vector of reward densities"""
+        reward = np.array(reward).reshape(-1)
+        assert len(reward) == self.n, print(f"Must send same number of reward signals as value neurons (n={self.n}), you sent {len(reward)}")
         w = self.inputs[self.input_layer.name]["w"]  # weights
         V = self.firingrate  # current value estimate
         dVdt = self.firingrate_deriv  # currrent value derivative estimate
@@ -80,7 +82,7 @@ class ValueNeuron(FeedForwardLayer):
             reward + dVdt - V / self.tau
         )  # this is the continuous analog of the TD error
         dw = (
-            self.Agent.dt * self.eta * (np.outer(self.td_error, self.et))
+            self.Agent.dt * self.eta * (np.outer(self.td_error * self.firingrate_prime, self.et))
             - self.eta * self.Agent.dt * self.L2 * w
         )  # note L2 regularisation
         self.inputs[self.input_layer.name]["w"] += dw
@@ -96,10 +98,10 @@ if __name__ == "__main__":
 
     # initialise
     Env = Environment()
-    Ag = Agent(Env, params={"speed_mean": 0.2})
-    PCs = PlaceCells(Ag, params={"n": 100})
+    Ag = Agent(Env, params={"speed_mean": 0.1,"dt":0.05})
+    PCs = PlaceCells(Ag, params={"n": 100,'widths':0.1,})
     Reward = PlaceCells(
-        Ag, params={"n": 1, "place_cell_centres": np.array([[0.5, 0.5]])}
+        Ag, params={"n": 1, "place_cell_centres": np.array([[0.5, 0.5]]),"description":'gaussian_threshold'}
     )
     VN = ValueNeuron(
         Ag,
@@ -114,7 +116,7 @@ if __name__ == "__main__":
     VN.plot_rate_map(fig=fig, ax=ax[1])
 
     # explore/learn for 300 seconds
-    for i in tqdm(range(int(300 / Ag.dt))):
+    for i in tqdm(range(int(1000 / Ag.dt))):
         Ag.update()
         Reward.update()
         PCs.update()
