@@ -22,7 +22,7 @@ class Environment:
         ...that you might use:
             • add_wall()
             • plot_environment()
-        ...that you probably won't directly use:
+        ...that you probably won't directly use/use very often:
             • sample_positions()
             • discretise_environment()
             • get_vectors_between___accounting_for_environment()
@@ -31,6 +31,8 @@ class Environment:
             • check_wall_collisions()
             • vectors_from_walls()
             • apply_boundary_conditions()
+            • add_object()
+
 
     The default_params are
     default_params = {
@@ -125,6 +127,11 @@ class Environment:
                     self.holes_polygons.append(shapely.Polygon(h))
             self.boundary_polygon = shapely.Polygon(self.boundary)
 
+            # make list of "objects" within the Env
+            self.objects = {'objects':np.empty((0,2)),'object_types':np.empty(0,int)}
+            self.n_object_types = 0 
+            self.object_colormap = 'rainbow'
+
             # make some other attributes
             left = min([c[0] for c in b])
             right = max([c[0] for c in b])
@@ -161,6 +168,26 @@ class Environment:
         else:
             self.walls = np.concatenate((self.walls, wall), axis=0)
         return
+
+    def add_object(self,object,type=None):
+        """Adds an object to the environment. Objects can be seen by object vector cells but otherwise do very little. Objects have "types". By default when adding a new object a new type is created (n objects n types) but you can specify a type (n objects <n types). Boundary vector cells may be selective to one type.
+
+        Args:
+            object (array): The location of the object, 2D list or array 
+            type (_type_): The "type" of the object, any integer. By default (None) a new type is made s.t. the first object is type 0, 2nd type 1... n'th object will be type n-1, etc...
+        """
+        object = np.array(object).reshape(1,2)
+        assert object.shape[1] == 2
+
+        if type is None: 
+            type = self.n_object_types
+            self.n_object_types += 1
+        type = np.array([type],int)
+
+        self.objects['objects'] = np.append(self.objects['objects'],object,axis=0)
+        self.objects['object_types'] = np.append(self.objects['object_types'],type,axis=0)
+        return 
+
 
     def plot_environment(self, fig=None, ax=None, height=1):
         """Plots the environment on the x axis, dark grey lines show the walls
@@ -241,6 +268,7 @@ class Environment:
                     setattr(background, "name", "hole")
                     ax.add_patch(anti_arena_segment)
 
+            # plot walls 
             for wall in walls:
                 ax.plot(
                     [wall[0][0], wall[1][0]],
@@ -250,6 +278,12 @@ class Environment:
                     solid_capstyle="round",
                     zorder=2,
                 )
+            
+            #plot objects
+            object_cmap = matplotlib.cm.get_cmap(self.object_colormap)
+            for (i,object) in enumerate(self.objects['objects']):
+                object_color = object_cmap(self.objects['object_types'][i]/(self.n_object_types-1+1e-8))
+                ax.scatter(object[0],object[1],facecolor=[0,0,0,0],edgecolors=object_color,s=10,zorder=2,marker='o')
             ax.set_aspect("equal")
             ax.grid(False)
             ax.axis("off")
@@ -306,7 +340,7 @@ class Environment:
                     )
                     positions = np.vstack((positions, positions_remaining))
 
-            if (self.is_rectangular) or (self.has_holes is True):
+            if (self.is_rectangular is False) or (self.has_holes is True):
                 # in this case, the positions you have sampled within the extent of the environment may not actually fall within it's legal area (i.e. they could be outside the polygon boundary or inside a hole). Brute force this by randomly resampling these points until all fall within the env.
                 for (i, pos) in enumerate(positions):
                     if self.check_if_position_is_in_environment(pos) == False:
