@@ -499,7 +499,7 @@ def mountain_plot(
         ax.plot(X, NbyX[i] + i + 1, c=c, zorder=zorder)
         zorder -= 0.01
         ax.fill_between(
-            X, NbyX[i] + i + 1, i + 1, color=fc, zorder=zorder, alpha=0.9, linewidth=0
+            X, NbyX[i] + i + 1, i + 1, color=fc, zorder=zorder, alpha=0.8, linewidth=0
         )
         zorder -= 0.01
     ax.spines["left"].set_bounds(1, len(NbyX))

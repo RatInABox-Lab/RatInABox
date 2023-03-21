@@ -38,8 +38,8 @@ class ValueNeuron(FeedForwardLayer):
             "tau_e": None,  # eligibility trace timescale, must be <= tau (defaults to tau/2)
             "eta": 0.1,  # learning rate
             "L2": 0.01,  # L2 regularisation
-            "activation_params": {"activation": "relu"}, #non-linearity for 
-            "n":1, #how many rewards there will be and thus how many Values function (each represented by one ValueNeuron) there are
+            "activation_params": {"activation": "relu"},  # non-linearity for
+            "n": 1,  # how many rewards there will be and thus how many Values function (each represented by one ValueNeuron) there are
         }
 
         default_params.update(params)
@@ -48,7 +48,8 @@ class ValueNeuron(FeedForwardLayer):
         self.params["input_layers"] = [self.params["input_layer"]]
         super().__init__(Agent, self.params)  # initialise parent class
 
-        if self.tau_e == None: self.tau_e = self.tau/2
+        if self.tau_e == None:
+            self.tau_e = self.tau / 2
         self.et = np.zeros(params["input_layer"].n)  # initialise eligibility trace
         self.firingrate = np.zeros(1)  # initialise firing rate
         self.firingrate_deriv = np.zeros(1)  # initialise firing rate derivative
@@ -74,7 +75,9 @@ class ValueNeuron(FeedForwardLayer):
         """Trains the weights by implementing the TD learning rule,
         reward is the vector of reward densities"""
         reward = np.array(reward).reshape(-1)
-        assert len(reward) == self.n, print(f"Must send same number of reward signals as value neurons (n={self.n}), you sent {len(reward)}")
+        assert len(reward) == self.n, print(
+            f"Must send same number of reward signals as value neurons (n={self.n}), you sent {len(reward)}"
+        )
         w = self.inputs[self.input_layer.name]["w"]  # weights
         V = self.firingrate  # current value estimate
         dVdt = self.firingrate_deriv  # currrent value derivative estimate
@@ -82,7 +85,9 @@ class ValueNeuron(FeedForwardLayer):
             reward + dVdt - V / self.tau
         )  # this is the continuous analog of the TD error
         dw = (
-            self.Agent.dt * self.eta * (np.outer(self.td_error * self.firingrate_prime, self.et))
+            self.Agent.dt
+            * self.eta
+            * (np.outer(self.td_error * self.firingrate_prime, self.et))
             - self.eta * self.Agent.dt * self.L2 * w
         )  # note L2 regularisation
         self.inputs[self.input_layer.name]["w"] += dw
@@ -98,10 +103,21 @@ if __name__ == "__main__":
 
     # initialise
     Env = Environment()
-    Ag = Agent(Env, params={"speed_mean": 0.1,"dt":0.05})
-    PCs = PlaceCells(Ag, params={"n": 100,'widths':0.1,})
+    Ag = Agent(Env, params={"speed_mean": 0.1, "dt": 0.05})
+    PCs = PlaceCells(
+        Ag,
+        params={
+            "n": 100,
+            "widths": 0.1,
+        },
+    )
     Reward = PlaceCells(
-        Ag, params={"n": 1, "place_cell_centres": np.array([[0.5, 0.5]]),"description":'gaussian_threshold'}
+        Ag,
+        params={
+            "n": 1,
+            "place_cell_centres": np.array([[0.5, 0.5]]),
+            "description": "gaussian_threshold",
+        },
     )
     VN = ValueNeuron(
         Ag,
