@@ -553,7 +553,7 @@ def save_figure(fig,
     path_ = f"{figdir}{save_title}_{now}"
     path = path_
 
-    if type(fig) == matplotlib.figure.Figure or type:
+    if type(fig) == matplotlib.figure.Figure:
         for filetype in fig_save_types:
             i=1
             while True: #checks there isn't an existing figure with this name 
