@@ -3,7 +3,6 @@ import ratinabox
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
-plt.rcParams["animation.html"] = "jshtml" #for animations 
 
 
 from ratinabox import utils
@@ -28,6 +27,8 @@ class Agent:
         • plot_position_heatmap()
         • plot_histogram_of_speeds()
         • plot_histogram_of_rotational_velocities()
+        • save_to_history()
+        • reset_history()
 
     The default params for this agent are:
         default_params = {
@@ -40,6 +41,7 @@ class Agent:
             "thigmotaxis": 0.5,
             "wall_repel_distance": 0.1,
             "walls_repel": True,
+            "save_history":True,
 
 
         }
@@ -67,7 +69,7 @@ class Agent:
             "thigmotaxis": 0.5,  # tendency for agents to linger near walls [0 = not at all, 1 = max]
             "wall_repel_distance": 0.1,
             "walls_repel": True,  # whether or not the walls repel
-            
+            "save_history": True,  # whether to save position and velocity history as you go
         }
         self.Environment = Environment
         default_params.update(params)
@@ -159,6 +161,9 @@ class Agent:
 
                 # 2 Stochastically update the speed
                 speed = np.linalg.norm(self.velocity)
+                if speed == 0:  # add tiny velocity in [1,0] direction to avoid nans
+                    self.velocity, speed = 1e-8 * np.array([1, 0]), 1e-8
+
                 normal_variable = utils.rayleigh_to_normal(speed, sigma=self.speed_mean)
                 new_normal_variable = normal_variable + utils.ornstein_uhlenbeck(
                     dt=dt,
@@ -293,9 +298,11 @@ class Agent:
                     shift = self.Environment.get_vectors_between___accounting_for_environment(
                         pos1=self.pos, pos2=last_pos
                     )
-                    save_velocity = shift.reshape(-1) / self.dt  # accounts for periodic
+                    self.save_velocity = (
+                        shift.reshape(-1) / self.dt
+                    )  # accounts for periodic
                 else:
-                    save_velocity = self.velocity
+                    self.save_velocity = self.velocity
 
             elif self.Environment.dimensionality == "1D":
                 self.pos = self.pos + dt * self.velocity
@@ -314,51 +321,78 @@ class Agent:
                     noise_scale=self.speed_std,
                     coherence_time=self.speed_coherence_time,
                 )
-                save_velocity = self.velocity
+                self.save_velocity = self.velocity
 
         elif self.use_imported_trajectory == True:
             # use an imported trajectory to
-            if self.Environment.dimensionality == "2D":
-                interp_time = self.t % max(self.t_interp)
-                pos = self.pos_interp(interp_time)
-                ex = self.Environment.extent
-                self.pos = np.array(
-                    [min(max(pos[0], ex[0]), ex[1]), min(max(pos[1], ex[2]), ex[3])]
-                )
-
-                # calculate velocity and rotational velocity
-                if len(self.history["vel"]) >= 1:
-                    last_pos = np.array(self.history["pos"][-1])
-                    shift = self.Environment.get_vectors_between___accounting_for_environment(
-                        pos1=self.pos, pos2=last_pos
+            if (
+                self.interpolate is True
+            ):  # interpolate along the trajectory by an amount dt
+                if self.Environment.dimensionality == "2D":
+                    interp_time = self.t % max(self.t_interp)
+                    pos = self.pos_interp(interp_time)
+                    ex = self.Environment.extent
+                    self.pos = np.array(
+                        [min(max(pos[0], ex[0]), ex[1]), min(max(pos[1], ex[2]), ex[3])]
                     )
-                    self.velocity = shift.reshape(-1) / self.dt  # accounts for periodic
-                else:
-                    self.velocity = np.array([0, 0])
-                save_velocity = self.velocity
 
-                angle_now = utils.get_angle(self.velocity)
-                if len(self.history["vel"]) >= 1:
-                    angle_before = utils.get_angle(self.history["vel"][-1])
-                else:
-                    angle_before = angle_now
-                if abs(angle_now - angle_before) > np.pi:
-                    if angle_now > angle_before:
-                        angle_now -= 2 * np.pi
-                    elif angle_now < angle_before:
-                        angle_before -= 2 * np.pi
-                self.rotational_velocity = (angle_now - angle_before) / self.dt
+                    # calculate velocity and rotational velocity
+                    if len(self.history["vel"]) >= 1:
+                        last_pos = np.array(self.history["pos"][-1])
+                        shift = self.Environment.get_vectors_between___accounting_for_environment(
+                            pos1=self.pos, pos2=last_pos
+                        )
+                        self.velocity = (
+                            shift.reshape(-1) / self.dt
+                        )  # accounts for periodic
+                    else:
+                        self.velocity = np.array([0, 0])
+                    self.save_velocity = self.velocity
 
-            if self.Environment.dimensionality == "1D":
-                interp_time = self.t % max(self.t_interp)
-                pos = self.pos_interp(interp_time)
+                    angle_now = utils.get_angle(self.velocity)
+                    if len(self.history["vel"]) >= 1:
+                        angle_before = utils.get_angle(self.history["vel"][-1])
+                    else:
+                        angle_before = angle_now
+                    if abs(angle_now - angle_before) > np.pi:
+                        if angle_now > angle_before:
+                            angle_now -= 2 * np.pi
+                        elif angle_now < angle_before:
+                            angle_before -= 2 * np.pi
+                    self.rotational_velocity = (angle_now - angle_before) / self.dt
+
+                if self.Environment.dimensionality == "1D":
+                    interp_time = self.t % max(self.t_interp)
+                    pos = self.pos_interp(interp_time)
+                    ex = self.Environment.extent
+                    self.pos = np.array([min(max(pos, ex[0]), ex[1])])
+                    if len(self.history["vel"]) >= 1:
+                        self.velocity = (self.pos - self.history["pos"][-1]) / self.dt
+                    else:
+                        self.velocity = np.array([0])
+                    self.save_velocity = self.velocity
+            else:  # just jump one count along the trajectory
+                self.t = self.times[self.imported_trajectory_id]
+                pos = self.positions[self.imported_trajectory_id]
                 ex = self.Environment.extent
-                self.pos = np.array([min(max(pos, ex[0]), ex[1])])
-                if len(self.history["vel"]) >= 1:
-                    self.velocity = (self.pos - self.history["pos"][-1]) / self.dt
-                else:
-                    self.velocity = np.array([0])
-                save_velocity = self.velocity
+                if self.Environment.dimensionality == "1D":
+                    self.pos = np.array([min(max(pos, ex[0]), ex[1])])
+                    if len(self.history["vel"]) >= 1:
+                        self.velocity = (self.pos - self.history["pos"][-1]) / self.dt
+                    else:
+                        self.velocity = np.array([0])
+                if self.Environment.dimensionality == "2D":
+                    self.pos = np.array(
+                        [min(max(pos[0], ex[0]), ex[1]), min(max(pos[1], ex[2]), ex[3])]
+                    )
+                    if len(self.history["vel"]) >= 1:
+                        self.velocity = (self.pos - self.history["pos"][-1]) / self.dt
+                    else:
+                        self.velocity = np.array([0, 0])
+                self.save_velocity = self.velocity
+                self.imported_trajectory_id = (self.imported_trajectory_id + 1) % len(
+                    self.times
+                )
 
         if len(self.history["pos"]) >= 1:
             self.distance_travelled += np.linalg.norm(
@@ -370,23 +404,34 @@ class Agent:
             self.average_measured_speed = (
                 1 - dt / tau_speed
             ) * self.average_measured_speed + (dt / tau_speed) * np.linalg.norm(
-                save_velocity
+                self.save_velocity
             )
 
-        # TO DO: make this a function call 
         # write to history
-        self.history["t"].append(self.t)
-        self.history["pos"].append(list(self.pos))
-        self.history["vel"].append(list(save_velocity))
-        if self.Environment.dimensionality == "2D":
-            self.history["rot_vel"].append(self.rotational_velocity)
+        if self.save_history is True:
+            self.save_to_history()
 
         return
 
-    def import_trajectory(self, times=None, positions=None, dataset=None):
+    def save_to_history(self):
+        self.history["t"].append(self.t)
+        self.history["pos"].append(list(self.pos))
+        self.history["vel"].append(list(self.save_velocity))
+        if self.Environment.dimensionality == "2D":
+            self.history["rot_vel"].append(self.rotational_velocity)
+        return
+
+    def reset_history(self):
+        for key in self.history.keys():
+            self.history[key] = []
+        return
+    
+    def import_trajectory(
+        self, times=None, positions=None, dataset=None, interpolate=True
+    ):
         """Import trajectory data into the agent by passing a list or array of timestamps and a list or array of positions.
         These will used for moting rather than the random motion model. The data is interpolated using cubic splines.
-        This means imported data can be low resolution and smoothly upsampled (aka "augmented" with artificial data).
+        This means imported data can be low resolution and smoothly upsampled (aka "augmented" with artificial data). Interpolation can be turned off, in which case each time Ag.update() is called the Agent just moves one count along the imported trajectory (no matter how coarse this is), this may be a lot quicker in cases when your imported behaviour data is high resolution.
 
         Note after importing trajectory data you still need to run a simulation using the Agent.update(dt=dt) function.
         Each update moves the agent by a time dt along its imported trajectory.
@@ -398,9 +443,11 @@ class Agent:
             positions (_type_): list or array of positions
             dataset: if `sargolini' will load `sargolini' trajectory data from './data/sargolini.npz' (Sargolini et al. 2006).
                Else you can pass a path to a .npz file which must contain time and trajectory data under keys 't' and 'pos'
+            interpolate (bool, True): Whether to smoothyl interpolate this trajectory or not.
         """
         from scipy.interpolate import interp1d
 
+        self.interpolate = interpolate
         assert (
             self.Environment.boundary_conditions == "solid"
         ), "Only solid boundary conditions are supported"
@@ -466,9 +513,15 @@ class Agent:
                     Recommended to use larger environment."""
                 )
             self.t_interp = times
-            self.pos_interp = interp1d(
-                times, positions, axis=0, kind="cubic", fill_value="extrapolate"
-            )
+
+            if interpolate is True:
+                self.pos_interp = interp1d(
+                    times, positions, axis=0, kind="cubic", fill_value="extrapolate"
+                )
+            else:
+                self.positions = positions
+                self.times = times
+                self.imported_trajectory_id = 0
 
         if self.Environment.dimensionality == "1D":
             positions = positions.reshape(-1, 1)
@@ -479,9 +532,14 @@ class Agent:
                     Recommended to use larger environment."""
                 )
             self.t_interp = times
-            self.pos_interp = interp1d(
-                times, positions, axis=0, kind="cubic", fill_value="extrapolate"
-            )
+            if interpolate is True:
+                self.pos_interp = interp1d(
+                    times, positions, axis=0, kind="cubic", fill_value="extrapolate"
+                )
+            else:
+                self.positions = positions
+                self.times = times
+                self.imported_trajectory_id = 0
 
         return
 
@@ -496,7 +554,7 @@ class Agent:
         decay_point_size=False,
         decay_point_timescale=10,
         plot_agent=True,
-        color=None,
+        color='#7b699a',
         alpha=0.7,
         xlim=None,
         background_color=None,
@@ -515,7 +573,7 @@ class Agent:
             • decay_point_size: decay trajectory point size over time (recent times = largest)
             • decay_point_timescale: if decay_point_size is True, this is the timescale over which sizes decay
             • plot_agent: dedicated point show agent current position
-            • color: plot point color
+            • color: plot point color, if color == 'changing' will smoothly change trajectory color from start to finish
             • alpha: plot point opaqness
             • xlim: In 1D, forces the xlim to be a certain time (minutes) (useful if animating this function)
             • background_color: color of the background if not matplotlib default, only for 1D (probably white)
@@ -524,8 +582,7 @@ class Agent:
         Returns:
             fig, ax
         """
-        if color is None:
-            color = "C0"
+
         dt = self.dt
         t, pos = np.array(self.history["t"]), np.array(self.history["pos"])
         if t_end == None:
@@ -539,6 +596,15 @@ class Agent:
             skiprate = max(1, int((1 / framerate) / dt))
             trajectory = pos[startid:endid][::skiprate]
         time = t[startid:endid][::skiprate]
+        if color is None:
+            color = ["C0"]*len(time)
+        elif color == 'changing':
+            trajectory_cmap = matplotlib.cm.get_cmap('viridis_r')
+            color = [trajectory_cmap(t/len(time)) for t in range(len(time))]
+        else:
+            color = [color]*len(time)
+
+
 
         if self.Environment.dimensionality == "2D":
             fig, ax = self.Environment.plot_environment(fig=fig, ax=ax)
@@ -546,10 +612,10 @@ class Agent:
             if decay_point_size == True:
                 s = point_size * np.exp((time - time[-1]) / decay_point_timescale)
                 s[(time[-1] - time) > (1.5 * decay_point_timescale)] *= 0
-            c = [color] * len(time)
+            
             if plot_agent == True:
                 s[-1] = 40
-                c[-1] = "r"
+                color[-1] = "r"
 
             ax.scatter(
                 trajectory[:, 0],
@@ -557,7 +623,7 @@ class Agent:
                 s=s,
                 alpha=alpha,
                 zorder=0,
-                c=c,
+                c=color,
                 linewidth=0,
             )
         if self.Environment.dimensionality == "1D":
@@ -589,7 +655,7 @@ class Agent:
         """Returns an animation (anim) of the trajectory, 25fps.
         Should be saved using command like
             >>> anim.save("./where_to_save/animations.gif",dpi=300)
-        To display in jupyter notebook, call it: 
+        To display in jupyter notebook, call it:
             >>> anim
 
         Args:
@@ -597,18 +663,22 @@ class Agent:
             t_end (_type_, optional): _description_. Defaults to None.
             fps: frames per second of end video
             speed_up: #times real speed animation should come out at
-            kwargs: passed to trajectory plotting function (chuck anything you wish in here)
+            kwargs: passed to trajectory plotting function (chuck anything you wish in here). A particularly useful kwarg is 'additional_plot_func': any function which takes a fig, ax and t as input. The animation wll be passed through this each time after plotting the trajectory, use it to modify your animations however you like
 
         Returns:
             animation
         """
+        plt.rcParams["animation.html"] = "jshtml"  # for animation rendering in juypter
+
         dt = 1 / fps
         if t_start == None:
             t_start = self.history["t"][0]
         if t_end == None:
             t_end = self.history["t"][-1]
 
-        def animate_(i, fig, ax, t_start, t_max, speed_up, dt, additional_plot_func, **kwargs):
+        def animate_(
+            i, fig, ax, t_start, t_max, speed_up, dt, kwargs
+        ):
             t_end = t_start + (i + 1) * speed_up * dt
             ax.clear()
             if self.Environment.dimensionality == "2D":
@@ -622,11 +692,10 @@ class Agent:
                 xlim=t_max / 60,
                 **kwargs,
             )
-            if additional_plot_func is not None:
-                fig, ax = additional_plot_func(fig=fig, 
-                                                ax=ax,
-                                                t=t_end, #the current time
-                                                **kwargs)
+            if 'additional_plot_func' in kwargs.keys():
+                fig, ax = kwargs['additional_plot_func'](
+                    fig=fig, ax=ax, t=t_end, **kwargs  # the current time
+                )
 
             plt.close()
             return
@@ -636,11 +705,6 @@ class Agent:
         )
 
         from matplotlib import animation
-        # if passed, after plotting the trajectory fig, ax are passed through this function. 
-        # use it to add other things ontop of the animation
-        additional_plot_func = None 
-        if 'additional_plot_func' in kwargs.keys():
-            additional_plot_func = kwargs['additional_plot_func']
 
         anim = matplotlib.animation.FuncAnimation(
             fig,
@@ -648,7 +712,7 @@ class Agent:
             interval=1000 * dt,
             frames=int((t_end - t_start) / (dt * speed_up)),
             blit=False,
-            fargs=(fig, ax, t_start, t_end, speed_up, dt, additional_plot_func),
+            fargs=(fig, ax, t_start, t_end, speed_up, dt, kwargs),
         )
         return anim
 

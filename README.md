@@ -91,9 +91,12 @@ Here is a list of features loosely organised into three categories: those pertai
 * [Plotting rate maps](#rate-maps)
 * [Place cell models](#place-cell-models) 
 * [Place cell geometry](#geometry-of-placecells)
+* [Egocentric encodings](#egocentric-encodings)
 * [Deep neural networks](#more-complex-neuron-types-and-networks-of-neurons)
 
-Specific details can be found in the [paper]](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v3). 
+(iv) [Figures and animations plotting](#iv-figures-and-animations)
+
+Specific details can be found in the [paper](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v3). 
 
 
 
@@ -107,24 +110,36 @@ Here are some easy to make examples.
 
 <img src=".images/readme/walls.png" width=1000>
 
-#### Polygon-shaped `Environments`
-By default, `Environments` in RatInABox are square (or rectangular if `aspect != 1`). It is possible to create arbitrary environment shapes using the `"boundary"` parameter at initialisation: 
+
+#### Complex `Environment`s: Polygons, curves, and holes
+By default, `Environments` in RatInABox are square (or rectangular if `aspect != 1`). It is possible to create arbitrary environment shapes using the `"boundary"` parameter at initialisation. 
+
+One can all add holes to the `Environment` using the `"holes"` parameter at initialisation. Positions sampled from the Environment (e.g. at initialisation) won't be inside holes.
+
+Any curved environments can be made by creating a boundary of many small walls (uyse sparingly, walls may slow down computations)
+
 ```python 
-Env = Environment(params={'boundary':[[0,-0.2],[0,0.2],[1.5,0.5],[1.5,-0.5]]})
-```
-<img src=".images/readme/trapezium.png" width=300>
+#A trapezium shaped Environment
+Env = Environment(params={
+    'boundary':[[0,-0.2],[0,0.2],[1.5,0.5],[1.5,-0.5]],
+    })
 
-
-#### Holes
-One can add holes to the `Environment` using the `"holes"` parameter at initialisation
-```python
+#An environment with two holes makign a figure of 8
 Env = Environment(params={
     'aspect':1.8,
     'holes' : [[[0.2,0.2],[0.8,0.2],[0.8,0.8],[0.2,0.8]],
-               [[1,0.2],[1.6,0.2],[1.6,0.8],[1,0.8]]]
-})
+               [[1,0.2],[1.6,0.2],[1.6,0.8],[1,0.8]]],
+    })
+
+#A circular environment made from many small walls
+Env = Environment(params = {
+    'boundary':[[0.5*np.cos(t),0.5*np.sin(t)] for t in np.linspace(0,2*np.pi,100)],
+    })
 ```
-<img src=".images/readme/fig_of_eight.png" width=300>
+
+
+<img src=".images/readme/complex_envs.png" width=1000>
+
 
 
 #### Boundary conditions 
@@ -216,6 +231,7 @@ We provide a list of premade `Neurons` subclasses. These include:
 * `VelocityCells`
 * `SpeedCells`
 * `FeedForwardLayer` - calculates activated weighted sum of inputs from a provide list of input `Neurons` layers.
+* `FieldOfViewNeurons` - Egocentric encoding of what the `Agent` can see 
 
 This last class, `FeedForwardLayer` deserves special mention. Instead of its firing rate being determined explicitly by the state of the `Agent` it summates synaptic inputs from a provided list of input layers (which can be any `Neurons` subclass). This layer is the building block for how more complex networks can be studied using `RatInABox`. 
 
@@ -277,8 +293,65 @@ Choose how you want `PlaceCells` to interact with walls in the `Environment`. We
 <img src=".images/readme/wall_geometry.png" width=900>
 
 
+#### Egocentric encodings
+Most `RatInABox` cell classes are allocentric (e.g. `PlaceCells`, `GridCells` etc. do not depend on the agents point of view) not egocentric however `BoundaryVectorCells` (BVCs) and `ObjectVectorCells` (OVCs) can be either. `FieldOfViewNeurons` exploit this by arranging sets of egocentric BVC or OVCs to tile to agents local field of view creating a comprehensive egocentric encoding of what boundaries or objects the agent can 'see' from it's current point of view. A custom plotting function displays the tiling and the firing rates as shown below. 
+
+```python
+FoV_BVCs = FieldOfViewNeurons(Ag)
+FoV_OVCs = FieldOfViewNeurons(Ag,params={
+    'cell_type':'OVC',
+    #other params defining the field of view area (see source code),
+    })
+```
+
+<img src=".images/readme/field_of_view.gif" width=600>
+
+
+
 #### More complex Neuron types and networks of Neurons
 We encourage users to create their own subclasses of `Neurons`. This is easy to do, see comments in the `Neurons` class within the [code](./ratinabox/Neurons.py) for explanation. By forming these classes from the parent `Neurons` class, the plotting and analysis features described above remain available to these bespoke Neuron types. Additionally we provide a `Neurons` subclass called `FeedForwardLayer`. This neuron sums inputs from any provied list of other `Neurons` classes and can be used as the building block for constructing complex multilayer networks of `Neurons`, as we do [here](./demos/path_integration_example.ipynb) and [here](./demos/reinforcement_learning_example.ipynb). 
+
+
+
+### (iv) Figures and animations 
+
+#### Styling and saving
+`RatInABox` is built to be highly visual. It is easy to plot or animate data. Two functions have been written to help with this: 
+
+* `ratinabox.stylize_plots()` sets some global rcParams to make plots look pretty 
+* `ratinabox.figure_directory` a global variable specifying the directory figures/animations will be saved into 
+* `utils.save_figure(fig,fig_name)` saves a figure (or animation) into a dated folder within `ratinabox.figure_directory` as both `".svg"` and `".png"` (`".mp4"` or `".gif"`) for easy access later.
+
+```python
+import ratinabox
+from ratinabox import utils
+
+# (optional) stylize plots() sets some global rcParams to make plots look nice
+ratinabox.stylize_plots() 
+
+# set the figure directory where figs and animations will be saved
+ratinabox.figure_directory = "./figures/"
+
+#make a figure (many ays to do this)
+fig, ax = Ag.plot_trajectory() #for example
+
+# save it, will be saved in a date-specific folder with current time so you can find it later
+utils.save_figure(fig,"figure_name") #works for animations too
+```
+
+#### Most important plotting functions
+There most important plotting functions are (see source code for the available arguments/kwargs):
+
+```python
+Environment.plot_environment() #visualises current environment with walls and objects
+Agent.plot_trajectory() #plots trajectory
+Agent.animate_trajectory() #animate trajectory
+Neurons.plot_rate_map() # plots the rate map of the neurons at all positions
+Neurons.plot_rate_timeseries() # plots activities of the neurons over time 
+Neurons.animate_rate_timeseries() # animates the activity of the neurons over time 
+```
+
+Most plotting functions accept `fig` and `ax` as optional arguments and if passed will plot ontop of these. This can be used to make comolex or multipanel figures. For a comprehensive list of plotting functions see [here](./demos/list_of_plotting_fuctions.md). 
 
 ## Example Scripts
 In the folder called [demos](./demos/) we provide numerous script and demos which will help when learning `RatInABox`. In approximate order of complexity, these include:
