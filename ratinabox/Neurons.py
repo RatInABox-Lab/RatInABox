@@ -66,6 +66,7 @@ class Neurons:
             • plot_rate_map()
         ...that you might not use but could be useful:
             • save_to_history()
+            • reset_history()
             • boundary_vector_preference_function()
 
     default_params = {
@@ -368,7 +369,7 @@ class Neurons:
                         rate_map = rate_maps[chosen_neurons[i], :].reshape(
                             self.Agent.Environment.discrete_coords.shape[:2]
                         )
-                        im = ax_.imshow(rate_map, extent=ex, zorder=0)
+                        im = ax_.imshow(rate_map, extent=ex, zorder=0, cmap='inferno')
                     elif method == "history":
                         rate_timeseries_ = rate_timeseries[chosen_neurons[i], :]
                         rate_map = utils.bin_data_for_histogramming(
@@ -377,6 +378,7 @@ class Neurons:
                         im = ax_.imshow(
                             rate_map,
                             extent=ex,
+                            cmap='inferno',
                             interpolation="bicubic",
                             zorder=1,
                         )
