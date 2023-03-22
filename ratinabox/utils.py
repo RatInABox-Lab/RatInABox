@@ -2,7 +2,10 @@ import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
 import scipy
+import os
+from datetime import datetime
 from scipy import stats as stats
+import ratinabox
 
 """OTHER USEFUL FUNCTIONS"""
 """Geometry functions"""
@@ -519,6 +522,61 @@ def mountain_plot(
         ax.set_xlim(right=xlim)
 
     return fig, ax
+
+
+def save_figure(fig,
+                save_title="",
+                fig_save_types=['svg','png'],
+                anim_save_types=['gif','mp4']
+):
+    """
+    Saves a figures and animations by date (folder) and time (name) as both '.png' and '.svg'
+    Args:
+        fig (matplotlib fig object): the matplotlib figure or animation object to be saved
+        save_title (str, optional): name to be saved as. Current time will be appended to this so you won't overwrite old figures, defaults to no name "".
+        fig_file_types: what file types to save figure as ['svg','png']
+        fig_file_types: what file types to save figure as ['gif','mp4']
+
+    """
+    figure_directory = ratinabox.figure_directory  
+    assert figure_directory is not None, print('A figure directory has not been set. Set one using command `ratinabox.figure_directory = "path/to/my/figs/"')
+    if not os.path.isdir(figure_directory):
+        os.mkdir(figure_directory)
+
+    #make today-specific directory inside figure directory  
+    today =  datetime.strftime(datetime.now(),'%y%m%d')
+    if not os.path.isdir(figure_directory + f"{today}/"):
+        os.mkdir(figure_directory + f"{today}/")
+    
+    figdir = figure_directory + f"{today}/"
+    now = datetime.strftime(datetime.now(),'%H%M')
+    path_ = f"{figdir}{save_title}_{now}"
+    path = path_
+
+    if type(fig) == matplotlib.figure.Figure or type:
+        for filetype in fig_save_types:
+            i=1
+            while True: #checks there isn't an existing figure with this name 
+                if os.path.isfile(path+"." + filetype):
+                    path = path_+"_"+str(i)
+                    i+=1
+                elif i >= 100: break
+                else: break
+            fig.savefig(path+"."+filetype,bbox_inches='tight')
+    
+    elif type(fig) == matplotlib.animation.FuncAnimation:
+        for filetype in anim_save_types:
+            i=1
+            while True:
+                if os.path.isfile(path+"." + filetype):
+                    path = path_+"_"+str(i)
+                    i+=1
+                elif i >= 100: break
+                else: break
+            fig.save(path+"."+filetype)
+
+
+    return path
 
 
 """Other"""
