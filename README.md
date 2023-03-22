@@ -94,7 +94,9 @@ Here is a list of features loosely organised into three categories: those pertai
 * [Egocentric encodings](#egocentric-encodings)
 * [Deep neural networks](#more-complex-neuron-types-and-networks-of-neurons)
 
-Specific details can be found in the [paper]](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v3). 
+(iv) [Figures and animations plotting](#iv-figures-and-animations)
+
+Specific details can be found in the [paper](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v3). 
 
 
 
@@ -308,6 +310,48 @@ FoV_OVCs = FieldOfViewNeurons(Ag,params={
 
 #### More complex Neuron types and networks of Neurons
 We encourage users to create their own subclasses of `Neurons`. This is easy to do, see comments in the `Neurons` class within the [code](./ratinabox/Neurons.py) for explanation. By forming these classes from the parent `Neurons` class, the plotting and analysis features described above remain available to these bespoke Neuron types. Additionally we provide a `Neurons` subclass called `FeedForwardLayer`. This neuron sums inputs from any provied list of other `Neurons` classes and can be used as the building block for constructing complex multilayer networks of `Neurons`, as we do [here](./demos/path_integration_example.ipynb) and [here](./demos/reinforcement_learning_example.ipynb). 
+
+
+
+### (iv) Figures and animations 
+
+#### Styling and saving
+`RatInABox` is built to be highly visual. It is easy to plot or animate data. Two functions have been written to help with this: 
+
+* `ratinabox.stylize_plots()` sets some global rcParams to make plots look pretty 
+* `ratinabox.figure_directory` a global variable specifying the directory figures/animations will be saved into 
+* `utils.save_figure(fig,fig_name)` saves a figure (or animation) into a dated folder within `ratinabox.figure_directory` as both `".svg"` and `".png"` (`".mp4"` or `".gif"`) for easy access later.
+
+```python
+import ratinabox
+from ratinabox import utils
+
+# (optional) stylize plots() sets some global rcParams to make plots look nice
+ratinabox.stylize_plots() 
+
+# set the figure directory where figs and animations will be saved
+ratinabox.figure_directory = "./figures/"
+
+#make a figure (many ays to do this)
+fig, ax = Ag.plot_trajectory() #for example
+
+# save it, will be saved in a date-specific folder with current time so you can find it later
+utils.save_figure(fig,"figure_name") #works for animations too
+```
+
+#### Most important plotting functions
+There most important plotting functions are (see source code for the available arguments/kwargs):
+
+```python
+Environment.plot_environment() #visualises current environment with walls and objects
+Agent.plot_trajectory() #plots trajectory
+Agent.animate_trajectory() #animate trajectory
+Neurons.plot_rate_map() # plots the rate map of the neurons at all positions
+Neurons.plot_rate_timeseries() # plots activities of the neurons over time 
+Neurons.animate_rate_timeseries() # animates the activity of the neurons over time 
+```
+
+Most plotting functions accept `fig` and `ax` as optional arguments and if passed will plot ontop of these. This can be used to make comolex or multipanel figures. For a comprehensive list of plotting functions see [here](./demos/list_of_plotting_fuctions.md). 
 
 ## Example Scripts
 In the folder called [demos](./demos/) we provide numerous script and demos which will help when learning `RatInABox`. In approximate order of complexity, these include:
