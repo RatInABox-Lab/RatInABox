@@ -134,6 +134,7 @@ class Environment:
             }
             self.n_object_types = 0
             self.object_colormap = "rainbow"
+            self.plot_objects = True
 
             # make some other attributes
             left = min([c[0] for c in b])
@@ -172,25 +173,35 @@ class Environment:
             self.walls = np.concatenate((self.walls, wall), axis=0)
         return
 
-    def add_object(self, object, type=None):
+    def add_object(self, object, type="new"):
         """Adds an object to the environment. Objects can be seen by object vector cells but otherwise do very little. Objects have "types". By default when adding a new object a new type is created (n objects n types) but you can specify a type (n objects <n types). Boundary vector cells may be selective to one type.
 
         Args:
             object (array): The location of the object, 2D list or array
-            type (_type_): The "type" of the object, any integer. By default (None) a new type is made s.t. the first object is type 0, 2nd type 1... n'th object will be type n-1, etc...
+            type (_type_): The "type" of the object, any integer. By default ("new") a new type is made s.t. the first object is type 0, 2nd type 1... n'th object will be type n-1, etc.... If type == "same" then the added object has the same type as the last
+
         """
         object = np.array(object).reshape(1, 2)
         assert object.shape[1] == 2
 
-        if type is None:
+        if type == "new":
             type = self.n_object_types
-            self.n_object_types += 1
+        elif type == "same":
+            if len(self.objects["object_types"]) == 0:
+                type = 0
+            else:
+                type = self.objects["object_types"][-1]
+        else:
+            assert type <= self.n_object_types, print(
+                f"Newly added object must be one of the existing types (currently {np.unique(self.objects['object_types'])}) or the next one along ({self.n_object_types}), not {type}"
+            )
         type = np.array([type], int)
 
         self.objects["objects"] = np.append(self.objects["objects"], object, axis=0)
         self.objects["object_types"] = np.append(
             self.objects["object_types"], type, axis=0
         )
+        self.n_object_types = len(np.unique(self.objects["object_types"]))
         return
 
     def plot_environment(self, fig=None, ax=None, height=1):
@@ -284,20 +295,23 @@ class Environment:
                 )
 
             # plot objects
-            object_cmap = matplotlib.cm.get_cmap(self.object_colormap)
-            for (i, object) in enumerate(self.objects["objects"]):
-                object_color = object_cmap(
-                    self.objects["object_types"][i] / (self.n_object_types - 1 + 1e-8)
-                )
-                ax.scatter(
-                    object[0],
-                    object[1],
-                    facecolor=[0, 0, 0, 0],
-                    edgecolors=object_color,
-                    s=10,
-                    zorder=2,
-                    marker="o",
-                )
+            if self.plot_objects == True:
+                object_cmap = matplotlib.cm.get_cmap(self.object_colormap)
+                for (i, object) in enumerate(self.objects["objects"]):
+                    object_color = object_cmap(
+                        self.objects["object_types"][i]
+                        / (self.n_object_types - 1 + 1e-8)
+                    )
+                    ax.scatter(
+                        object[0],
+                        object[1],
+                        facecolor=[0, 0, 0, 0],
+                        edgecolors=object_color,
+                        s=10,
+                        zorder=2,
+                        marker="o",
+                    )
+
             ax.set_aspect("equal")
             ax.grid(False)
             ax.axis("off")
@@ -421,7 +435,7 @@ class Environment:
             pos1 (array): N x dimensionality array of poisitions
             pos2 (array): M x dimensionality array of positions
             wall_geometry: how the distance calculation handles walls in the env (can be "euclidean", "line_of_sight" or "geodesic")
-            return_vectors (False): If True, returns the distances and the vectors as a tuple
+            return_vectors (False): If True, returns the distances and the vectors (from pos2 to pos1) as a tuple
         Returns:
             N x M array of pairwise distances
         """

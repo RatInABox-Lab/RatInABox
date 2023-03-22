@@ -91,6 +91,7 @@ Here is a list of features loosely organised into three categories: those pertai
 * [Plotting rate maps](#rate-maps)
 * [Place cell models](#place-cell-models) 
 * [Place cell geometry](#geometry-of-placecells)
+* [Egocentric encodings](#egocentric-encodings)
 * [Deep neural networks](#more-complex-neuron-types-and-networks-of-neurons)
 
 Specific details can be found in the [paper]](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v3). 
@@ -228,6 +229,7 @@ We provide a list of premade `Neurons` subclasses. These include:
 * `VelocityCells`
 * `SpeedCells`
 * `FeedForwardLayer` - calculates activated weighted sum of inputs from a provide list of input `Neurons` layers.
+* Egocentric "field-of-view" cells
 
 This last class, `FeedForwardLayer` deserves special mention. Instead of its firing rate being determined explicitly by the state of the `Agent` it summates synaptic inputs from a provided list of input layers (which can be any `Neurons` subclass). This layer is the building block for how more complex networks can be studied using `RatInABox`. 
 
@@ -287,6 +289,21 @@ These place cells (with the exception of `"one_hot"`s) can all be made to phase 
 Choose how you want `PlaceCells` to interact with walls in the `Environment`. We provide three types of geometries.  
 
 <img src=".images/readme/wall_geometry.png" width=900>
+
+
+#### Egocentric encodings
+Most `RatInABox` cell classes are allocentric (e.g. `PlaceCells`, `GridCells` etc. do not depend on the agents point of view) not egocentric however `BoundaryVectorCells` (BVCs) and `ObjectVectorCells` (OVCs) can be either. `FieldOfViewNeurons` exploit this by arranging sets of egocentric BVC or OVCs to tile to agents local field of view creating a comprehensive egocentric encoding of what boundaries or objects the agent can 'see' from it's current point of view. A custom plotting function displays the tiling and the firing rates as shown below. 
+
+```python
+FoV_BVCs = FieldOfViewNeurons(Ag)
+FoV_OVCs = FieldOfViewNeurons(Ag,params={
+    'cell_type':'OVC',
+    #other params defining the field of view area (see source code),
+    })
+```
+
+<img src=".images/readme/field_of_view.gif" width=600>
+
 
 
 #### More complex Neuron types and networks of Neurons

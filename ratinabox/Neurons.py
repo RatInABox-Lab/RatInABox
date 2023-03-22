@@ -179,7 +179,7 @@ class Neurons:
         n_neurons_to_plot = len(chosen_neurons)
         if ("shift" not in kwargs.keys()) and ("overlap" not in kwargs.keys()):
             kwargs["shift"] = max(
-                2, min(4, 40 / n_neurons_to_plot)
+                1.5, min(4, 40 / n_neurons_to_plot)
             )  # scaled to make plots look nice and be ~constant size
             # the height must be constant
             kwargs["overlap"] = 2.2
@@ -1275,11 +1275,12 @@ class ObjectVectorCells(Neurons):
         flattened_vectors_to_objects = vectors_to_objects.reshape(
             -1, 2
         )  # (N_pos x N_objects, 2)
-        bearings_to_objects = utils.get_angle(
-            flattened_vectors_to_objects, is_array=True
-        ).reshape(
-            N_pos, N_objects
-        )  # (N_pos,N_objects)
+        bearings_to_objects = (
+            utils.get_angle(flattened_vectors_to_objects, is_array=True).reshape(
+                N_pos, N_objects
+            )
+            - np.pi
+        )  # (N_pos,N_objects) #vectors go from pos2 to pos1 so must do subtract pi from bearing
         if self.reference_frame == "egocentric":
             if evaluate_at == "agent":
                 vel = self.Agent.velocity
