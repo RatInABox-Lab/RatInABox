@@ -27,6 +27,8 @@ class Agent:
         • plot_position_heatmap()
         • plot_histogram_of_speeds()
         • plot_histogram_of_rotational_velocities()
+        • save_to_history()
+        • reset_history()
 
     The default params for this agent are:
         default_params = {
@@ -419,6 +421,11 @@ class Agent:
             self.history["rot_vel"].append(self.rotational_velocity)
         return
 
+    def reset_history(self):
+        for key in self.history.keys():
+            self.history[key] = []
+        return
+    
     def import_trajectory(
         self, times=None, positions=None, dataset=None, interpolate=True
     ):
@@ -547,7 +554,7 @@ class Agent:
         decay_point_size=False,
         decay_point_timescale=10,
         plot_agent=True,
-        color=None,
+        color='#7b699a',
         alpha=0.7,
         xlim=None,
         background_color=None,
@@ -566,7 +573,7 @@ class Agent:
             • decay_point_size: decay trajectory point size over time (recent times = largest)
             • decay_point_timescale: if decay_point_size is True, this is the timescale over which sizes decay
             • plot_agent: dedicated point show agent current position
-            • color: plot point color
+            • color: plot point color, if color == 'changing' will smoothly change trajectory color from start to finish
             • alpha: plot point opaqness
             • xlim: In 1D, forces the xlim to be a certain time (minutes) (useful if animating this function)
             • background_color: color of the background if not matplotlib default, only for 1D (probably white)
@@ -575,8 +582,7 @@ class Agent:
         Returns:
             fig, ax
         """
-        if color is None:
-            color = "C0"
+
         dt = self.dt
         t, pos = np.array(self.history["t"]), np.array(self.history["pos"])
         if t_end == None:
@@ -590,6 +596,15 @@ class Agent:
             skiprate = max(1, int((1 / framerate) / dt))
             trajectory = pos[startid:endid][::skiprate]
         time = t[startid:endid][::skiprate]
+        if color is None:
+            color = ["C0"]*len(time)
+        elif color == 'changing':
+            trajectory_cmap = matplotlib.cm.get_cmap('viridis_r')
+            color = [trajectory_cmap(t/len(time)) for t in range(len(time))]
+        else:
+            color = [color]*len(time)
+
+
 
         if self.Environment.dimensionality == "2D":
             fig, ax = self.Environment.plot_environment(fig=fig, ax=ax)
@@ -597,10 +612,10 @@ class Agent:
             if decay_point_size == True:
                 s = point_size * np.exp((time - time[-1]) / decay_point_timescale)
                 s[(time[-1] - time) > (1.5 * decay_point_timescale)] *= 0
-            c = [color] * len(time)
+            
             if plot_agent == True:
                 s[-1] = 40
-                c[-1] = "r"
+                color[-1] = "r"
 
             ax.scatter(
                 trajectory[:, 0],
@@ -608,7 +623,7 @@ class Agent:
                 s=s,
                 alpha=alpha,
                 zorder=0,
-                c=c,
+                c=color,
                 linewidth=0,
             )
         if self.Environment.dimensionality == "1D":
@@ -648,7 +663,7 @@ class Agent:
             t_end (_type_, optional): _description_. Defaults to None.
             fps: frames per second of end video
             speed_up: #times real speed animation should come out at
-            kwargs: passed to trajectory plotting function (chuck anything you wish in here)
+            kwargs: passed to trajectory plotting function (chuck anything you wish in here). A particularly useful kwarg is 'additional_plot_func': any function which takes a fig, ax and t as input. The animation wll be passed through this each time after plotting the trajectory, use it to modify your animations however you like
 
         Returns:
             animation
@@ -662,7 +677,7 @@ class Agent:
             t_end = self.history["t"][-1]
 
         def animate_(
-            i, fig, ax, t_start, t_max, speed_up, dt, additional_plot_func, **kwargs
+            i, fig, ax, t_start, t_max, speed_up, dt, kwargs
         ):
             t_end = t_start + (i + 1) * speed_up * dt
             ax.clear()
@@ -677,8 +692,8 @@ class Agent:
                 xlim=t_max / 60,
                 **kwargs,
             )
-            if additional_plot_func is not None:
-                fig, ax = additional_plot_func(
+            if 'additional_plot_func' in kwargs.keys():
+                fig, ax = kwargs['additional_plot_func'](
                     fig=fig, ax=ax, t=t_end, **kwargs  # the current time
                 )
 
@@ -691,19 +706,13 @@ class Agent:
 
         from matplotlib import animation
 
-        # if passed, after plotting the trajectory fig, ax are passed through this function.
-        # use it to add other things ontop of the animation
-        additional_plot_func = None
-        if "additional_plot_func" in kwargs.keys():
-            additional_plot_func = kwargs["additional_plot_func"]
-
         anim = matplotlib.animation.FuncAnimation(
             fig,
             animate_,
             interval=1000 * dt,
             frames=int((t_end - t_start) / (dt * speed_up)),
             blit=False,
-            fargs=(fig, ax, t_start, t_end, speed_up, dt, additional_plot_func),
+            fargs=(fig, ax, t_start, t_end, speed_up, dt, kwargs),
         )
         return anim
 
