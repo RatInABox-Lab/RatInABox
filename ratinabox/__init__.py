@@ -9,8 +9,6 @@ verbose = False
 
 
 
-
-
 #SOME PLOT FORMATTING STUFF
 figure_directory = None
 
@@ -22,17 +20,18 @@ def stylize_plots():
     from cycler import cycler
     darkgrey = [0.3,0.3,0.3,1]
     #FONT 
+    # for now we leave the font formatting out since it throws warnings on some systems and doesn't really add much. TODO: fix this
     # matplotlib.rcParams['pdf.fonttype'] = 42 #this is super weird, see http://phyletica.org/matplotlib-fonts/
-    matplotlib.rcParams['pdf.fonttype'] = 3 
-    rcParams['font.family'] = 'sans-serif'
-    rcParams['font.sans-serif'] = 'Helvetica'
+    # matplotlib.rcParams['pdf.fonttype'] = 3 
+    # rcParams['font.family'] = 'sans-serif' 
+    # rcParams['font.sans-serif'] = 'Helvetica' 
     rcParams['text.color'] = darkgrey
     rcParams['axes.labelcolor'] = darkgrey
     rcParams['xtick.color'] = darkgrey
     rcParams['ytick.color'] = darkgrey
     #FIGURE
-    rcParams['figure.dpi']= 400
-    rcParams['figure.figsize'] = [2,2] #2 x 2 inches
+    rcParams['figure.dpi']= 150
+    rcParams['figure.figsize'] = [1,1] #2 x 2 inches
     rcParams['figure.titlesize']='medium'
     #AXES
     rcParams['axes.labelsize']=8

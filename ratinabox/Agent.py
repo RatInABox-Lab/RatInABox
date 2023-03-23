@@ -601,6 +601,7 @@ class Agent:
         elif color == 'changing':
             trajectory_cmap = matplotlib.cm.get_cmap('viridis_r')
             color = [trajectory_cmap(t/len(time)) for t in range(len(time))]
+            decay_point_size = False #if changing colour, may as well show WHOLE trajectory 
         else:
             color = [color]*len(time)
 
