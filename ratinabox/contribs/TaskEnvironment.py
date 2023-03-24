@@ -11,7 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import gym
-from gym.spaces import Box, Space
+from gym.spaces import Box, Space, Dict
 
 from types import NoneType
 from typing import List, Union
@@ -19,27 +19,6 @@ import warnings
 
 from ratinabox.Environment import Environment
 from ratinabox.Agent import Agent
-
-class Objective():
-    """
-    Abstract `Objective` class that can be used to define finishing coditions
-    for a task
-    """
-    def __init__(self, env:TaskEnvironment):
-        self.env = env
-
-    def check(self):
-        """
-        Check if the objective is satisfied
-        """
-        raise NotImplementedError("check() must be implemented")
-
-    def __call__(self):
-        """
-        Can be used to report its value to the environment
-        (Not required -- just a convenience)
-        """
-        raise NotImplementedError("__call__() must be implemented")
 
 class TaskEnvironment(Environment, gym.Env):
     """
@@ -81,32 +60,42 @@ class TaskEnvironment(Environment, gym.Env):
         # Setup gym primatives
         # ----------------------------------------------
         # Setup observation space from the Environment space
-        ext = [env.extent[i:i+2] for i in np.arange(0, len(env.extent), 2)]
+        ext = [self.extent[i:i+2] for i in np.arange(0, len(self.extent), 2)]
         lows, highs = np.array(list(zip(*ext)), dtype=np.float_)
         self.observation_space:Space = \
                 Box(low=lows, high=highs, dtype=np.float_)
+        self.action_space:List[Space] = Dict({})
 
-        # Setup action spaces, SET WHEN AGENTS ARE ADDED
-        # ----------------------------------------------
-        # Not yet clear how this ought to be implemented        
-        # ----------------------------------------------
-
-    def add_agents(self, agents:Union[List[Agent], Agent]):
+    def add_agents(self, agents:Union[List[Agent], Agent],
+                   names=None, maxvel:float=50.0, **kws):
         """
         Add agents to the environment
+
+        For each agent, we add its action space (expressed as velocities it can
+        take) to the environment's action space.
 
         Parameters
         ----------
         agents : List[Agent] | Agent
             The agents to add to the environment
+        names : List[str] | None
+            The names of the agents. If None, then the names are generated
+        maxvel : float
+            The maximum velocity that the agents can take
         """
         if not isinstance(agents, (list, Agent)):
             raise TypeError("agents must be a list of agents or an agent type")
         if isinstance(agents, Agent):
             agents = [agents]
         # Enlist agents
-        for agent in agents:
+        if names is None:
+            start = len(self.Agents)
+            names = ["agent_" + str(start+i) for i in range(len(agents))]
+        for (name, agent) in zip(names, agents):
             self.Agents.append(agent)
+            # Add the agent's action space to the environment's action space
+            D = int(self.dimensionality[0])
+            self.action_space[name] = Box(low=0, high=maxvel, shape=(D,))
 
     def is_done(self):
         """
@@ -147,7 +136,26 @@ class TaskEnvironment(Environment, gym.Env):
     def read_episodes(self)->pd.DataFrame:
         pass
 
+class Objective():
+    """
+    Abstract `Objective` class that can be used to define finishing coditions
+    for a task
+    """
+    def __init__(self, env:TaskEnvironment):
+        self.env = env
 
+    def check(self):
+        """
+        Check if the objective is satisfied
+        """
+        raise NotImplementedError("check() must be implemented")
+
+    def __call__(self):
+        """
+        Can be used to report its value to the environment
+        (Not required -- just a convenience)
+        """
+        raise NotImplementedError("__call__() must be implemented")
 
 class SpatialGoalObjective(Objective):
     """
@@ -241,7 +249,7 @@ class SpatialGoalEnvironment(TaskEnvironment):
         if isinstance(possible_goal_pos, str):
             if possible_goal_pos.startswith('random'):
                 n = int(possible_goal_pos.split('_')[1])
-                ext = [env.extent[i:i+2] for i in np.arange(0, len(env.extent), 2)]
+                ext = [self.extent[i:i+2] for i in np.arange(0, len(self.extent), 2)]
                 possible_goal_pos = [np.random.random(n) * \
                                      (ext[i][1] - ext[i][0]) + ext[i][0]
                                      for i in range(len(ext))]
