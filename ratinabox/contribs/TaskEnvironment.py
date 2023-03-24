@@ -174,8 +174,9 @@ class Objective():
     Abstract `Objective` class that can be used to define finishing coditions
     for a task
     """
-    def __init__(self, env:TaskEnvironment):
+    def __init__(self, env:TaskEnvironment, reward_value=1.0):
         self.env = env
+        self.reward_value = reward_value
 
     def check(self):
         """
@@ -198,8 +199,12 @@ class SpatialGoalObjective(Objective):
     ----------
     env : TaskEnvironment
         The environment that the objective is defined in
+    reward_value : float
+        The reward value that the objective gives
     goal_pos : np.ndarray | None
         The position that the agent must reach
+    goal_radius : float | None
+        The radius around the goal position that the agent must reach
     """
     def __init__(self, *pos, goal_pos:Union[np.ndarray,None], 
                  goal_radius=None, **kws):
@@ -224,11 +229,20 @@ class SpatialGoalObjective(Objective):
         ----------
         agents : List[Agent]
             The agents to check the objective for (usually just one)
+
+        Returns
+        -------
+        rewards : List[float]
+            The rewards for each agent
+        which_agents : np.ndarray
+            The indices of the agents that reached the goal
         """
         agents_reached_goal = [
             self._in_goal_radius(agent.pos, self.goal_pos).all().any()
                                for agent in agents]
-        return any(agents_reached_goal)
+        which_agents = np.where(agents_reached_goal)[0]
+        rewards = [self.reward_value] * len(which_agents)
+        return rewards, which_agents
 
     def __call__(self)->np.ndarray:
         """
@@ -444,8 +458,12 @@ class SpatialGoalEnvironment(TaskEnvironment):
         i_objective = 0
         # Loop through objectives, checking if they are satisfied
         while i_objective < len(self.objectives):
-            if self.objectives[i_objective].check(self.Agents):
+            rewards, agents = self.objectives[i_objective].check(self.Agents)
+            if len(agents):
                 self.objectives.pop(i_objective)
+                # Set the reward for the agent(s)
+                for (agent, reward) in zip(agents, rewards):
+                    self.reward_space[agent] = reward
             else:
                 i_objective += 1
         # Return if no objectives left
