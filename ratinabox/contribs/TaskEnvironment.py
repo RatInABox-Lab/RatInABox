@@ -65,6 +65,8 @@ class TaskEnvironment(Environment, gym.Env):
         self.observation_space:Space = \
                 Box(low=lows, high=highs, dtype=np.float_)
         self.action_space:List[Space] = Dict({})
+        self.reward_space:List[float] = []
+        self.info:dict = {} # gynasiym returns an info dict in step()
 
     def add_agents(self, agents:Union[List[Agent], Agent],
                    names=None, maxvel:float=50.0, **kws):
@@ -96,6 +98,7 @@ class TaskEnvironment(Environment, gym.Env):
             # Add the agent's action space to the environment's action space
             D = int(self.dimensionality[0])
             self.action_space[name] = Box(low=0, high=maxvel, shape=(D,))
+            self.reward_space.append(0.0)
 
     def is_done(self):
         """
@@ -122,9 +125,39 @@ class TaskEnvironment(Environment, gym.Env):
                 agent.update()
         # ---------------------------------------------------------------
 
-    def step(self, *pos, **kws):
-        """Alias to satisfy openai compatibility"""
+    def step(self, drift_velocity, dt=None, 
+             drift_to_random_strength_ratio=1, *pos, **kws):
+        """
+            step()
+
+        step() functions in Gynasium paradigm usually take an action space
+        action, and return the next state, reward, whether the state is
+        terminal, and an information dict
+
+        different from update(), which updates this environment. this function
+        executes a full step on the environment with an action from the agents
+        """
+        # Udpate the environment
         self.update(*pos, **kws)
+
+        # If the user passed drift_velocity, update the agents
+        drift_velocity = drift_velocity if \
+                isinstance(drift_velocity, list) \
+                else [drift_velocity]*len(self.Agents)
+        for (agent, drift_velocity) in zip(self.Agents, drift_velocity):
+            dt = dt if dt is not None else agent.dt
+            agent.update(dt=dt, drift_velocity=drift_velocity,
+                         drift_to_random_strength_ratio= \
+                                 drift_to_random_strength_ratio)
+
+        # Return the next state, reward, whether the state is terminal,
+        return self.get_state(), self.reward, self.is_done(), self.info
+        
+    def get_state(self):
+        """
+        Get the current state of the environment
+        """
+        return [agent.pos for agent in self.Agents]
 
     # ----------------------------------------------
     # Reading and writing episod data
@@ -422,8 +455,12 @@ class SpatialGoalEnvironment(TaskEnvironment):
     def update(self, *pos, **kws):
         """
         Update the environment
+
+        if drift_velocity is passed, update the agents
         """
-        super().update()
+        # Update the environment
+        super().update(*pos, **kws)
+
         # Check if we are done
         if self.is_done():
             self.reset()
