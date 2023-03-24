@@ -65,7 +65,7 @@ class TaskEnvironment(Environment, gym.Env):
         self.observation_space:Space = \
                 Box(low=lows, high=highs, dtype=np.float_)
         self.action_space:List[Space] = Dict({})
-        self.reward_space:List[float] = []
+        self.rewards:List[float] = []
         self.info:dict = {} # gynasiym returns an info dict in step()
 
     def add_agents(self, agents:Union[List[Agent], Agent],
@@ -98,7 +98,7 @@ class TaskEnvironment(Environment, gym.Env):
             # Add the agent's action space to the environment's action space
             D = int(self.dimensionality[0])
             self.action_space[name] = Box(low=0, high=maxvel, shape=(D,))
-            self.reward_space.append(0.0)
+            self.rewards.append(0.0)
 
     def is_done(self):
         """
@@ -151,7 +151,7 @@ class TaskEnvironment(Environment, gym.Env):
                                  drift_to_random_strength_ratio)
 
         # Return the next state, reward, whether the state is terminal,
-        return self.get_state(), self.reward, self.is_done(), self.info
+        return self.get_state(), self.rewards, self.is_done(), self.info
         
     def get_state(self):
         """
@@ -321,6 +321,14 @@ class SpatialGoalEnvironment(TaskEnvironment):
             goal_pos = None # No goal state (this could be, e.g., a lockout time)
         return goal_pos
 
+    def get_goals(self):
+        """
+        Get the current goal positions
+
+        (shortcut func)
+        """
+        return [obj.goal_pos for obj in self.objectives]
+
     def reset(self, goal_locations:np.ndarray|None=None, n_goals=None):
         """
             reset
@@ -406,7 +414,7 @@ class SpatialGoalEnvironment(TaskEnvironment):
                 if not len(agent.history['pos']):
                     his = plt.plot(*poshist.T, 'k', linewidth=0.2,
                                    linestyle='dotted')
-                R["agent_history"].append(his)
+                    R["agent_history"].append(his)
                 ag = plt.scatter(*pos.T, **ag_scatter_default)
                 R["agents"].append(ag)
         else:
@@ -463,7 +471,7 @@ class SpatialGoalEnvironment(TaskEnvironment):
                 self.objectives.pop(i_objective)
                 # Set the reward for the agent(s)
                 for (agent, reward) in zip(agents, rewards):
-                    self.reward_space[agent] = reward
+                    self.rewards[agent] = reward
             else:
                 i_objective += 1
         # Return if no objectives left
@@ -488,7 +496,7 @@ if active and __name__ == "__main__":
 
     plt.close('all')
     env = SpatialGoalEnvironment(n_goals=1, params={'dimensionality':'2D'},
-                                 render_every=100,
+                                 render_every=1,
                                  verbose=False)
     Ag = Agent(env)
     env.add_agents(Ag)
@@ -498,18 +506,32 @@ if active and __name__ == "__main__":
     # to the environment's list of agents.
     env.reset()
 
+    # Prep the rendering figure
     plt.ion()
     env.render()
     plt.show()
     plt.pause(0.1)
-    
+
+    # Define some helper functions
+    get_goal_vector = lambda: \
+            env.get_goals()[0][0] - Ag.pos
+    get_goal_distance = lambda: \
+            np.linalg.norm(get_goal_vector())
+
+    # Run the simulation, with the agent drifting towards the goal when
+    # it is close to the goal
     while True:
-        env.update()
+        if get_goal_distance() < 0.33:
+            dir_to_reward = get_goal_vector()
+            print("dir_to_reward", dir_to_reward)
+            drift_velocity = 3 * Ag.speed_mean * \
+                    (dir_to_reward / np.linalg.norm(dir_to_reward))
+        else:
+            drift_velocity = None
+        new_state, reward, done, info = env.step(drift_velocity)
         env.render()
-        Ag.update()
-        plt.pause(0.1)
-        if env.is_done():
-            print("goal reached!")
+        plt.pause(0.005)
+        if done:
+            print("done! reward:", reward)
             break
     
-    # env.render()
