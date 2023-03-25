@@ -33,6 +33,8 @@ class TaskEnvironment(Environment, gym.Env):
 
     # Inputs
     --------
+    *pos : list
+        Positional arguments to pass to Environment
     verbose : bool
         Whether to print out information about the environment
     render_mode : str
@@ -40,6 +42,8 @@ class TaskEnvironment(Environment, gym.Env):
         'none'
     render_every : int
         How often to render the environment (in time steps)
+    **kws :
+        Keyword arguments to pass to Environment
     """
     def __init__(self, *pos, verbose=False,
                  render_mode='matplotlib', render_every=2, **kws):
@@ -125,7 +129,7 @@ class TaskEnvironment(Environment, gym.Env):
                 agent.update()
         # ---------------------------------------------------------------
 
-    def step(self, drift_velocity, dt=None, 
+    def step(self, drift_velocity=None, dt=None, 
              drift_to_random_strength_ratio=1, *pos, **kws):
         """
             step()
@@ -212,14 +216,16 @@ class SpatialGoalObjective(Objective):
         if self.env.verbose:
             print("new SpatialGoalObjective: goal_pos = {}".format(goal_pos))
         self.goal_pos = goal_pos
-        self.radius = self.env.dx * 10 if goal_radius is None else goal_radius
+        self.radius = np.min((self.env.dx * 10, np.ptp(self.env.extent)/10)) if goal_radius is None else goal_radius
     
     def _in_goal_radius(self, pos, goal_pos):
         """
         Check if a position is within a radius of a goal position
         """
         radius = self.radius
-        return np.linalg.norm(pos - goal_pos, axis=1) < radius
+        return np.linalg.norm(pos - goal_pos, axis=1) < radius \
+                if np.ndim(goal_pos) > 1 \
+                else np.abs((pos - goal_pos)) < radius
 
     def check(self, agents:List[Agent]):
         """
@@ -240,9 +246,13 @@ class SpatialGoalObjective(Objective):
         agents_reached_goal = [
             self._in_goal_radius(agent.pos, self.goal_pos).all().any()
                                for agent in agents]
-        which_agents = np.where(agents_reached_goal)[0]
-        rewards = [self.reward_value] * len(which_agents)
-        return rewards, which_agents
+        rewarded_agents = np.where(agents_reached_goal)[0]
+        rewards = [self.reward_value] * len(rewarded_agents)
+        if self.env.verbose:
+            print("SpatialGoalObjective.check(): ",
+                  "rewarded_agents = {}".format(rewarded_agents),
+                  "rewards = {}".format(rewards))
+        return rewards, rewarded_agents
 
     def __call__(self)->np.ndarray:
         """
@@ -257,6 +267,10 @@ class SpatialGoalEnvironment(TaskEnvironment):
 
     Parameters
     ----------
+    *pos : 
+        Positional arguments for TaskEnvironment
+            - n_agents : int
+            - 
     possible_goal_pos : List[np.ndarray] | np.ndarray
         List of possible goal positions
     current_goal_state : np.ndarray | None
@@ -264,9 +278,15 @@ class SpatialGoalEnvironment(TaskEnvironment):
     n_goals : int
         The number of goals to set
     """
+    # --------------------------------------
+    # Some reasonable default render settings
+    # --------------------------------------
+    ag_annotate_default={'fontsize':10}
+    ag_scatter_default={'marker':'o'}
+    sg_scatter_default={'marker':'x', 'c':'r'}
 
     def __init__(self, *pos, 
-                 possible_goal_pos:List[np.ndarray]|np.ndarray|str='random_4', 
+                 possible_goal_pos:List|np.ndarray|str='random_4', 
                  current_goal_state:Union[NoneType,np.ndarray,List[np.ndarray]]=None, 
                  n_goals:int=1,
                  **kws):
@@ -277,7 +297,7 @@ class SpatialGoalEnvironment(TaskEnvironment):
         if current_goal_state is None:
             self.reset()
 
-    def _init_poss_goals(self, possible_goal_pos:List[np.ndarray]|np.ndarray|str):
+    def _init_poss_goals(self, possible_goal_pos:List|np.ndarray|str):
         """ 
         Initialize the possible goal positions 
 
@@ -296,7 +316,8 @@ class SpatialGoalEnvironment(TaskEnvironment):
         if isinstance(possible_goal_pos, str):
             if possible_goal_pos.startswith('random'):
                 n = int(possible_goal_pos.split('_')[1])
-                ext = [self.extent[i:i+2] for i in np.arange(0, len(self.extent), 2)]
+                ext = [self.extent[i:i+2] 
+                       for i in np.arange(0, len(self.extent), 2)]
                 possible_goal_pos = [np.random.random(n) * \
                                      (ext[i][1] - ext[i][0]) + ext[i][0]
                                      for i in range(len(ext))]
@@ -304,10 +325,10 @@ class SpatialGoalEnvironment(TaskEnvironment):
             else:
                 raise ValueError("possible_goal_pos string must start with "
                                  "'random'")
-        else:
+        elif not isinstance(possible_goal_pos, (list, np.ndarray)):
             raise ValueError("possible_goal_pos must be a list of np.ndarrays, "
                          "a string, or None")
-        return possible_goal_pos
+        return np.array(possible_goal_pos)
 
     def _propose_spatial_goal(self):
         """
@@ -376,32 +397,45 @@ class SpatialGoalEnvironment(TaskEnvironment):
         """
         Render the environment using matplotlib
         """
-        ag_annotate_default={'fontsize':10}
-        ag_scatter_default={'marker':'o'}
-        sg_scatter_default={'marker':'x', 'c':'r'}
 
         if np.mod(self.t, self.render_every) != 0:
             # Skip rendering unless this is redraw time
             return None
 
+        R = self._get_mpl_render_cache()
+    
+        # Render the environment
+        self._render_mpl_env()
+
+        # Render the agents
+        self._render_mpl_agents()
+
+        # Render the spatial goals
+        self._render_mpl_spat_goals()
+
+    def _get_mpl_render_cache(self):
         if "matplotlib" not in self._stable_render_objects:
             R = self._stable_render_objects["matplotlib"] = {}
         else:
             R = self._stable_render_objects["matplotlib"]
-
         if "fig" not in R:
             fig, ax = plt.subplots(1,1)
             R["fig"] = fig
             R["ax"] = ax
         else:
             fig, ax = R["fig"], R["ax"]
-
+        return R, fig, ax
+    
+    def _render_mpl_env(self):
+        R, fig, ax = self._get_mpl_render_cache()
         if "environment" not in R:
             R["environment"] = self.plot_environment(fig=fig, ax=ax)
             R["title"] = fig.suptitle("t={}".format(self.t))
         else:
             R["title"].set_text("t={}".format(self.t))
 
+    def _render_mpl_agents(self):
+        R, fig, ax = self._get_mpl_render_cache()
         if "agents" not in R:
             R["agents"] = []
             R["agent_history"] = []
@@ -409,13 +443,17 @@ class SpatialGoalEnvironment(TaskEnvironment):
                 # set 🐀 location
                 pos = agent.pos
                 poshist = np.vstack((
-                    np.reshape(agent.history["pos"],(-1,2)),
+                    np.reshape(agent.history["pos"],(-1,len(agent.pos))),
                     np.atleast_2d(pos)))
                 if not len(agent.history['pos']):
                     his = plt.plot(*poshist.T, 'k', linewidth=0.2,
                                    linestyle='dotted')
                     R["agent_history"].append(his)
-                ag = plt.scatter(*pos.T, **ag_scatter_default)
+                    if len(agent.pos) == 2:
+                        x,y = pos.T
+                    else:
+                        x,y = 0, pos
+                ag = plt.scatter(x, y, **self.ag_scatter_default)
                 R["agents"].append(ag)
         else:
             for i, agent in enumerate(self.Agents):
@@ -424,11 +462,17 @@ class SpatialGoalEnvironment(TaskEnvironment):
                 his = R["agent_history"][i]
                 his[0].set_data(*np.array(agent.history["pos"]).T)
 
+    def _render_mpl_spat_goals(self):
+        R, fig, ax = self._get_mpl_render_cache()
         if "spat_goals" not in R:
             R["spat_goals"] = []
             R["spat_goal_radius"] = []
             for spat_goal in self.objectives:                
-                sg = plt.scatter(*spat_goal().T, **sg_scatter_default)
+                if self.dimensionality == "2D":
+                    x,y = spat_goal().T
+                else:
+                    x,y = np.zeros(np.shape(spat_goal())), spat_goal()
+                sg = plt.scatter(x,y, **self.sg_scatter_default)
                 ci = plt.Circle(spat_goal().ravel(), spat_goal.radius,
                                 facecolor="red", alpha=0.2)
                 ax.add_patch(ci)
@@ -463,17 +507,22 @@ class SpatialGoalEnvironment(TaskEnvironment):
         Whether the current state is a terminal state
         """
         # Check our objectives
-        i_objective = 0
+        test_objective = 0
         # Loop through objectives, checking if they are satisfied
-        while i_objective < len(self.objectives):
-            rewards, agents = self.objectives[i_objective].check(self.Agents)
+        while test_objective < len(self.objectives):
+            rewards, agents = self.objectives[test_objective].check(self.Agents)
             if len(agents):
-                self.objectives.pop(i_objective)
+                self.objectives.pop(test_objective)
                 # Set the reward for the agent(s)
                 for (agent, reward) in zip(agents, rewards):
                     self.rewards[agent] = reward
+                # Verbose debugging
+                if self.verbose:
+                    print("objective {} satisfied by agents {}".format(
+                    test_objective, agents),
+                    "remaining objectives {}".format(len(self.objectives)))
             else:
-                i_objective += 1
+                test_objective += 1
         # Return if no objectives left
         no_objectives_left = len(self.objectives) == 0
         return no_objectives_left
@@ -495,9 +544,9 @@ active = True
 if active and __name__ == "__main__":
 
     plt.close('all')
-    env = SpatialGoalEnvironment(n_goals=1, params={'dimensionality':'2D'},
+    env = SpatialGoalEnvironment(n_goals=2, params={'dimensionality':'2D'},
                                  render_every=1,
-                                 verbose=False)
+                                 verbose=True)
     Ag = Agent(env)
     env.add_agents(Ag)
     # Note: if Agent() class detects if its env is a TaskEnvironment,
@@ -507,19 +556,16 @@ if active and __name__ == "__main__":
     env.reset()
 
     # Prep the rendering figure
-    plt.ion()
-    env.render()
-    plt.show()
+    plt.ion(); env.render(); plt.show()
     plt.pause(0.1)
 
     # Define some helper functions
-    get_goal_vector = lambda: \
-            env.get_goals()[0][0] - Ag.pos
-    get_goal_distance = lambda: \
-            np.linalg.norm(get_goal_vector())
+    get_goal_vector   = lambda: env.get_goals()[0][0] - Ag.pos
+    get_goal_distance = lambda: np.linalg.norm(get_goal_vector())
 
     # Run the simulation, with the agent drifting towards the goal when
     # it is close to the goal
+    s = input("Press enter to start")
     while True:
         if get_goal_distance() < 0.33:
             dir_to_reward = get_goal_vector()
@@ -530,7 +576,7 @@ if active and __name__ == "__main__":
             drift_velocity = None
         new_state, reward, done, info = env.step(drift_velocity)
         env.render()
-        plt.pause(0.005)
+        plt.pause(0.00001)
         if done:
             print("done! reward:", reward)
             break
