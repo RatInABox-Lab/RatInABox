@@ -45,6 +45,9 @@ class TaskEnvironment(Environment, gym.Env):
     **kws :
         Keyword arguments to pass to Environment
     """
+
+    
+
     def __init__(self, *pos, verbose=False,
                  render_mode='matplotlib', render_every=2, **kws):
         super().__init__(*pos, **kws)
@@ -172,6 +175,95 @@ class TaskEnvironment(Environment, gym.Env):
 
     def read_episodes(self)->pd.DataFrame:
         pass
+
+    # ----------------------------------------------
+    # Rendering
+    # ----------------------------------------------
+    def render(self, render_mode=None, *pos, **kws):
+        """
+        Render the environment
+        """
+        if render_mode is None:
+            render_mode = self.render_mode
+        if self.verbose:
+            print("rendering environment with mode: {}".format(render_mode))
+        if render_mode == 'matplotlib':
+            self._render_matplotlib(*pos, **kws)
+        elif render_mode == 'pygame':
+            self._render_pygame(*pos, **kws)
+        elif render_mode == 'none':
+            pass
+        else:
+            raise ValueError("method must be 'matplotlib' or 'pygame'")
+
+    def _render_matplotlib(self, *pos, **kws):
+        """
+        Render the environment using matplotlib
+        """
+
+        if np.mod(self.t, self.render_every) != 0:
+            # Skip rendering unless this is redraw time
+            return False
+
+        R = self._get_mpl_render_cache()
+    
+        # Render the environment
+        self._render_mpl_env()
+
+        # Render the agents
+        self._render_mpl_agents()
+
+        return True
+
+    def _get_mpl_render_cache(self):
+        if "matplotlib" not in self._stable_render_objects:
+            R = self._stable_render_objects["matplotlib"] = {}
+        else:
+            R = self._stable_render_objects["matplotlib"]
+        if "fig" not in R:
+            fig, ax = plt.subplots(1,1)
+            R["fig"] = fig
+            R["ax"] = ax
+        else:
+            fig, ax = R["fig"], R["ax"]
+        return R, fig, ax
+    
+    def _render_mpl_env(self):
+        R, fig, ax = self._get_mpl_render_cache()
+        if "environment" not in R:
+            R["environment"] = self.plot_environment(fig=fig, ax=ax)
+            R["title"] = fig.suptitle("t={}".format(self.t))
+        else:
+            R["title"].set_text("t={}".format(self.t))
+
+    def _render_mpl_agents(self):
+        R, fig, ax = self._get_mpl_render_cache()
+        if "agents" not in R:
+            R["agents"] = []
+            R["agent_history"] = []
+            for agent in self.Agents:
+                # set 🐀 location
+                pos = agent.pos
+                poshist = np.vstack((
+                    np.reshape(agent.history["pos"],(-1,len(agent.pos))),
+                    np.atleast_2d(pos)))
+                if not len(agent.history['pos']):
+                    his = plt.plot(*poshist.T, 'k', linewidth=0.2,
+                                   linestyle='dotted')
+                    R["agent_history"].append(his)
+                    if len(agent.pos) == 2:
+                        x,y = pos.T
+                    else:
+                        x,y = 0, pos
+                ag = plt.scatter(x, y, **self.ag_scatter_default)
+                R["agents"].append(ag)
+        else:
+            for i, agent in enumerate(self.Agents):
+                scat = R["agents"][i]
+                scat.set_offsets(agent.pos)
+                his = R["agent_history"][i]
+                his[0].set_data(*np.array(agent.history["pos"]).T)
+
 
 class Objective():
     """
@@ -376,91 +468,13 @@ class SpatialGoalEnvironment(TaskEnvironment):
         # Clear rendering cache
         self.clear_render_cache()
 
-    def render(self, render_mode=None, *pos, **kws):
+    def _render_matplotlib(self, **kws):
         """
-        Render the environment
+        Take existing mpl render and add spatial goals
         """
-        if render_mode is None:
-            render_mode = self.render_mode
-        if self.verbose:
-            print("rendering environment with mode: {}".format(render_mode))
-        if render_mode == 'matplotlib':
-            self._render_matplotlib(*pos, **kws)
-        elif render_mode == 'pygame':
-            self._render_pygame(*pos, **kws)
-        elif render_mode == 'none':
-            pass
-        else:
-            raise ValueError("method must be 'matplotlib' or 'pygame'")
-
-    def _render_matplotlib(self, *pos, **kws):
-        """
-        Render the environment using matplotlib
-        """
-
-        if np.mod(self.t, self.render_every) != 0:
-            # Skip rendering unless this is redraw time
-            return None
-
-        R = self._get_mpl_render_cache()
-    
-        # Render the environment
-        self._render_mpl_env()
-
-        # Render the agents
-        self._render_mpl_agents()
-
-        # Render the spatial goals
-        self._render_mpl_spat_goals()
-
-    def _get_mpl_render_cache(self):
-        if "matplotlib" not in self._stable_render_objects:
-            R = self._stable_render_objects["matplotlib"] = {}
-        else:
-            R = self._stable_render_objects["matplotlib"]
-        if "fig" not in R:
-            fig, ax = plt.subplots(1,1)
-            R["fig"] = fig
-            R["ax"] = ax
-        else:
-            fig, ax = R["fig"], R["ax"]
-        return R, fig, ax
-    
-    def _render_mpl_env(self):
-        R, fig, ax = self._get_mpl_render_cache()
-        if "environment" not in R:
-            R["environment"] = self.plot_environment(fig=fig, ax=ax)
-            R["title"] = fig.suptitle("t={}".format(self.t))
-        else:
-            R["title"].set_text("t={}".format(self.t))
-
-    def _render_mpl_agents(self):
-        R, fig, ax = self._get_mpl_render_cache()
-        if "agents" not in R:
-            R["agents"] = []
-            R["agent_history"] = []
-            for agent in self.Agents:
-                # set 🐀 location
-                pos = agent.pos
-                poshist = np.vstack((
-                    np.reshape(agent.history["pos"],(-1,len(agent.pos))),
-                    np.atleast_2d(pos)))
-                if not len(agent.history['pos']):
-                    his = plt.plot(*poshist.T, 'k', linewidth=0.2,
-                                   linestyle='dotted')
-                    R["agent_history"].append(his)
-                    if len(agent.pos) == 2:
-                        x,y = pos.T
-                    else:
-                        x,y = 0, pos
-                ag = plt.scatter(x, y, **self.ag_scatter_default)
-                R["agents"].append(ag)
-        else:
-            for i, agent in enumerate(self.Agents):
-                scat = R["agents"][i]
-                scat.set_offsets(agent.pos)
-                his = R["agent_history"][i]
-                his[0].set_data(*np.array(agent.history["pos"]).T)
+        if super()._render_matplotlib(**kws):
+            # Render the spatial goals
+            self._render_mpl_spat_goals()
 
     def _render_mpl_spat_goals(self):
         R, fig, ax = self._get_mpl_render_cache()
