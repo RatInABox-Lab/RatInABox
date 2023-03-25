@@ -8,6 +8,9 @@ from ratinabox.Agent import Agent
 import numpy as np
 import pandas as pd
 
+import matplotlib.pyplot as plt
+plt.ion()
+
 records = pd.DataFrame()
 
 @pytest.fixture(params=[dict(dt=dt) for dt in (0.01,)])
@@ -81,13 +84,14 @@ def test_agent_can_reach_goal(EnvWithAgents: SpatialGoalEnvironment,
     """ Test that the agent can reach the goal """
     done = False
     steps = 0
+    Env, Agents = EnvWithAgents, EnvWithAgents.Agents
     while not done:
         if np.any(np.isnan([A.pos for A in EnvWithAgents.Agents])):
             raise ValueError("Agent pos is NaN")
-        action = best_drift_velocity(EnvWithAgents.Agents, EnvWithAgents)
+        action = best_drift_velocity(Agents, Env)
         if np.any(np.isnan(action)):
             raise ValueError("Action is NaN")
-        _, reward, done, _ = EnvWithAgents.step(action)
+        _, reward, done, _ = Env.step(action)
         steps += 1
         if steps > less_than_steps:
             # This should be reached before because we're taking the best
