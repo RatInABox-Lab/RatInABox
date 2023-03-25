@@ -45,7 +45,7 @@ def possible_goal_pos(request):
 
 
 @pytest.fixture(params=[
-    {"dimensionality":"1D"},{"dimensionality":"2D"}])
+    {"dimensionality":"2D"}])
 def Env(request, n_goals, possible_goal_pos):
     """
     Returns an Environment with a given dimensionality

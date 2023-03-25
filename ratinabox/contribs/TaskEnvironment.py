@@ -146,7 +146,7 @@ class TaskEnvironment(Environment, gym.Env):
 
         # If the user passed drift_velocity, update the agents
         drift_velocity = drift_velocity if \
-                isinstance(drift_velocity, list) \
+                isinstance(drift_velocity, (np.ndarray,list)) \
                 else [drift_velocity]*len(self.Agents)
         for (agent, drift_velocity) in zip(self.Agents, drift_velocity):
             dt = dt if dt is not None else agent.dt
@@ -469,9 +469,9 @@ class SpatialGoalEnvironment(TaskEnvironment):
             R["spat_goal_radius"] = []
             for spat_goal in self.objectives:                
                 if self.dimensionality == "2D":
-                    x,y = spat_goal().T
+                    x, y = spat_goal().T
                 else:
-                    x,y = np.zeros(np.shape(spat_goal())), spat_goal()
+                    x, y = np.zeros(np.shape(spat_goal())), spat_goal()
                 sg = plt.scatter(x,y, **self.sg_scatter_default)
                 ci = plt.Circle(spat_goal().ravel(), spat_goal.radius,
                                 facecolor="red", alpha=0.2)
