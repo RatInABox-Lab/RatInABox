@@ -49,19 +49,27 @@ class TaskEnvironment(Environment, gym.Env):
     
 
     def __init__(self, *pos, verbose=False,
-                 render_mode='matplotlib', render_every=2, **kws):
+                 render_mode='matplotlib', 
+                 render_every=None, render_every_framestep=2,
+                 dt=0.01, teleport_on_reset=False, **kws):
         super().__init__(*pos, **kws)
         self.episode_history:List[pd.Series] = [] # Written to upon completion of an episode
         self.objectives:List[Objective] = [] # List of current objectives to saitsfy
         self.dynamic_walls = []      # List of walls that can change/move
         self.dynamic_objects = []    # List of current objects that can move
         self.Agents:List[Agent] = [] # List of agents in the environment
-        self.t = 0                   # Current time step
-        self.render_every = render_every # How often to render
+        self.t = 0                   # Current time
+        self.dt = dt                 # Time step
+        self.render_every = render_every_framestep # How often to render
         self.verbose = verbose
         self.render_mode:str = render_mode # options 'matplotlib'|'pygame'|'none'
         self._stable_render_objects:dict = {} # objects that are stable across
                                          # a rendering type
+
+        # ----------------------------------------------
+        # Agent-related task config
+        # ----------------------------------------------
+        self.teleport_on_reset = teleport_on_reset # Whether to teleport agents to random
 
         # ----------------------------------------------
         # Setup gym primatives
@@ -96,6 +104,8 @@ class TaskEnvironment(Environment, gym.Env):
             raise TypeError("agents must be a list of agents or an agent type")
         if isinstance(agents, Agent):
             agents = [agents]
+        if not ([agent.dt == self.dt for agent in agents]):
+            raise NotImplementedError("Does not yet support agents with different dt from envrionment")
         # Enlist agents
         if names is None:
             start = len(self.Agents)
@@ -117,13 +127,20 @@ class TaskEnvironment(Environment, gym.Env):
         """
         How to reset the task when finisedh
         """
-        raise NotImplementedError("reset() must be implemented")
+        # Clear rendering cache
+        self.clear_render_cache()
+        # If teleport on reset, randomly pick new location for agents
+        if self.teleport_on_reset:
+            for agent in self.Agents:
+                agent.update()
+                agent.pos = self.observation_space.sample()
+                agent.history['pos'][-1] = agent.pos
 
     def update(self, update_agents=True):
         """
         How to update the task over time
         """
-        self.t += 1 # base task class only has a clock
+        self.t += self.dt # base task class only has a clock
         # ---------------------------------------------------------------
         # Task environments in OpenAI's gym interface update their agents
         # ---------------------------------------------------------------
@@ -201,7 +218,7 @@ class TaskEnvironment(Environment, gym.Env):
         Render the environment using matplotlib
         """
 
-        if np.mod(self.t, self.render_every) != 0:
+        if np.mod(self.t, self.render_every) < self.dt:
             # Skip rendering unless this is redraw time
             return False
 
@@ -232,29 +249,36 @@ class TaskEnvironment(Environment, gym.Env):
         R, fig, ax = self._get_mpl_render_cache()
         if "environment" not in R:
             R["environment"] = self.plot_environment(fig=fig, ax=ax)
-            R["title"] = fig.suptitle("t={}".format(self.t))
+            R["title"] = fig.suptitle("t={:.2f}".format(self.t))
         else:
-            R["title"].set_text("t={}".format(self.t))
+            R["title"].set_text("t={:.2f}".format(self.t))
 
     def _render_mpl_agents(self):
         R, fig, ax = self._get_mpl_render_cache()
-        if "agents" not in R:
-            R["agents"] = []
+        initialize = "agents" not in R
+        if initialize:
+            R["agents"]        = []
             R["agent_history"] = []
             for agent in self.Agents:
                 # set 🐀 location
-                pos = agent.pos
+
+                pos = agent.pos.T
                 poshist = np.vstack((
                     np.reshape(agent.history["pos"],(-1,len(agent.pos))),
-                    np.atleast_2d(pos)))
+                    np.atleast_2d(pos))).T
                 if not len(agent.history['pos']):
-                    his = plt.plot(*poshist.T, 'k', linewidth=0.2,
-                                   linestyle='dotted')
-                    R["agent_history"].append(his)
-                    if len(agent.pos) == 2:
-                        x,y = pos.T
-                    else:
-                        x,y = 0, pos
+                    poshist = [], []
+
+                # Add plotter for agent history
+                his = plt.plot(*poshist, 'k', linewidth=0.2,
+                               linestyle='dotted')
+                R["agent_history"].append(his)
+
+                # Add plotter for agent
+                if len(agent.pos) == 2:
+                    x,y = pos
+                else:
+                    x,y = 0, pos
                 ag = plt.scatter(x, y, **self.ag_scatter_default)
                 R["agents"].append(ag)
         else:
@@ -264,6 +288,20 @@ class TaskEnvironment(Environment, gym.Env):
                 his = R["agent_history"][i]
                 his[0].set_data(*np.array(agent.history["pos"]).T)
 
+    def _render_pygame(self, *pos, **kws):
+        pass
+
+    def clear_render_cache(self):
+        """
+            clear_render_cache
+        
+        clears the cache of objects held for render()
+        """
+        if "matplotlib" in self._stable_render_objects:
+            R = self._stable_render_objects["matplotlib"]
+            R["ax"].cla()
+            for item in (set(R.keys()) - set(("fig","ax"))):
+                R.pop(item)
 
 class Objective():
     """
@@ -315,9 +353,11 @@ class SpatialGoalObjective(Objective):
         Check if a position is within a radius of a goal position
         """
         radius = self.radius
-        return np.linalg.norm(pos - goal_pos, axis=1) < radius \
-                if np.ndim(goal_pos) > 1 \
-                else np.abs((pos - goal_pos)) < radius
+        distance = lambda x,y : self.env.get_distances_between___accounting_for_environment(x, y, wall_geometry="line_of_sight")
+        # return np.linalg.norm(pos - goal_pos, axis=1) < radius \
+        #         if np.ndim(goal_pos) > 1 \
+        #         else np.abs((pos - goal_pos)) < radius
+        return distance(pos, goal_pos) < radius 
 
     def check(self, agents:List[Agent]):
         """
@@ -448,6 +488,8 @@ class SpatialGoalEnvironment(TaskEnvironment):
 
         resets the environement to a new episode
         """
+        super().reset()
+
         # How many goals to set?
         if goal_locations is not None:
             ng = len(goal_locations)
@@ -465,8 +507,6 @@ class SpatialGoalEnvironment(TaskEnvironment):
             objective = SpatialGoalObjective(self, 
                                              goal_pos=self.goal_pos)
             self.objectives.append(objective)
-        # Clear rendering cache
-        self.clear_render_cache()
 
     def _render_matplotlib(self, **kws):
         """
@@ -478,8 +518,10 @@ class SpatialGoalEnvironment(TaskEnvironment):
 
     def _render_mpl_spat_goals(self):
         R, fig, ax = self._get_mpl_render_cache()
-        if "spat_goals" not in R:
-            R["spat_goals"] = []
+        initialize = "spat_goals" not in R or \
+                len(self.objectives) != len(R["spat_goals"])
+        if initialize:
+            R["spat_goals"]       = []
             R["spat_goal_radius"] = []
             for spat_goal in self.objectives:                
                 if self.dimensionality == "2D":
@@ -501,20 +543,6 @@ class SpatialGoalEnvironment(TaskEnvironment):
                 # ci.set_center(obj().ravel())
                 # ci.set_radius(obj.radius)
 
-    def _render_pygame(self, *pos, **kws):
-        pass
-
-    def clear_render_cache(self):
-        """
-            clear_render_cache
-        
-        clears the cache of objects held for render()
-        """
-        if "matplotlib" in self._stable_render_objects:
-            R = self._stable_render_objects["matplotlib"]
-            R["ax"].cla()
-            for item in (set(R.keys()) - set(("fig","ax"))):
-                R.pop(item)
 
     def is_done(self):
         """
@@ -559,7 +587,8 @@ if active and __name__ == "__main__":
 
     plt.close('all')
     env = SpatialGoalEnvironment(n_goals=2, params={'dimensionality':'2D'},
-                                 render_every=1,
+                                 render_every=1, 
+                                 teleport_on_reset=True,
                                  verbose=True)
     Ag = Agent(env)
     env.add_agents(Ag)
@@ -574,24 +603,23 @@ if active and __name__ == "__main__":
     plt.pause(0.1)
 
     # Define some helper functions
-    get_goal_vector   = lambda: env.get_goals()[0][0] - Ag.pos
-    get_goal_distance = lambda: np.linalg.norm(get_goal_vector())
+    # get_goal_vector   = lambda: env.get_goals()[0][0] - Ag.pos
+    get_goal_vector   = lambda: env.get_vectors_between___accounting_for_environment(
+            env.get_goals()[0][0], Ag.pos)[0]
+    # get_goal_distance = lambda: np.linalg.norm(get_goal_vector())
 
     # Run the simulation, with the agent drifting towards the goal when
     # it is close to the goal
     s = input("Press enter to start")
     while True:
-        if get_goal_distance() < 0.33:
-            dir_to_reward = get_goal_vector()
-            print("dir_to_reward", dir_to_reward)
-            drift_velocity = 3 * Ag.speed_mean * \
-                    (dir_to_reward / np.linalg.norm(dir_to_reward))
-        else:
-            drift_velocity = None
+        dir_to_reward = get_goal_vector()
+        print("dir_to_reward", dir_to_reward)
+        drift_velocity = 3 * Ag.speed_mean * \
+                (dir_to_reward / np.linalg.norm(dir_to_reward))
         new_state, reward, done, info = env.step(drift_velocity)
         env.render()
         plt.pause(0.00001)
         if done:
             print("done! reward:", reward)
-            break
+            env.reset()
     
