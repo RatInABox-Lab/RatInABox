@@ -1,6 +1,7 @@
 import ratinabox
 
 import numpy as np
+import os
 import matplotlib
 from matplotlib import pyplot as plt
 
@@ -425,7 +426,7 @@ class Agent:
         for key in self.history.keys():
             self.history[key] = []
         return
-    
+
     def import_trajectory(
         self, times=None, positions=None, dataset=None, interpolate=True
     ):
@@ -554,11 +555,12 @@ class Agent:
         decay_point_size=False,
         decay_point_timescale=10,
         plot_agent=True,
-        color='#7b699a',
+        color="#7b699a",
         alpha=0.7,
         xlim=None,
         background_color=None,
         axis_labels=True,
+        autosave=True,
         **kwargs,
     ):
 
@@ -578,6 +580,7 @@ class Agent:
             • xlim: In 1D, forces the xlim to be a certain time (minutes) (useful if animating this function)
             • background_color: color of the background if not matplotlib default, only for 1D (probably white)
             • axis_labels: whether to show axes labels
+            • autosave: if True, will try to save the figure to the figure directory `ratinabox.figure_directory`
 
         Returns:
             fig, ax
@@ -597,23 +600,23 @@ class Agent:
             trajectory = pos[startid:endid][::skiprate]
         time = t[startid:endid][::skiprate]
         if color is None:
-            color = ["C0"]*len(time)
-        elif color == 'changing':
-            trajectory_cmap = matplotlib.cm.get_cmap('viridis_r')
-            color = [trajectory_cmap(t/len(time)) for t in range(len(time))]
-            decay_point_size = False #if changing colour, may as well show WHOLE trajectory 
+            color = ["C0"] * len(time)
+        elif color == "changing":
+            trajectory_cmap = matplotlib.colormaps["viridis_r"]
+            color = [trajectory_cmap(t / len(time)) for t in range(len(time))]
+            decay_point_size = (
+                False  # if changing colour, may as well show WHOLE trajectory
+            )
         else:
-            color = [color]*len(time)
-
-
+            color = [color] * len(time)
 
         if self.Environment.dimensionality == "2D":
-            fig, ax = self.Environment.plot_environment(fig=fig, ax=ax)
+            fig, ax = self.Environment.plot_environment(fig=fig, ax=ax, autosave=False)
             s = point_size * np.ones_like(time)
             if decay_point_size == True:
                 s = point_size * np.exp((time - time[-1]) / decay_point_timescale)
                 s[(time[-1] - time) > (1.5 * decay_point_timescale)] *= 0
-            
+
             if plot_agent == True:
                 s[-1] = 40
                 color[-1] = "r"
@@ -627,6 +630,17 @@ class Agent:
                 c=color,
                 linewidth=0,
             )
+            # #plot the rat? TODO haha 
+            # ratpath = os.path.join(
+            #     os.path.abspath(os.path.join(ratinabox.__file__, os.pardir)),
+            #         "data/rat.png",
+            #     )
+            # rat = plt.imread(ratpath)
+            # rect = 0.5, 0.4, 0.4, 0.4 # What should these values be?
+            # newax = fig.add_axes(rect, anchor='NE', zorder=1)
+            # newax.axis('off')
+            # newax.imshow(rat)
+
         if self.Environment.dimensionality == "1D":
             if fig is None and ax is None:
                 fig, ax = plt.subplots(figsize=(3, 1.5))
@@ -648,6 +662,10 @@ class Agent:
             if background_color is not None:
                 ax.set_facecolor(background_color)
                 fig.patch.set_facecolor(background_color)
+
+        if autosave:
+            ratinabox.utils.save_figure(fig, "trajectory")
+
         return fig, ax
 
     def animate_trajectory(
@@ -677,13 +695,13 @@ class Agent:
         if t_end == None:
             t_end = self.history["t"][-1]
 
-        def animate_(
-            i, fig, ax, t_start, t_max, speed_up, dt, kwargs
-        ):
+        def animate_(i, fig, ax, t_start, t_max, speed_up, dt, kwargs):
             t_end = t_start + (i + 1) * speed_up * dt
             ax.clear()
             if self.Environment.dimensionality == "2D":
-                fig, ax = self.Environment.plot_environment(fig=fig, ax=ax)
+                fig, ax = self.Environment.plot_environment(
+                    fig=fig, ax=ax, autosave=False
+                )
             fig, ax = self.plot_trajectory(
                 t_start=t_start,
                 t_end=t_end,
@@ -691,10 +709,11 @@ class Agent:
                 ax=ax,
                 decay_point_size=True,
                 xlim=t_max / 60,
+                autosave=False,
                 **kwargs,
             )
-            if 'additional_plot_func' in kwargs.keys():
-                fig, ax = kwargs['additional_plot_func'](
+            if "additional_plot_func" in kwargs.keys():
+                fig, ax = kwargs["additional_plot_func"](
                     fig=fig, ax=ax, t=t_end, **kwargs  # the current time
                 )
 
@@ -702,7 +721,7 @@ class Agent:
             return
 
         fig, ax = self.plot_trajectory(
-            t_start=0, t_end=10 * self.dt, xlim=t_end / 60, **kwargs
+            t_start=0, t_end=10 * self.dt, xlim=t_end / 60, autosave=False, **kwargs
         )
 
         from matplotlib import animation
@@ -715,14 +734,16 @@ class Agent:
             blit=False,
             fargs=(fig, ax, t_start, t_end, speed_up, dt, kwargs),
         )
+
         return anim
 
-    def plot_position_heatmap(self, dx=None, weights=None, fig=None, ax=None):
+    def plot_position_heatmap(self, dx=None, fig=None, ax=None, autosave=True):
         """Plots a heatmap of postions the agent has been in.
         vmin is always set to zero, so the darkest colormap color (if seen) represents locations which have never been visited
         Args:
             dx (float, optional): The heatmap bin size. Defaults to 5cm in 2D or 1cm in 1D.
             fig, ax: if provided, will plot onto this
+            autosave (bool, optional): If True, will try to save the figure into `ratinabox.figure_directory`
         """
         if self.Environment.dimensionality == "1D":
             if dx is None:
@@ -730,7 +751,7 @@ class Agent:
             pos = np.array(self.history["pos"])
             ex = self.Environment.extent
             if fig is None and ax is None:
-                fig, ax = self.Environment.plot_environment(height=1)
+                fig, ax = self.Environment.plot_environment(autosave=False)
             heatmap, centres = utils.bin_data_for_histogramming(
                 data=pos, extent=ex, dx=dx
             )
@@ -760,15 +781,19 @@ class Agent:
                 vmax=vmax,
                 zorder=0,
             )
+        if autosave:
+            ratinabox.utils.save_figure(fig, "position_heatmap")
         return fig, ax
 
     def plot_histogram_of_speeds(
-        self, fig=None, ax=None, color="C1", return_data=False
+        self, fig=None, ax=None, color="C1", return_data=False, autosave=True
     ):
         """Plots a histogram of the observed speeds of the agent.
         args:
             fig, ax: not required. the ax object to be drawn onto.
             color: optional. the color.
+            return_data: if True, will return the histogram data (bins and patches)
+            autosave: if True, will try to save the figure into `ratinabox.figure_directory`
         Returns:
             fig, ax: the figure
         """
@@ -789,18 +814,28 @@ class Agent:
         ax.spines["right"].set_color(None)
         ax.spines["top"].set_color(None)
 
+        if autosave:
+            ratinabox.utils.save_figure(fig, "speed_histogram")
+
         if return_data == True:
             return fig, ax, n, bins, patches
         else:
             return fig, ax
 
     def plot_histogram_of_rotational_velocities(
-        self, fig=None, ax=None, color="C1", return_data=False
+        self,
+        fig=None,
+        ax=None,
+        color="C1",
+        return_data=False,
+        autosave=True,
     ):
         """Plots a histogram of the observed speeds of the agent.
         args:
             fig, ax: not required. the ax object to be drawn onto.
             color: optional. the color.
+            return_data: if True, will return the histogram data (bins and patches)
+            auto_save: if True, will try to save the figure into `ratinabox.figure_directory`
         Returns:
             fig, ax: the figure
         """
@@ -824,6 +859,10 @@ class Agent:
         ax.spines["right"].set_color(None)
         ax.spines["top"].set_color(None)
         ax.set_xlabel(r"Rotational velocity / $^{\circ} s^{-1}$")
+
+        if autosave:
+            ratinabox.utils.save_figure(fig, "rotational_velocity_histogram")
+
         if return_data == True:
             return fig, ax, n, bins, patches
         return fig, ax

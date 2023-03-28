@@ -495,8 +495,8 @@ def mountain_plot(
         NbyX = overlap * NbyX / norm_by
     if fig is None and ax is None:
         fig, ax = plt.subplots(
-            figsize=(4, len(NbyX) * shift / 25)
-        )  # ~<shift>mm gap between lines
+        ) 
+    fig.set_size_inches(4, len(NbyX) * shift / 25)
     zorder = 1
     for i in range(len(NbyX)):
         ax.plot(X, NbyX[i] + i + 1, c=c, zorder=zorder)
@@ -524,10 +524,8 @@ def mountain_plot(
     return fig, ax
 
 
-def save_figure(fig,
-                save_title="",
-                fig_save_types=['svg','png'],
-                anim_save_types=['gif','mp4']
+def save_figure(
+    fig, save_title="", fig_save_types=["svg", "png"], anim_save_types=["gif", "mp4"]
 ):
     """
     Saves a figures and animations by date (folder) and time (name) as both '.png' and '.svg'
@@ -538,43 +536,56 @@ def save_figure(fig,
         fig_file_types: what file types to save figure as ['gif','mp4']
 
     """
-    figure_directory = ratinabox.figure_directory  
-    assert figure_directory is not None, print('A figure directory has not been set. Set one using command `ratinabox.figure_directory = "path/to/my/figs/"')
+    figure_directory = ratinabox.figure_directory
+    if figure_directory is None:
+        if ratinabox.save_warnings is True:
+            print(
+                'This figure cannot be saved because a figure directory has not been set. Either... \n   • set a figure directory: `ratinabox.figure_directory = "path/to/my/figs/"` \n   • or suppress this warning: `ratinabox.save_warnings = False`'
+            )
+            if ratinabox.stylized_plots is False:
+                print(
+                    "By the way, you can stylize plots to make them look like repo/paper by calling `ratinabox.stylize_plots()`\n"
+                )
+        return
+
     if not os.path.isdir(figure_directory):
         os.mkdir(figure_directory)
 
-    #make today-specific directory inside figure directory  
-    today =  datetime.strftime(datetime.now(),'%y%m%d')
+    # make today-specific directory inside figure directory
+    today = datetime.strftime(datetime.now(), "%y%m%d")
     if not os.path.isdir(figure_directory + f"{today}/"):
         os.mkdir(figure_directory + f"{today}/")
-    
+
     figdir = figure_directory + f"{today}/"
-    now = datetime.strftime(datetime.now(),'%H%M')
+    now = datetime.strftime(datetime.now(), "%H%M")
     path_ = f"{figdir}{save_title}_{now}"
     path = path_
 
     if type(fig) == matplotlib.figure.Figure:
         for filetype in fig_save_types:
-            i=1
-            while True: #checks there isn't an existing figure with this name 
-                if os.path.isfile(path+"." + filetype):
-                    path = path_+"_"+str(i)
-                    i+=1
-                elif i >= 100: break
-                else: break
-            fig.savefig(path+"."+filetype,bbox_inches='tight')
-    
+            i = 1
+            while True:  # checks there isn't an existing figure with this name
+                if os.path.isfile(path + "." + filetype):
+                    path = path_ + "_" + str(i)
+                    i += 1
+                elif i >= 100:
+                    break
+                else:
+                    break
+            fig.savefig(path + "." + filetype, bbox_inches="tight")
+
     elif type(fig) == matplotlib.animation.FuncAnimation:
         for filetype in anim_save_types:
-            i=1
+            i = 1
             while True:
-                if os.path.isfile(path+"." + filetype):
-                    path = path_+"_"+str(i)
-                    i+=1
-                elif i >= 100: break
-                else: break
-            fig.save(path+"."+filetype)
-
+                if os.path.isfile(path + "." + filetype):
+                    path = path_ + "_" + str(i)
+                    i += 1
+                elif i >= 100:
+                    break
+                else:
+                    break
+            fig.save(path + "." + filetype)
 
     return path
 
