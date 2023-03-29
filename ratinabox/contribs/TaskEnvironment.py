@@ -5,13 +5,13 @@
 # (1) step()
 # (2) reset()
 
-import pandas as pd
 import numpy as np
 
 import matplotlib.pyplot as plt
 
-import gym
-from gym.spaces import Box, Space, Dict
+import gymnasium as gym
+from gymnasium.spaces import Box, Space, Dict
+# see https://gymnasium.farama.org/
 
 from types import NoneType
 from typing import List, Union
@@ -53,7 +53,7 @@ class TaskEnvironment(Environment, gym.Env):
                  render_every=None, render_every_framestep=2,
                  dt=0.01, teleport_on_reset=False, **kws):
         super().__init__(*pos, **kws)
-        self.episode_history:List[pd.Series] = [] # Written to upon completion of an episode
+        self.episode_history:dict = {} # Written to upon completion of an episode
         self.objectives:List[Objective] = [] # List of current objectives to saitsfy
         self.dynamic_walls = []      # List of walls that can change/move
         self.dynamic_objects = []    # List of current objects that can move
@@ -117,11 +117,22 @@ class TaskEnvironment(Environment, gym.Env):
             self.action_space[name] = Box(low=0, high=maxvel, shape=(D,))
             self.rewards.append(0.0)
 
-    def is_done(self):
+    def _is_terminal_state(self):
         """
         Whether the current state is a terminal state
         """
-        raise NotImplementedError("is_done() must be implemented")
+        raise NotImplementedError("_is_terminated() must be implemented")
+    
+    def _is_truncated_state(self):
+        """ 
+        whether the current state is a truncated state, 
+        see https://gymnasium.farama.org/api/env/#gymnasium.Env.step
+
+        default is false: an environment by default will have a terminal state,
+        ending the episode, whereon users should call reset(), but not a
+        trucation state ending the mdp.
+        """
+        return False
 
     def reset(self):
         """
@@ -175,7 +186,8 @@ class TaskEnvironment(Environment, gym.Env):
                                  drift_to_random_strength_ratio)
 
         # Return the next state, reward, whether the state is terminal,
-        return self.get_state(), self.rewards, self.is_done(), self.info
+        return self.get_state(), self.rewards, self._is_terminal_state(), \
+                self._is_truncated_state(), self.info
         
     def get_state(self):
         """
@@ -188,7 +200,7 @@ class TaskEnvironment(Environment, gym.Env):
     # ----------------------------------------------
 
     def write_episode(self, **kws):
-        self.episode_history.append(pd.Series(kws))
+        pass
 
     def read_episodes(self)->pd.DataFrame:
         pass
@@ -303,12 +315,20 @@ class TaskEnvironment(Environment, gym.Env):
             for item in (set(R.keys()) - set(("fig","ax"))):
                 R.pop(item)
 
+    def close(self):
+        """ gymnasium close() method """
+        self.clear_render_cache()
+        if "fig" in self._stable_render_objects:
+            if isinstance(self._stable_render_objects["fig"], plt.Figure):
+                plt.close(self._stable_render_objects["fig"])
+
 class Objective():
     """
     Abstract `Objective` class that can be used to define finishing coditions
     for a task
     """
-    def __init__(self, env:TaskEnvironment, reward_value=1.0):
+    def __init__(self, env:TaskEnvironment, reward_value=1.0,
+                 ):
         self.env = env
         self.reward_value = reward_value
 
@@ -418,7 +438,7 @@ class SpatialGoalEnvironment(TaskEnvironment):
     sg_scatter_default={'marker':'x', 'c':'r'}
 
     def __init__(self, *pos, 
-                 possible_goal_pos:List|np.ndarray|str='random_4', 
+                 possible_goal_pos:List|np.ndarray|str='random_5', 
                  current_goal_state:Union[NoneType,np.ndarray,List[np.ndarray]]=None, 
                  n_goals:int=1,
                  **kws):
@@ -544,7 +564,7 @@ class SpatialGoalEnvironment(TaskEnvironment):
                 # ci.set_radius(obj.radius)
 
 
-    def is_done(self):
+    def _is_terminal_state(self):
         """
         Whether the current state is a terminal state
         """
@@ -579,7 +599,7 @@ class SpatialGoalEnvironment(TaskEnvironment):
         super().update(*pos, **kws)
 
         # Check if we are done
-        if self.is_done():
+        if self._is_terminal_state():
             self.reset()
 
 active = True
@@ -616,10 +636,11 @@ if active and __name__ == "__main__":
         print("dir_to_reward", dir_to_reward)
         drift_velocity = 3 * Ag.speed_mean * \
                 (dir_to_reward / np.linalg.norm(dir_to_reward))
-        new_state, reward, done, info = env.step(drift_velocity)
+        observation, reward, terminate_episode, _, info = \
+                env.step(drift_velocity)
         env.render()
         plt.pause(0.00001)
-        if done:
+        if terminate_episode:
             print("done! reward:", reward)
             env.reset()
     
