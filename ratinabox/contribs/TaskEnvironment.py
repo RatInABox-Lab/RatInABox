@@ -81,7 +81,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         # Setup gym primatives
         # ----------------------------------------------
         # Setup observation space from the Environment space
-        self.observation_spaces:Dict[Space] = []
+        self.observation_spaces:Dict[Space] = Dict({})
         self.action_spaces:Dict[Space]      = Dict({})
         self.rewards:List[float] = []
         self.agent_names:List[str] = []
@@ -93,7 +93,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
     def action_space(self, agent_name:str):
         return self.action_spaces[agent_name]
 
-    def add_agents(self, agents:Union[Dict[Agent], List[Agent], Agent],
+    def add_agents(self, agents:Union[dict, List[Agent], Agent],
                    names:None|list=None, maxvel:float=50.0, **kws):
         """
         Add agents to the environment
@@ -138,6 +138,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             self.observation_spaces[name] = \
                     Box(low=lows, high=highs, dtype=np.float_)
             self.rewards.append(0.0)
+
 
     def _dict(self, V):
         """
@@ -190,7 +191,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
                 agent.update()
         # ---------------------------------------------------------------
 
-    def step(self, actions:dict|np.array=None, dt=None, 
+    def step(self, actions:Union[dict,np.array]=None, dt=None, 
              drift_to_random_strength_ratio=1, *pos, **kws):
         """
             step()
@@ -212,7 +213,8 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
                   self._dict(actions)
         for (agent, action) in zip(self.Agents, actions.values()):
             dt = dt if dt is not None else agent.dt
-            agent.update(dt=dt, drift_velocity=actions,
+            action = np.array(action).ravel()
+            agent.update(dt=dt, drift_velocity=action,
                          drift_to_random_strength_ratio= \
                                  drift_to_random_strength_ratio)
 
@@ -229,12 +231,14 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         shortcut for stepping when only 1 agent exists...makes it behave
         like gymnasium instead of pettingzoo
         """
-        return self.step({self.agent_names[0]:action}, *pos, **kws)
+        results = self.step({self.agent_names[0]:action}, *pos, **kws)
+        results = [x[self.agent_names[0]] for x in results]
+        return results
         
     def get_observation(self):
         """ Get the current state of the environment """
         return {name:agent.pos 
-                for agent in zip(self.agent_names, self.Agents)}
+                for name, agent in zip(self.agent_names, self.Agents)}
 
     # ----------------------------------------------
     # Reading and writing episod data
@@ -741,7 +745,7 @@ if active and __name__ == "__main__":
         drift_velocity = 3 * Ag.speed_mean * \
                 (dir_to_reward / np.linalg.norm(dir_to_reward))
         observation, reward, terminate_episode, _, info = \
-                env.step(drift_velocity)
+                env.step1(drift_velocity)
         env.render()
         plt.pause(0.00001)
         if terminate_episode:
