@@ -9,18 +9,21 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
+import pettingzoo
 import gymnasium as gym
 from gymnasium.spaces import Box, Space, Dict
 # see https://gymnasium.farama.org/
+# see https://
 
-from types import NoneType
+from types import NoneType, FunctionType
 from typing import List, Union
+from functools import partial
 import warnings
 
 from ratinabox.Environment import Environment
 from ratinabox.Agent import Agent
 
-class TaskEnvironment(Environment, gym.Env):
+class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
     """
     Environment with task structure: there is an objective, and when the
     objective is reached, it terminates an episode, and starts a new episode
@@ -45,8 +48,10 @@ class TaskEnvironment(Environment, gym.Env):
     **kws :
         Keyword arguments to pass to Environment
     """
-
-    
+    metadata = {
+        "render_modes": ["matplotlib", "none"],
+        "name": "TaskEnvironment-RiAB"
+    }
 
     def __init__(self, *pos, verbose=False,
                  render_mode='matplotlib', 
@@ -60,6 +65,7 @@ class TaskEnvironment(Environment, gym.Env):
         self.Agents:List[Agent] = [] # List of agents in the environment
         self.t = 0                   # Current time
         self.dt = dt                 # Time step
+
         self.render_every = render_every_framestep # How often to render
         self.verbose = verbose
         self.render_mode:str = render_mode # options 'matplotlib'|'pygame'|'none'
@@ -75,16 +81,20 @@ class TaskEnvironment(Environment, gym.Env):
         # Setup gym primatives
         # ----------------------------------------------
         # Setup observation space from the Environment space
-        ext = [self.extent[i:i+2] for i in np.arange(0, len(self.extent), 2)]
-        lows, highs = np.array(list(zip(*ext)), dtype=np.float_)
-        self.observation_space:Space = \
-                Box(low=lows, high=highs, dtype=np.float_)
-        self.action_space:List[Space] = Dict({})
+        self.observation_spaces:Dict[Space] = []
+        self.action_spaces:Dict[Space]      = Dict({})
         self.rewards:List[float] = []
-        self.info:dict = {} # gynasiym returns an info dict in step()
+        self.agent_names:List[str] = []
+        self.info:dict           = {} # gynasiym returns an info dict in step()
 
-    def add_agents(self, agents:Union[List[Agent], Agent],
-                   names=None, maxvel:float=50.0, **kws):
+    def observation_space(self, agent_name:str):
+        return self.observation_spaces[agent_name]
+
+    def action_space(self, agent_name:str):
+        return self.action_spaces[agent_name]
+
+    def add_agents(self, agents:Union[Dict[Agent], List[Agent], Agent],
+                   names:None|list=None, maxvel:float=50.0, **kws):
         """
         Add agents to the environment
 
@@ -93,7 +103,7 @@ class TaskEnvironment(Environment, gym.Env):
 
         Parameters
         ----------
-        agents : List[Agent] | Agent
+        agents : Dict[Agent] | List[Agent] | Agent
             The agents to add to the environment
         names : List[str] | None
             The names of the agents. If None, then the names are generated
@@ -106,16 +116,36 @@ class TaskEnvironment(Environment, gym.Env):
             agents = [agents]
         if not ([agent.dt == self.dt for agent in agents]):
             raise NotImplementedError("Does not yet support agents with different dt from envrionment")
-        # Enlist agents
-        if names is None:
+        if isinstance(agents, dict):
+            names  = list(agents.keys())
+            agents = list(agents.values())
+        elif names is None:
             start = len(self.Agents)
             names = ["agent_" + str(start+i) for i in range(len(agents))]
+        # Enlist agents
         for (name, agent) in zip(names, agents):
             self.Agents.append(agent)
-            # Add the agent's action space to the environment's action space
+            self.agent_names.append(name)
+            # Add the agent's action space to the environment's action spaces
+            # dict
             D = int(self.dimensionality[0])
-            self.action_space[name] = Box(low=0, high=maxvel, shape=(D,))
+            self.action_spaces[name] = Box(low=0, high=maxvel, shape=(D,))
+            # Add the agent's observation space to the environment's 
+            # observation spaces dict
+            ext = [self.extent[i:i+2] 
+                   for i in np.arange(0, len(self.extent), 2)]
+            lows, highs = np.array(list(zip(*ext)), dtype=np.float_)
+            self.observation_spaces[name] = \
+                    Box(low=lows, high=highs, dtype=np.float_)
             self.rewards.append(0.0)
+
+    def _dict(self, V):
+        """
+        Convert a list of values to a dictionary of values keyed by agent name
+        """
+        return {name:v for (name, v) in zip(self.agent_names, V)} \
+                if hasattr(V,'__iter__') else \
+                {name:V for name in self.agent_names}
 
     def _is_terminal_state(self):
         """
@@ -134,7 +164,7 @@ class TaskEnvironment(Environment, gym.Env):
         """
         return False
 
-    def reset(self):
+    def reset(self, seed=None, return_info=False, options=None):
         """
         How to reset the task when finisedh
         """
@@ -144,7 +174,7 @@ class TaskEnvironment(Environment, gym.Env):
         if self.teleport_on_reset:
             for agent in self.Agents:
                 agent.update()
-                agent.pos = self.observation_space.sample()
+                agent.pos = self.observation_spaces.sample()
                 agent.history['pos'][-1] = agent.pos
 
     def update(self, update_agents=True):
@@ -160,7 +190,7 @@ class TaskEnvironment(Environment, gym.Env):
                 agent.update()
         # ---------------------------------------------------------------
 
-    def step(self, drift_velocity=None, dt=None, 
+    def step(self, actions:dict|np.array=None, dt=None, 
              drift_to_random_strength_ratio=1, *pos, **kws):
         """
             step()
@@ -171,29 +201,40 @@ class TaskEnvironment(Environment, gym.Env):
 
         different from update(), which updates this environment. this function
         executes a full step on the environment with an action from the agents
+
+        https://pettingzoo.farama.org/api/parallel/#pettingzoo.utils.env.ParallelEnv.step
         """
         # Udpate the environment
         self.update(*pos, **kws)
 
         # If the user passed drift_velocity, update the agents
-        drift_velocity = drift_velocity if \
-                isinstance(drift_velocity, (np.ndarray,list)) \
-                else [drift_velocity]*len(self.Agents)
-        for (agent, drift_velocity) in zip(self.Agents, drift_velocity):
+        actions = actions if isinstance(actions, dict) else \
+                  self._dict(actions)
+        for (agent, action) in zip(self.Agents, actions.values()):
             dt = dt if dt is not None else agent.dt
-            agent.update(dt=dt, drift_velocity=drift_velocity,
+            agent.update(dt=dt, drift_velocity=actions,
                          drift_to_random_strength_ratio= \
                                  drift_to_random_strength_ratio)
 
         # Return the next state, reward, whether the state is terminal,
-        return self.get_state(), self.rewards, self._is_terminal_state(), \
-                self._is_truncated_state(), self.info
+        return (self.get_observation(), 
+                self._dict(self.rewards), 
+                self._dict(self._is_terminal_state()),
+                self._dict(self._is_truncated_state()), 
+                self._dict([self.info])
+                )
+
+    def step1(self, action, *pos, **kws):
+        """
+        shortcut for stepping when only 1 agent exists...makes it behave
+        like gymnasium instead of pettingzoo
+        """
+        return self.step({self.agent_names[0]:action}, *pos, **kws)
         
-    def get_state(self):
-        """
-        Get the current state of the environment
-        """
-        return [agent.pos for agent in self.Agents]
+    def get_observation(self):
+        """ Get the current state of the environment """
+        return {name:agent.pos 
+                for agent in zip(self.agent_names, self.Agents)}
 
     # ----------------------------------------------
     # Reading and writing episod data
@@ -202,7 +243,7 @@ class TaskEnvironment(Environment, gym.Env):
     def write_episode(self, **kws):
         pass
 
-    def read_episodes(self)->pd.DataFrame:
+    def read_episodes(self):
         pass
 
     # ----------------------------------------------
@@ -345,6 +386,65 @@ class Objective():
         """
         raise NotImplementedError("__call__() must be implemented")
 
+class Reward():
+    """
+    When a reward happens, an reward object is attached to Agent.reward:list. 
+    This object tracks the dynamics of the reward applied to the agent.
+
+    This implementation allows rewards to be applied:
+        - externally (through a task environment) 
+        - or internally (through the agent's internal neuronal dynamics),
+          e.g. through a set of neurons tracking rewards, attached to the agent
+
+    This tracker specifies what the animals reward value should be at a given
+    time while the reward is activate
+    """
+    presets = {
+        "linear":      lambda a, x, dt: x - a*dt,
+        "exponential": lambda a, x, dt: x * np.exp(-a*dt),
+        "constant":    lambda x, _:     x,
+    }
+    def __init__(self, amplitude, dt,
+                 expire_clock=None, reward_dynamic=None,
+                 reward_dynamic_knobs = []
+                 ):
+        """
+        Parameters
+        ----------
+        amplitude : float|function
+            The amplitude of the reward (or a function that returns the
+            amplitude)
+        dt : float
+            The time step of the simulation
+        expire_clock : float
+            The time at which the reward should expire
+        reward_dynamic : str|function
+            The dynamics of the reward. Can be one of the presets, or a
+            function that takes the current reward amplitude and the time step
+            and returns the new reward amplitude
+        reward_dynamic_knobs : list
+            A list of arguments to pass to the reward_dynamic function
+        """
+        self.state = amplitude if not isinstance(amplitude, FunctionType) \
+                               else amplitude()
+        self.dt = dt
+        self.expire_clock = expire_clock if \
+                isinstance(expire_clock, (int,float)) else \
+                dt
+        if isinstance(reward_dynamic, str):
+            reward_dynamic = partial(self.presets[reward_dynamic],
+                                     *reward_dynamic_knobs)
+        else:
+            reward_dynamic = reward_dynamic or self.presets["constant"]
+
+    def get_state(self):
+        self.state = self.reward_dynamic(self.state, self.dt)
+        return self.state
+
+    def update(self):
+        self.expire_clock -= self.dt
+        return self.expire_clock <= 0
+
 class SpatialGoalObjective(Objective):
     """
     Spatial goal objective: agent must reach a specific position
@@ -412,6 +512,7 @@ class SpatialGoalObjective(Objective):
         (Not required -- just a convenience)
         """
         return self.goal_pos
+
 
 class SpatialGoalEnvironment(TaskEnvironment):
     """
@@ -502,11 +603,12 @@ class SpatialGoalEnvironment(TaskEnvironment):
         """
         return [obj.goal_pos for obj in self.objectives]
 
-    def reset(self, goal_locations:np.ndarray|None=None, n_goals=None):
+    def reset(self, goal_locations:np.ndarray|None=None, n_goals=None) ->Dict:
         """
             reset
 
         resets the environement to a new episode
+        https://pettingzoo.farama.org/api/parallel/#pettingzoo.utils.env.ParallelEnv.reset
         """
         super().reset()
 
@@ -527,6 +629,8 @@ class SpatialGoalEnvironment(TaskEnvironment):
             objective = SpatialGoalObjective(self, 
                                              goal_pos=self.goal_pos)
             self.objectives.append(objective)
+
+        return self.get_observation()
 
     def _render_matplotlib(self, **kws):
         """
@@ -608,7 +712,7 @@ if active and __name__ == "__main__":
     plt.close('all')
     env = SpatialGoalEnvironment(n_goals=2, params={'dimensionality':'2D'},
                                  render_every=1, 
-                                 teleport_on_reset=True,
+                                 teleport_on_reset=False,
                                  verbose=True)
     Ag = Agent(env)
     env.add_agents(Ag)
