@@ -449,6 +449,9 @@ class Reward():
         self.expire_clock -= self.dt
         return self.expire_clock <= 0
 
+class RewardCache():
+    pass
+
 class SpatialGoalObjective(Objective):
     """
     Spatial goal objective: agent must reach a specific position
@@ -736,9 +739,14 @@ if active and __name__ == "__main__":
             env.get_goals()[0][0], Ag.pos)[0]
     # get_goal_distance = lambda: np.linalg.norm(get_goal_vector())
 
+
+    # -----------------------------------------------------------------------
+    # TEST 1 AGENT
+    # -----------------------------------------------------------------------
     # Run the simulation, with the agent drifting towards the goal when
     # it is close to the goal
-    s = input("Press enter to start")
+    s = input("Single Agent. Press enter to start")
+    resets = 0
     while True:
         dir_to_reward = get_goal_vector()
         print("dir_to_reward", dir_to_reward)
@@ -749,6 +757,32 @@ if active and __name__ == "__main__":
         env.render()
         plt.pause(0.00001)
         if terminate_episode:
+            resets += 1
             print("done! reward:", reward)
             env.reset()
-    
+            if resets >= 10:
+                break
+
+    # -----------------------------------------------------------------------
+    # TEST Multi-agent (2 agents, second agent not pointed at goal)
+    # -----------------------------------------------------------------------
+    Ag2 = Agent(env)
+    env.add_agents(Ag2)
+    s = input("Two agents. Press enter to start")
+    resets = 0
+    while True:
+        dir_to_reward = get_goal_vector()
+        print("dir_to_reward", dir_to_reward)
+        drift_velocity = 3 * Ag.speed_mean * \
+                (dir_to_reward / np.linalg.norm(dir_to_reward))
+        observation, reward, terminate_episode, _, info = \
+                env.step(drift_velocity)
+        env.render()
+        plt.pause(0.00001)
+        if any(terminate_episode.values()):
+            resets += 1
+            print("done! reward:", reward)
+            env.reset()
+            if resets >= 10:
+                break
+
