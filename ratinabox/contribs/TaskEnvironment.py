@@ -38,14 +38,16 @@ class Reward():
     time while the reward is activate
     """
     decay_preset = {
-        "linear":      lambda a, x: a,
-        "exponential": lambda a, x: np.exp(x),
-        "none" : lambda a, x: 0
+        "constant":    lambda a, x: a,
+        "linear":      lambda a, x: a * x,
+        "exponential": lambda a, x: a * np.exp(x),
+        "none":        lambda a, x: 0
     }
     decay_knobs_preset = {
-        "linear"      : [1],
-        "exponential" : [2],
-        "none" : []
+        "linear":      [1],
+        "constant":    [1],
+        "exponential": [2],
+        "none":        []
     }
     def __init__(self, init_state, dt,
                  expire_clock=None, decay=None,
@@ -77,14 +79,14 @@ class Reward():
                 dt
         if isinstance(decay, str):
             self.preset = decay
-            self.decay = partial(self.decay_preset[decay],
-                                     *decay_knobs)
+            self.decay_knobs = decay_knobs or self.decay_knobs_preset[self.preset]
+            self.decay = partial(self.decay_preset[self.preset], *self.decay_knobs)
         else:
             self.preset = "custom" if decay is not None \
                                    else "constant"
+            self.decay_knobs = decay_knobs or \
+                                        self.decay_knobs_preset[self.preset]
             self.decay = decay or self.decay_preset["constant"]
-        self.decay_knobs = decay_knobs or \
-                                    self.decay_knobs_preset[self.preset]
         self.external_drive = external_drive
         self.external_drive_strength = external_drive_strength
         self.history = {'state':[], 'expire_clock':[]}
@@ -99,7 +101,7 @@ class Reward():
         gradient is not defined then its constant, until the reward expire time
         is reached.
         """
-        self.state = self.state + self.get_change() * self.dt
+        self.state = self.state + self.get_delta() * self.dt
         self.expire_clock -= self.dt
         self.history['state'].append(self.state)
         self.history['expire_clock'].append(self.expire_clock)
@@ -111,10 +113,9 @@ class Reward():
         if self.external_drive is not None:
             target_gradient = self.external_drive()
             strength = self.external_drive_strength
-            change = (strength*(target_gradient - state) - 
-                          self.decay(*self.decay_knobs, state)) 
+            change = (strength*(target_gradient - state) - self.decay(state)) 
         else:
-            change = -(self.decay(*self.decay_knobs, state)) 
+            change = -(self.decay(state)) 
         return change
 
     def plot_theoretical_reward(self, timerange=(0,1)):
@@ -125,7 +126,7 @@ class Reward():
         rewards = [self.state]
         timesteps = np.arange(timerange[0], timerange[1], self.dt)
         for t in timesteps[1:]:
-            r = rewards[-1] + self.get_delta() * self.dt
+            r = rewards[-1] + self.get_delta(state=rewards[-1]) * self.dt
             rewards.append(r)
         plt.plot(timesteps, rewards[:len(timesteps)],
                label=f"reward={self.preset}, " 
@@ -151,15 +152,13 @@ class RewardCache():
     def append(self, reward:Reward):
         self.cache.append(reward)
 
-    def update(self) -> float:
+    def update(self):
         """
             Update
         """
-        reward_value = self()
         for reward in self.cache:
             if reward.update():
                 self.cache.remove(reward)
-        return reward_value
     
     def get_total(self):
         """
@@ -201,7 +200,8 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
     def __init__(self, *pos, verbose=False,
                  render_mode='matplotlib', 
                  render_every=None, render_every_framestep=2,
-                 dt=0.01, teleport_on_reset=False, **kws):
+                 dt=0.01, teleport_on_reset=False, 
+                 save_expired_rewards=False, **kws):
         super().__init__(*pos, **kws)
         self.episode_history:dict = {} # Written to upon completion of an episode
         self.objectives:List[Objective] = [] # List of current objectives to saitsfy
@@ -229,9 +229,13 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         # Setup observation space from the Environment space
         self.observation_spaces:Dict[Space] = Dict({})
         self.action_spaces:Dict[Space]      = Dict({})
-        self.rewards:List[RewardCache] = []
+        self.reward_caches:List[RewardCache] = []
         self.agent_names:List[str]     = []
         self.info:dict                 = {} # gymnasium returns info in step()
+
+        # Reward cache specifics
+        self.save_expired_rewards = save_expired_rewards
+        self.expired_rewards:List[RewardCache] = []
 
     def observation_space(self, agent_name:str):
         return self.observation_spaces[agent_name]
@@ -284,7 +288,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             self.observation_spaces[name] = \
                     Box(low=lows, high=highs, dtype=np.float_)
             cache = RewardCache()
-            self.rewards.append(cache)
+            self.reward_caches.append(cache)
             agent.reward = cache
 
     def _dict(self, V):
@@ -352,8 +356,6 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
 
         https://pettingzoo.farama.org/api/parallel/#pettingzoo.utils.env.ParallelEnv.step
         """
-        # Udpate the environment
-        self.update(*pos, **kws)
 
         # If the user passed drift_velocity, update the agents
         actions = actions if isinstance(actions, dict) else \
@@ -365,6 +367,13 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
                          drift_to_random_strength_ratio= \
                                  drift_to_random_strength_ratio)
 
+        # Update the reward caches for time decay of existing rewards
+        for reward_cache in self.reward_caches:
+            reward_cache.update()
+
+        # Udpate the environment, which can add new rewards to caches
+        self.update(*pos, **kws)
+        
         # Return the next state, reward, whether the state is terminal,
         return (self.get_observation(), 
                 self.get_reward(), 
@@ -534,7 +543,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             if isinstance(self._stable_render_objects["fig"], plt.Figure):
                 plt.close(self._stable_render_objects["fig"])
 
-reward_default=Reward(1, 0.01, expire_clock=1, decay="exponential")
+reward_default=Reward(1, 0.01, expire_clock=1, decay="linear")
 
 class Objective():
     """
@@ -616,9 +625,10 @@ class SpatialGoalObjective(Objective):
         rewarded_agents = np.where(agents_reached_goal)[0]
         rewards = [self.reward] * len(rewarded_agents)
         if self.env.verbose:
-            print("SpatialGoalObjective.check(): ",
-                  "rewarded_agents = {}".format(rewarded_agents),
-                  "rewards = {}".format(rewards))
+            pass
+            # print("SpatialGoalObjective.check(): ",
+            #       "rewarded_agents = {}".format(rewarded_agents),
+            #       "reward attach = {}".format(rewards))
         return rewards, rewarded_agents
 
     def __call__(self)->np.ndarray:
@@ -801,7 +811,7 @@ class SpatialGoalEnvironment(TaskEnvironment):
                 self.objectives.pop(test_objective)
                 # Set the reward for the agent(s)
                 for (agent, reward) in zip(agents, rewards):
-                    self.rewards[agent].append(reward)
+                    self.reward_caches[agent].append(reward)
                 # Verbose debugging
                 if self.verbose:
                     print("objective {} satisfied by agents {}".format(
@@ -832,7 +842,7 @@ if active and __name__ == "__main__":
     plt.close('all')
 
     # Test reward class
-    r1=Reward(1, 0.01, expire_clock=1, decay="exponential")
+    r1=Reward(1, 0.01, expire_clock=1, decay="linear")
     r1.plot_theoretical_reward()
 
     # Test the environment
