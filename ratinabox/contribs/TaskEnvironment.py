@@ -24,6 +24,150 @@ from copy import copy
 from ratinabox.Environment import Environment
 from ratinabox.Agent import Agent
 
+class Reward():
+    """
+    When a reward happens, an reward object is attached to Agent.reward:list. 
+    This object tracks the dynamics of the reward applied to the agent.
+
+    This implementation allows rewards to be applied:
+        - externally (through a task environment) 
+        - or internally (through the agent's internal neuronal dynamics),
+          e.g. through a set of neurons tracking rewards, attached to the agent
+
+    This tracker specifies what the animals reward value should be at a given
+    time while the reward is activate
+    """
+    decay_preset = {
+        "linear":      lambda a, x: a,
+        "exponential": lambda a, x: np.exp(x),
+        "none" : lambda a, x: 0
+    }
+    decay_knobs_preset = {
+        "linear"      : [1],
+        "exponential" : [2],
+        "none" : []
+    }
+    def __init__(self, init_state, dt,
+                 expire_clock=None, decay=None,
+                 decay_knobs=[], 
+                 external_drive:Union[FunctionType,None]=None,
+                 external_drive_strength=1):
+        """
+        Parameters
+        ----------
+        amplitude : float|function
+            The amplitude of the reward (or a function that returns the
+            amplitude)
+        dt : float
+            The time step of the simulation
+        expire_clock : float
+            The time at which the reward should expire
+        reward_dynamic : str|function
+            The dynamics of the reward. Can be one of the presets, or a
+            function that takes the current reward amplitude and the time step
+            and returns the new reward amplitude
+        reward_dynamic_knobs : list
+            A list of arguments to pass to the reward_dynamic function
+        """
+        self.state = init_state if not isinstance(init_state, FunctionType) \
+                               else init_state()
+        self.dt = dt
+        self.expire_clock = expire_clock if \
+                isinstance(expire_clock, (int,float)) else \
+                dt
+        if isinstance(decay, str):
+            self.preset = decay
+            self.decay = partial(self.decay_preset[decay],
+                                     *decay_knobs)
+        else:
+            self.preset = "custom" if decay is not None \
+                                   else "constant"
+            self.decay = decay or self.decay_preset["constant"]
+        self.decay_knobs = decay_knobs or \
+                                    self.decay_knobs_preset[self.preset]
+        self.external_drive = external_drive
+        self.external_drive_strength = external_drive_strength
+        self.history = {'state':[], 'expire_clock':[]}
+
+    def update(self):
+        """
+        update reward, 
+
+        grows towards the gradient target value from its initial value, if a
+        target_value() function is defined. otherwise, reward is only
+        controlled by decay from some initial value. if decay is 0, and target
+        gradient is not defined then its constant, until the reward expire time
+        is reached.
+        """
+        self.state = self.state + self.get_change() * self.dt
+        self.expire_clock -= self.dt
+        self.history['state'].append(self.state)
+        self.history['expire_clock'].append(self.expire_clock)
+        return self.expire_clock <= 0
+
+    def get_delta(self, state=None):
+        """ \delta(reward) for a dt """
+        state = self.state if state is None else state
+        if self.external_drive is not None:
+            target_gradient = self.external_drive()
+            strength = self.external_drive_strength
+            change = (strength*(target_gradient - state) - 
+                          self.decay(*self.decay_knobs, state)) 
+        else:
+            change = -(self.decay(*self.decay_knobs, state)) 
+        return change
+
+    def plot_theoretical_reward(self, timerange=(0,1)):
+        """
+        plot the reward dynamics : shows the user how their parameters of
+        interest setup reward dynamics, without updating the object
+        """
+        rewards = [self.state]
+        timesteps = np.arange(timerange[0], timerange[1], self.dt)
+        for t in timesteps[1:]:
+            r = rewards[-1] + self.get_delta() * self.dt
+            rewards.append(r)
+        plt.plot(timesteps, rewards[:len(timesteps)],
+               label=f"reward={self.preset}, " 
+               f"knobs={self.decay_knobs}")
+        plt.axvspan(self.expire_clock, plt.gca().get_ylim()[-1], color='r', alpha=0.2)
+        plt.text(np.mean((plt.gca().get_xlim()[0], self.expire_clock)), 
+                 np.mean(plt.gca().get_ylim()), "reward\nactive",
+                 backgroundcolor='black', color="white")
+        plt.text(np.mean((self.expire_clock, plt.gca().get_xlim()[-1])), 
+                 np.mean(plt.gca().get_ylim()), "reward\nexpires",
+                 backgroundcolor='black', color="white")
+        return plt.gcf(), plt.gca()
+
+class RewardCache():
+    """
+    RewardCache
+
+    A cache of all `active` rewards attached to an agent
+    """
+    def __init__(self):
+        self.cache:List[Reward] = []
+
+    def append(self, reward:Reward):
+        self.cache.append(reward)
+
+    def update(self) -> float:
+        """
+            Update
+        """
+        reward_value = self()
+        for reward in self.cache:
+            if reward.update():
+                self.cache.remove(reward)
+        return reward_value
+    
+    def get_total(self):
+        """
+        If there are any active rewards, return the sum of their values.
+        """
+        return sum([reward.state for reward in self.cache])
+
+
 class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
     """
     Environment with task structure: there is an objective, and when the
@@ -76,7 +220,8 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         # ----------------------------------------------
         # Agent-related task config
         # ----------------------------------------------
-        self.teleport_on_reset = teleport_on_reset # Whether to teleport agents to random
+        self.teleport_on_reset = teleport_on_reset # Whether to teleport 
+                                                   # agents to random
 
         # ----------------------------------------------
         # Setup gym primatives
@@ -84,9 +229,9 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         # Setup observation space from the Environment space
         self.observation_spaces:Dict[Space] = Dict({})
         self.action_spaces:Dict[Space]      = Dict({})
-        self.rewards:List[float] = []
-        self.agent_names:List[str] = []
-        self.info:dict           = {} # gynasiym returns an info dict in step()
+        self.rewards:List[RewardCache] = []
+        self.agent_names:List[str]     = []
+        self.info:dict                 = {} # gymnasium returns info in step()
 
     def observation_space(self, agent_name:str):
         return self.observation_spaces[agent_name]
@@ -138,8 +283,9 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             lows, highs = np.array(list(zip(*ext)), dtype=np.float_)
             self.observation_spaces[name] = \
                     Box(low=lows, high=highs, dtype=np.float_)
-            self.rewards.append(0.0)
-
+            cache = RewardCache()
+            self.rewards.append(cache)
+            agent.reward = cache
 
     def _dict(self, V):
         """
@@ -221,7 +367,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
 
         # Return the next state, reward, whether the state is terminal,
         return (self.get_observation(), 
-                self._dict(self.rewards), 
+                self.get_reward(), 
                 self._dict(self._is_terminal_state()),
                 self._dict(self._is_truncated_state()), 
                 self._dict([self.info])
@@ -239,6 +385,11 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
     def get_observation(self):
         """ Get the current state of the environment """
         return {name:agent.pos 
+                for name, agent in zip(self.agent_names, self.Agents)}
+
+    def get_reward(self):
+        """ Get the current reward state of each agent """
+        return {name:agent.reward.get_total()
                 for name, agent in zip(self.agent_names, self.Agents)}
 
     # ----------------------------------------------
@@ -271,9 +422,14 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         else:
             raise ValueError("method must be 'matplotlib' or 'pygame'")
 
-    def _render_matplotlib(self, *pos, agenkws:dict=dict(), **kws):
+    def _render_matplotlib(self, *pos, agentkws:dict=dict(), **kws):
         """
         Render the environment using matplotlib
+        `
+        Inputs
+        ------
+        agentkws: dict
+            keyword arguments to pass to the agent's render method
         """
 
         if np.mod(self.t, self.render_every) < self.dt:
@@ -286,7 +442,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         self._render_mpl_env()
 
         # Render the agents
-        self._render_mpl_agents(**agenkws)
+        self._render_mpl_agents(**agentkws)
 
         return True
 
@@ -312,6 +468,16 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             R["title"].set_text("t={:.2f}".format(self.t))
 
     def _render_mpl_agents(self, **kws):
+        """
+        Render the agents
+
+        TODO:
+        -----
+        - `skiprate`
+        - plot_trajectory draws a new environment each time it plots,
+          which slowly accumulates environment background objects. this
+          can drag on performance after lots of episodes.
+        """
         R, fig, ax = self._get_mpl_render_cache()
         initialize = "agents" not in R
         if initialize:
@@ -368,15 +534,17 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             if isinstance(self._stable_render_objects["fig"], plt.Figure):
                 plt.close(self._stable_render_objects["fig"])
 
+reward_default=Reward(1, 0.01, expire_clock=1, decay="exponential")
+
 class Objective():
     """
     Abstract `Objective` class that can be used to define finishing coditions
     for a task
     """
-    def __init__(self, env:TaskEnvironment, reward_value=1.0,
-                 ):
+    def __init__(self, env:TaskEnvironment, 
+                 reward=reward_default):
         self.env = env
-        self.reward_value = reward_value
+        self.reward = reward
 
     def check(self):
         """
@@ -391,67 +559,6 @@ class Objective():
         """
         raise NotImplementedError("__call__() must be implemented")
 
-class Reward():
-    """
-    When a reward happens, an reward object is attached to Agent.reward:list. 
-    This object tracks the dynamics of the reward applied to the agent.
-
-    This implementation allows rewards to be applied:
-        - externally (through a task environment) 
-        - or internally (through the agent's internal neuronal dynamics),
-          e.g. through a set of neurons tracking rewards, attached to the agent
-
-    This tracker specifies what the animals reward value should be at a given
-    time while the reward is activate
-    """
-    presets = {
-        "linear":      lambda a, x, dt: x - a*dt,
-        "exponential": lambda a, x, dt: x * np.exp(-a*dt),
-        "constant":    lambda x, _:     x,
-    }
-    def __init__(self, amplitude, dt,
-                 expire_clock=None, reward_dynamic=None,
-                 reward_dynamic_knobs = []
-                 ):
-        """
-        Parameters
-        ----------
-        amplitude : float|function
-            The amplitude of the reward (or a function that returns the
-            amplitude)
-        dt : float
-            The time step of the simulation
-        expire_clock : float
-            The time at which the reward should expire
-        reward_dynamic : str|function
-            The dynamics of the reward. Can be one of the presets, or a
-            function that takes the current reward amplitude and the time step
-            and returns the new reward amplitude
-        reward_dynamic_knobs : list
-            A list of arguments to pass to the reward_dynamic function
-        """
-        self.state = amplitude if not isinstance(amplitude, FunctionType) \
-                               else amplitude()
-        self.dt = dt
-        self.expire_clock = expire_clock if \
-                isinstance(expire_clock, (int,float)) else \
-                dt
-        if isinstance(reward_dynamic, str):
-            reward_dynamic = partial(self.presets[reward_dynamic],
-                                     *reward_dynamic_knobs)
-        else:
-            reward_dynamic = reward_dynamic or self.presets["constant"]
-
-    def get_state(self):
-        self.state = self.reward_dynamic(self.state, self.dt)
-        return self.state
-
-    def update(self):
-        self.expire_clock -= self.dt
-        return self.expire_clock <= 0
-
-class RewardCache():
-    pass
 
 class SpatialGoalObjective(Objective):
     """
@@ -468,7 +575,7 @@ class SpatialGoalObjective(Objective):
     goal_radius : float | None
         The radius around the goal position that the agent must reach
     """
-    def __init__(self, *pos, goal_pos:Union[np.ndarray,None], 
+    def __init__(self, *pos, reward=reward_default, goal_pos:Union[np.ndarray,None], 
                  goal_radius=None, **kws):
         super().__init__(*pos, **kws)
         if self.env.verbose:
@@ -507,7 +614,7 @@ class SpatialGoalObjective(Objective):
             self._in_goal_radius(agent.pos, self.goal_pos).all().any()
                                for agent in agents]
         rewarded_agents = np.where(agents_reached_goal)[0]
-        rewards = [self.reward_value] * len(rewarded_agents)
+        rewards = [self.reward] * len(rewarded_agents)
         if self.env.verbose:
             print("SpatialGoalObjective.check(): ",
                   "rewarded_agents = {}".format(rewarded_agents),
@@ -543,9 +650,10 @@ class SpatialGoalEnvironment(TaskEnvironment):
     # Some reasonable default render settings
     # --------------------------------------
     ag_annotate_default={'fontsize':10}
-    ag_scatter_default={'marker':'o'}
+    ag_scatter_default ={'marker':'o'}
 
     def __init__(self, *pos, 
+                 reward=reward_default, objectivekws=dict(),
                  possible_goal_pos:List|np.ndarray|str='random_5', 
                  current_goal_state:Union[NoneType,np.ndarray,List[np.ndarray]]=None, 
                  n_goals:int=1,
@@ -554,6 +662,9 @@ class SpatialGoalEnvironment(TaskEnvironment):
         self.possible_goal_pos = self._init_poss_goals(possible_goal_pos)
         self.n_goals = n_goals
         self.objectives:List[SpatialGoalObjective] = []
+        self.objkws = dict()
+        self.objkws.update({'reward':reward})
+        self.objkws.update(objectivekws)
         if current_goal_state is None:
             self.reset()
 
@@ -634,7 +745,8 @@ class SpatialGoalEnvironment(TaskEnvironment):
             else:
                 self.goal_pos = goal_locations[g]
             objective = SpatialGoalObjective(self, 
-                                             goal_pos=self.goal_pos)
+                                             goal_pos=self.goal_pos,
+                                             **self.objkws)
             self.objectives.append(objective)
 
         return self.get_observation()
@@ -689,7 +801,7 @@ class SpatialGoalEnvironment(TaskEnvironment):
                 self.objectives.pop(test_objective)
                 # Set the reward for the agent(s)
                 for (agent, reward) in zip(agents, rewards):
-                    self.rewards[agent] = reward
+                    self.rewards[agent].append(reward)
                 # Verbose debugging
                 if self.verbose:
                     print("objective {} satisfied by agents {}".format(
@@ -718,8 +830,14 @@ active = True
 if active and __name__ == "__main__":
 
     plt.close('all')
+
+    # Test reward class
+    r1=Reward(1, 0.01, expire_clock=1, decay="exponential")
+    r1.plot_theoretical_reward()
+
+    # Test the environment
     env = SpatialGoalEnvironment(n_goals=2, params={'dimensionality':'2D'},
-                                 render_every=1, 
+                                 reward=r1, render_every=1, 
                                  teleport_on_reset=False,
                                  verbose=True)
     Ag = Agent(env)
@@ -761,7 +879,7 @@ if active and __name__ == "__main__":
             resets += 1
             print("done! reward:", reward)
             env.reset()
-            if resets >= 10:
+            if resets >= 0:
                 break
 
     # -----------------------------------------------------------------------
