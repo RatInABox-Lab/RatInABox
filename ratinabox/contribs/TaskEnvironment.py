@@ -19,6 +19,7 @@ from types import NoneType, FunctionType
 from typing import List, Union
 from functools import partial
 import warnings
+from copy import copy
 
 from ratinabox.Environment import Environment
 from ratinabox.Agent import Agent
@@ -270,7 +271,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         else:
             raise ValueError("method must be 'matplotlib' or 'pygame'")
 
-    def _render_matplotlib(self, *pos, **kws):
+    def _render_matplotlib(self, *pos, agenkws:dict=dict(), **kws):
         """
         Render the environment using matplotlib
         """
@@ -285,7 +286,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         self._render_mpl_env()
 
         # Render the agents
-        self._render_mpl_agents()
+        self._render_mpl_agents(**agenkws)
 
         return True
 
@@ -310,40 +311,40 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         else:
             R["title"].set_text("t={:.2f}".format(self.t))
 
-    def _render_mpl_agents(self):
+    def _render_mpl_agents(self, **kws):
         R, fig, ax = self._get_mpl_render_cache()
         initialize = "agents" not in R
         if initialize:
             R["agents"]        = []
-            R["agent_history"] = []
-            for agent in self.Agents:
+            for (i, agent) in enumerate(self.Agents):
                 # set 🐀 location
-
-                pos = agent.pos.T
-                poshist = np.vstack((
-                    np.reshape(agent.history["pos"],(-1,len(agent.pos))),
-                    np.atleast_2d(pos))).T
-                if not len(agent.history['pos']):
-                    poshist = [], []
-
-                # Add plotter for agent history
-                his = plt.plot(*poshist, 'k', linewidth=0.2,
-                               linestyle='dotted')
-                R["agent_history"].append(his)
-
-                # Add plotter for agent
-                if len(agent.pos) == 2:
-                    x,y = pos
-                else:
-                    x,y = 0, pos
-                ag = plt.scatter(x, y, **self.ag_scatter_default)
-                R["agents"].append(ag)
+                _, a = agent.plot_trajectory(fig=fig, ax=ax)
+                R["agents"].append(a.collections[-1])
         else:
             for i, agent in enumerate(self.Agents):
                 scat = R["agents"][i]
-                scat.set_offsets(agent.pos)
-                his = R["agent_history"][i]
-                his[0].set_data(*np.array(agent.history["pos"]).T)
+                scat.set_offsets(agent.history['pos'])
+                c, s = self._agent_style(agent, color=i, **kws)
+                scat.set_facecolors(c)
+                scat.set_edgecolors(c)
+                scat.set_sizes(s)
+
+    @staticmethod
+    def _agent_style(agent:Agent, color=0,
+                     point_size:bool=15, decay_point_size:bool=False, 
+                     plot_agent:bool=True, decay_point_timescale:int=10):
+        time = agent.history['t']
+        if isinstance(color, int):
+            color=plt.rcParams['axes.prop_cycle'].by_key()['color'][color]
+        s = point_size * np.ones_like(time)
+        if decay_point_size == True:
+            s = point_size * np.exp((time - time[-1]) / decay_point_timescale)
+            s[(time[-1] - time) > (1.5 * decay_point_timescale)] *= 0
+        c = [color] * len(time)
+        if plot_agent == True:
+            s[-1] = 40
+            c[-1] = "r"
+        return c, s
 
     def _render_pygame(self, *pos, **kws):
         pass
@@ -543,7 +544,6 @@ class SpatialGoalEnvironment(TaskEnvironment):
     # --------------------------------------
     ag_annotate_default={'fontsize':10}
     ag_scatter_default={'marker':'o'}
-    sg_scatter_default={'marker':'x', 'c':'r'}
 
     def __init__(self, *pos, 
                  possible_goal_pos:List|np.ndarray|str='random_5', 
@@ -639,15 +639,16 @@ class SpatialGoalEnvironment(TaskEnvironment):
 
         return self.get_observation()
 
-    def _render_matplotlib(self, **kws):
+    def _render_matplotlib(self, goalkws=dict(), **kws):
         """
         Take existing mpl render and add spatial goals
         """
         if super()._render_matplotlib(**kws):
             # Render the spatial goals
-            self._render_mpl_spat_goals()
+            self._render_mpl_spat_goals(**goalkws)
 
-    def _render_mpl_spat_goals(self):
+    def _render_mpl_spat_goals(self, facecolor="red", alpha=0.1,
+                               marker="x", c="red"):
         R, fig, ax = self._get_mpl_render_cache()
         initialize = "spat_goals" not in R or \
                 len(self.objectives) != len(R["spat_goals"])
@@ -659,9 +660,9 @@ class SpatialGoalEnvironment(TaskEnvironment):
                     x, y = spat_goal().T
                 else:
                     x, y = np.zeros(np.shape(spat_goal())), spat_goal()
-                sg = plt.scatter(x,y, **self.sg_scatter_default)
+                sg = plt.scatter(x,y, marker=marker, c=c)
                 ci = plt.Circle(spat_goal().ravel(), spat_goal.radius,
-                                facecolor="red", alpha=0.2)
+                                facecolor=facecolor, alpha=alpha)
                 ax.add_patch(ci)
                 R["spat_goals"].append(sg)
                 R["spat_goal_radius"].append(sg)
