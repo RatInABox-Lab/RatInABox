@@ -100,12 +100,15 @@ class Reward():
         controlled by decay from some initial value. if decay is 0, and target
         gradient is not defined then its constant, until the reward expire time
         is reached.
+
+        # Returns
+        True if reward is still active, False if reward has expired
         """
         self.state = self.state + self.get_delta() * self.dt
         self.expire_clock -= self.dt
         self.history['state'].append(self.state)
         self.history['expire_clock'].append(self.expire_clock)
-        return self.expire_clock <= 0
+        return not (self.expire_clock <= 0)
 
     def get_delta(self, state=None):
         """ \delta(reward) for a dt """
@@ -146,19 +149,26 @@ class RewardCache():
 
     A cache of all `active` rewards attached to an agent
     """
-    def __init__(self):
+    def __init__(self, verbose=False):
         self.cache:List[Reward] = []
+        self.verbose = verbose
 
-    def append(self, reward:Reward):
-        self.cache.append(reward)
+    def append(self, reward:Reward, copymode=True):
+        if copymode:
+            self.cache.append(copy(reward))
+        else:
+            self.cache.append(reward)
 
     def update(self):
         """
             Update
         """
         for reward in self.cache:
-            if reward.update():
+            reward_still_active = reward.update()
+            if not reward_still_active:
                 self.cache.remove(reward)
+                if self.verbose:
+                    print("Reward removed from cache")
     
     def get_total(self):
         """
@@ -420,8 +430,8 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         """
         if render_mode is None:
             render_mode = self.render_mode
-        if self.verbose:
-            print("rendering environment with mode: {}".format(render_mode))
+        # if self.verbose:
+        #     print("rendering environment with mode: {}".format(render_mode))
         if render_mode == 'matplotlib':
             self._render_matplotlib(*pos, **kws)
         elif render_mode == 'pygame':
@@ -878,11 +888,13 @@ if active and __name__ == "__main__":
     resets = 0
     while True:
         dir_to_reward = get_goal_vector()
-        print("dir_to_reward", dir_to_reward)
+        # print("dir_to_reward", dir_to_reward)
         drift_velocity = 3 * Ag.speed_mean * \
                 (dir_to_reward / np.linalg.norm(dir_to_reward))
         observation, reward, terminate_episode, _, info = \
                 env.step1(drift_velocity)
+        if reward > 0:
+            print("Reward_value:", reward)
         env.render()
         plt.pause(0.00001)
         if terminate_episode:
@@ -901,7 +913,7 @@ if active and __name__ == "__main__":
     resets = 0
     while True:
         dir_to_reward = get_goal_vector()
-        print("dir_to_reward", dir_to_reward)
+        # print("dir_to_reward", dir_to_reward)
         drift_velocity = 3 * Ag.speed_mean * \
                 (dir_to_reward / np.linalg.norm(dir_to_reward))
         observation, reward, terminate_episode, _, info = \
