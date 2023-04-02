@@ -490,16 +490,19 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         else:
             R["title"].set_text("t={:.2f}".format(self.t))
 
-    def _render_mpl_agents(self, **kws):
+    def _render_mpl_agents(self, framerate=10, alpha=0.7, **kws):
         """
         Render the agents
 
-        TODO:
-        -----
-        - `skiprate`
-        - plot_trajectory draws a new environment each time it plots,
-          which slowly accumulates environment background objects. this
-          can drag on performance after lots of episodes.
+        Inputs
+        ------
+        framerate: float
+            the framerate at which to render the agents
+        alpha: float
+            the alpha value to use for the agents
+        **kws
+            keyword arguments to pass to the agent's style (point size, color)
+            see _agent_style
         """
         R, fig, ax = self._get_mpl_render_cache()
         initialize = "agents" not in R
@@ -507,8 +510,13 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             R["agents"]        = []
             for (i, agent) in enumerate(self.Agents):
                 # set 🐀 location
-                _, a = agent.plot_trajectory(fig=fig, ax=ax)
-                R["agents"].append(a.collections[-1])
+                skiprate = int((1.0/framerate)//agent.dt)
+                c, s = self._agent_style(agent, skiprate=skiprate, color=i, 
+                                         **kws)
+                trajectory = np.array(agent.history['pos'][::skiprate])
+                ax.scatter(*trajectory.T,
+                    s=s, alpha=alpha, zorder=0, c=c, linewidth=0)
+                R["agents"].append(ax.collections[-1])
         else:
             for i, agent in enumerate(self.Agents):
                 scat = R["agents"][i]
@@ -519,10 +527,10 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
                 scat.set_sizes(s)
 
     @staticmethod
-    def _agent_style(agent:Agent, color=0,
+    def _agent_style(agent:Agent, color=0, skiprate=1,
                      point_size:bool=15, decay_point_size:bool=False, 
                      plot_agent:bool=True, decay_point_timescale:int=10):
-        time = agent.history['t']
+        time = agent.history['t'][::skiprate]
         if isinstance(color, int):
             color=plt.rcParams['axes.prop_cycle'].by_key()['color'][color]
         s = point_size * np.ones_like(time)
