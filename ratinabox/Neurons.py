@@ -15,18 +15,22 @@ from ratinabox import utils
 class Neurons:
     """The Neuron class defines a population of Neurons. All Neurons have firing rates which depend on the state of the Agent. As the Agent moves the firing rate of the cells adjust accordingly.
 
-    All Neuron classes must be initalised with the Agent (to whom these cells belong) since the Agent determines the firingrates through its position and velocity. The Agent class will itself contain the Environment. Both the Agent (position/velocity) and the Environment (geometry, walls etc.) determine the firing rates. Optionally (but likely) an input dictionary 'params' specifying other params will be given.
+    All Neuron classes must be initalised with the Agent (to whom these cells belong) since the Agent determines the firingrates through its position and velocity. The Agent class will itself contain the Environment. Both the Agent (position/velocity) and the Environment (geometry, walls, objects etc.) determine the firing rates. Optionally (but likely) an input dictionary 'params' specifying other params will be given.
 
     This is a generic Parent class. We provide several SubClasses of it. These include:
     • PlaceCells()
     • GridCells()
     • BoundaryVectorCells()
+    • ObjectVectorCells()
     • VelocityCells()
     • HeadDirectionCells()
     • SpeedCells()
     • FeedForwardLayer()
+    as well as (in  the contribs)
+    • ValueNeuron()
+    • FieldOfViewNeurons()
 
-    The unique function in each child classes is get_state(). Whenever Neurons.update() is called Neurons.get_state() is then called to calculate and returns the firing rate of the cells at the current moment in time. This is then saved. In order to make your own Neuron subclass you will need to write a class with the following mandatory structure:
+    The unique function in each child classes is get_state(). Whenever Neurons.update() is called Neurons.get_state() is then called to calculate and return the firing rate of the cells at the current moment in time. This is then saved. In order to make your own Neuron subclass you will need to write a class with the following mandatory structure:
 
     ============================================================================================
     MyNeuronClass(Neurons):
@@ -49,7 +53,7 @@ class Neurons:
                 Insert here code which calculates the firing rate.
                 This may work differently depending on what you set evaluate_at as. For example, evaluate_at == 'agent' should means that the position or velocity (or whatever determines the firing rate) will by evaluated using the agents current state. You might also like to have an option like evaluate_at == "all" (all positions across an environment are tested simultaneously - plot_rate_map() tries to call this, for example) or evaluate_at == "last" (in a feedforward layer just look at the last firing rate saved in the input layers saves time over recalculating them.). **kwargs allows you to pass position or velocity in manually.
 
-                By default, the Neurons.update() calls Neurons.get_state() rwithout passing any arguments. So write the default behaviour of get_state() to be what you want it to do in the main training loop.
+                By default, the Neurons.update() calls Neurons.get_state() rwithout passing any arguments. So write the default behaviour of get_state() to be what you want it to do in the main training loop, .
             ###
 
             return firingrate
@@ -66,6 +70,7 @@ class Neurons:
             • plot_rate_map()
         ...that you might not use but could be useful:
             • save_to_history()
+            • reset_history()
             • boundary_vector_preference_function()
 
     default_params = {
@@ -89,7 +94,7 @@ class Neurons:
             "color": None,  # just for plotting
             "noise_std": 0,  # 0 means no noise, std of the noise you want to add (Hz)
             "noise_coherence_time": 0.5,
-            "save_history": True,  # whether to save history (set to False if you don't intend to acess Neuron.history for data after)
+            "save_history": True,  # whether to save history (set to Falsem if you don't intend to acess Neuron.history for data after, for better memory performance)
         }
         self.Agent = Agent
         default_params.update(params)
@@ -127,7 +132,7 @@ class Neurons:
             firingrate = self.get_state()
         self.firingrate = firingrate.reshape(-1)
         self.firingrate = self.firingrate + self.noise
-        if self.save_history == True:
+        if self.save_history is True:
             self.save_to_history()
         return
 
@@ -136,12 +141,13 @@ class Neurons:
         t_start=None,
         t_end=None,
         chosen_neurons="all",
-        spikes=True,
+        spikes=False,
         imshow=False,
         fig=None,
         ax=None,
         xlim=None,
         background_color=None,
+        autosave=True,
         **kwargs,
     ):
         """Plots a timeseries of the firing rate of the neurons between t_start and t_end
@@ -157,6 +163,7 @@ class Neurons:
             • fig, ax: the figure, axis to plot on (can be None)
             xlim: fix xlim of plot irrespective of how much time you're plotting
             • background_color: color of the background if not matplotlib default (probably white)
+            • autosave: if True, will try to save the figure to the figure directory `ratinabox.figure_directory`
             • kwargs sent to mountain plot function, you can ignore these
 
         Returns:
@@ -176,6 +183,13 @@ class Neurons:
 
         # neurons to plot
         chosen_neurons = self.return_list_of_neurons(chosen_neurons)
+        n_neurons_to_plot = len(chosen_neurons)
+        if ("shift" not in kwargs.keys()) and ("overlap" not in kwargs.keys()):
+            kwargs["shift"] = max(
+                1.5, min(4, 40 / n_neurons_to_plot)
+            )  # scaled to make plots look nice and be ~constant size
+            kwargs["shift"] = 2
+            kwargs["overlap"] = 2.2
         spike_data = spike_data[startid:endid, chosen_neurons]
         rate_timeseries = rate_timeseries[:, chosen_neurons]
 
@@ -231,6 +245,9 @@ class Neurons:
             ax.set_yticks([])
             ax.set_ylabel("Neurons")
 
+        if autosave:
+            ratinabox.utils.save_figure(fig, self.name + "_firingrate")
+
         return fig, ax
 
     def plot_rate_map(
@@ -244,6 +261,7 @@ class Neurons:
         colorbar=True,
         t_start=0,
         t_end=None,
+        autosave=True,
         **kwargs,
     ):
         """Plots rate maps of neuronal firing rates across the environment
@@ -256,9 +274,10 @@ class Neurons:
 
             • fig, ax (the fig and ax to draw on top of, optional)
 
-            • shape is the shape of the multiplanlle figure, must be compatible with chosen neurons
+            • shape is the shape of the multipanel figure, must be compatible with chosen neurons
             • colorbar: whether to show a colorbar
             • t_start, t_end: in the case where you are plotting spike, or using historical data to get rate map, this restricts the timerange of data you are using
+            • autosave: if True, will try to save the figure to the figure directory `ratinabox.figure_directory`
             • kwargs are sent to get_state and utils.mountain_plot and can be ignore if you don't need to use them
 
         Returns:
@@ -270,7 +289,7 @@ class Neurons:
                 rate_maps = self.get_state(evaluate_at="all", **kwargs)
             except Exception as e:
                 print(
-                    "It was not possible to get the rate map by evaluating the firing rate at all positions across the Environment. This is probably because the Neuron class does not support, or it does not have an groundtruth receptive field. Instead, plotting rate map by weighted position histogram method. Here is the error:"
+                    "It was not possible to get the rate map by evaluating the firing rate at all positions across the Environment. This is probably because the Neuron class does not support vectorised evaluation, or it does not have an groundtruth receptive field. Instead trying wit ha for-loop over all positions one-by-one (could be slow)Instead, plotting rate map by weighted position histogram method. Here is the error:"
                 )
                 print("Error: ", e)
                 import traceback
@@ -346,7 +365,9 @@ class Neurons:
                         divider = make_axes_locatable(axes[-1])
                         cax = divider.append_axes("right", size="5%", pad=0.05)
             for (i, ax_) in enumerate(axes):
-                _, ax_ = self.Agent.Environment.plot_environment(fig, ax_)
+                _, ax_ = self.Agent.Environment.plot_environment(
+                    fig, ax_, autosave=False
+                )
             if len(chosen_neurons) != axes.size:
                 print(
                     f"You are trying to plot a different number of neurons {len(chosen_neurons)} than the number of axes provided {axes.size}. Some might be missed. Either change this with the chosen_neurons argument or pass in a list of axes to plot on"
@@ -361,7 +382,7 @@ class Neurons:
                         rate_map = rate_maps[chosen_neurons[i], :].reshape(
                             self.Agent.Environment.discrete_coords.shape[:2]
                         )
-                        im = ax_.imshow(rate_map, extent=ex, zorder=0)
+                        im = ax_.imshow(rate_map, extent=ex, zorder=0, cmap="inferno")
                     elif method == "history":
                         rate_timeseries_ = rate_timeseries[chosen_neurons[i], :]
                         rate_map = utils.bin_data_for_histogramming(
@@ -370,6 +391,7 @@ class Neurons:
                         im = ax_.imshow(
                             rate_map,
                             extent=ex,
+                            cmap="inferno",
                             interpolation="bicubic",
                             zorder=1,
                         )
@@ -398,10 +420,8 @@ class Neurons:
                         alpha=0.7,
                     )
 
-            return fig, axes
-
         # PLOT 1D
-        if self.Agent.Environment.dimensionality == "1D":
+        elif self.Agent.Environment.dimensionality == "1D":
             if method == "groundtruth":
                 rate_maps = rate_maps[chosen_neurons, :]
                 x = self.Agent.Environment.flattened_discrete_coords[:, 0]
@@ -422,10 +442,16 @@ class Neurons:
 
             if fig is None and ax is None:
                 fig, ax = self.Agent.Environment.plot_environment(
-                    height=0.5 * len(chosen_neurons)
+                    autosave=False,
                 )
 
             if method != "neither":
+                kwargs = {}
+                kwargs["shift"] = max(
+                    1.5, min(4, 40 / len(chosen_neurons))
+                )  # scaled to make plots look nice and be ~constant size
+                kwargs["shift"] = 2
+                kwargs["overlap"] = 2.2
                 fig, ax = utils.mountain_plot(
                     X=x, NbyX=rate_maps, color=self.color, fig=fig, ax=ax, **kwargs
                 )
@@ -446,7 +472,12 @@ class Neurons:
             ax.set_xlabel("Position / m")
             ax.set_ylabel("Neurons")
 
-        return fig, ax
+            axes = ax
+
+        if autosave:
+            ratinabox.utils.save_figure(fig, self.name + "_ratemaps")
+
+        return fig, axes
 
     def save_to_history(self):
         cell_spikes = np.random.uniform(0, 1, size=(self.n,)) < (
@@ -455,6 +486,11 @@ class Neurons:
         self.history["t"].append(self.Agent.t)
         self.history["firingrate"].append(list(self.firingrate))
         self.history["spikes"].append(list(cell_spikes))
+
+    def reset_history(self):
+        for key in self.history.keys():
+            self.history[key] = []
+        return
 
     def animate_rate_timeseries(
         self,
@@ -481,7 +517,7 @@ class Neurons:
             animation
         """
 
-        plt.rcParams["animation.html"] = "jshtml" #for animation rendering in jupyter
+        plt.rcParams["animation.html"] = "jshtml"  # for animation rendering in jupyter
 
         dt = 1 / fps
         if t_start == None:
@@ -542,16 +578,16 @@ class Neurons:
             if chosen_neurons == "all":
                 chosen_neurons = np.arange(self.n)
             elif chosen_neurons.isdigit():
-                chosen_neurons = np.linspace(0, self.n - 1, int(chosen_neurons)).astype(
-                    int
-                )
+                chosen_neurons = np.linspace(
+                    0, self.n - 1, min(self.n, int(chosen_neurons))
+                ).astype(int)
             elif chosen_neurons[-4:] == "rand":
                 chosen_neurons = int(chosen_neurons[:-4])
                 chosen_neurons = np.random.choice(
                     np.arange(self.n), size=chosen_neurons, replace=False
                 )
         if type(chosen_neurons) is int:
-            chosen_neurons = np.linspace(0, self.n - 1, chosen_neurons)
+            chosen_neurons = np.linspace(0, self.n - 1, min(self.n, chosen_neurons))
         if type(chosen_neurons) is list:
             chosen_neurons = list(np.array(chosen_neurons).astype(int))
             pass
@@ -567,31 +603,31 @@ class Neurons:
 class PlaceCells(Neurons):
     """The PlaceCells class defines a population of PlaceCells. This class is a subclass of Neurons() and inherits it properties/plotting functions.
 
-    Must be initialised with an Agent and a 'params' dictionary.
+       Must be initialised with an Agent and a 'params' dictionary.
 
-    PlaceCells defines a set of 'n' place cells scattered across the environment. The firing rate is a functions of the distance from the Agent to the place cell centres. This function (params['description'])can be:
-        • gaussian (default)
-        • gaussian_threshold
-        • diff_of_gaussians
-        • top_hat
-        • one_hot
- #TO-DO • tanni_harland  https://pubmed.ncbi.nlm.nih.gov/33770492/
+       PlaceCells defines a set of 'n' place cells scattered across the environment. The firing rate is a functions of the distance from the Agent to the place cell centres. This function (params['description'])can be:
+           • gaussian (default)
+           • gaussian_threshold
+           • diff_of_gaussians
+           • top_hat
+           • one_hot
+    #TO-DO • tanni_harland  https://pubmed.ncbi.nlm.nih.gov/33770492/
 
-    List of functions:
-        • get_state()
-        • plot_place_cell_locations()
+       List of functions:
+           • get_state()
+           • plot_place_cell_locations()
 
-    default_params = {
-            "n": 10,
-            "name": "PlaceCells",
-            "description": "gaussian",
-            "widths": 0.20,
-            "place_cell_centres": None,  # if given this will overwrite 'n',
-            "wall_geometry": "geodesic",
-            "min_fr": 0,
-            "max_fr": 1,
-            "name": "PlaceCells",
-        }
+       default_params = {
+               "n": 10,
+               "name": "PlaceCells",
+               "description": "gaussian",
+               "widths": 0.20,
+               "place_cell_centres": None,  # if given this will overwrite 'n',
+               "wall_geometry": "geodesic",
+               "min_fr": 0,
+               "max_fr": 1,
+               "name": "PlaceCells",
+           }
     """
 
     def __init__(self, Agent, params={}):
@@ -649,7 +685,7 @@ class PlaceCells(Neurons):
                 len(self.Agent.Environment.walls) > 5
             ):
                 print(
-                    "'geodesic' wall geometry only supported for enivoronments with 1 additional wall (4 boundaing walls + 1 additional). Sorry. Using 'line_of_sight' instead."
+                    "'geodesic' wall geometry only supported for enivironments with 1 additional wall (4 bounding walls + 1 additional). Sorry. Using 'line_of_sight' instead."
                 )
                 self.wall_geometry = "line_of_sight"
 
@@ -706,19 +742,27 @@ class PlaceCells(Neurons):
         )  # scales from being between [0,1] to [min_fr, max_fr]
         return firingrate
 
-    def plot_place_cell_locations(self, fig=None, ax=None):
+    def plot_place_cell_locations(
+        self,
+        fig=None,
+        ax=None,
+        autosave=True,
+    ):
         """Scatter plots where the centre of the place cells are
 
         Args:
             fig, ax: if provided, will plot fig and ax onto these instead of making new.
+            autosave (bool, optional): if True, will try to save the figure into `ratinabox.figure_directory`
 
         Returns:
             _type_: _description_
         """
         if fig is None and ax is None:
-            fig, ax = self.Agent.Environment.plot_environment()
+            fig, ax = self.Agent.Environment.plot_environment(autosave=False)
         else:
-            _, _ = self.Agent.Environment.plot_environment(fig=fig, ax=ax)
+            _, _ = self.Agent.Environment.plot_environment(
+                fig=fig, ax=ax, autosave=False
+            )
         place_cell_centres = self.place_cell_centres
         ax.scatter(
             place_cell_centres[:, 0],
@@ -728,6 +772,9 @@ class PlaceCells(Neurons):
             s=15,
             zorder=2,
         )
+        if autosave:
+            ratinabox.utils.save_figure(fig, "place_cell_locations")
+
         return fig, ax
 
 
@@ -1091,11 +1138,19 @@ class BoundaryVectorCells(Neurons):
         )
         return pref[..., 0]
 
-    def plot_BVC_receptive_field(self, chosen_neurons="all", fig=None, ax=None):
+    def plot_BVC_receptive_field(
+        self,
+        chosen_neurons="all",
+        fig=None,
+        ax=None,
+        autosave=True,
+    ):
         """Plots the receptive field (in polar corrdinates) of the BVC cells. For allocentric BVCs "up" in this plot == "North", for egocentric BVCs, up == the head direction of the animals
 
         Args:
             chosen_neurons: Which neurons to plot. Can be int, list, array or "all". Defaults to "all".
+            fig, ax: the figure/ax object to plot onto (optional)
+            autosave (bool, optional): if True, will try to save the figure into `ratinabox.figure_directory`
 
         Returns:
             fig, ax
@@ -1142,28 +1197,30 @@ class BoundaryVectorCells(Neurons):
             ax[i].set_xticks([])
             ax[i].set_yticks([])
 
+        if autosave:
+            ratinabox.utils.save_figure(fig, "BVC_receptive_fields")
+
         return fig, ax
 
 
 class ObjectVectorCells(Neurons):
     """Initialises ObjectVectorCells(), takes as input a parameter dictionary. Any values not provided by the params dictionary are taken from a default dictionary below.
 
-    Each object vector cell has a preferred tuning_distance and tuning_angle. Only when the angle is (with gaussian spread) close to this distance and angle away from the OVC wll the cell fire.
+    ObjectVectorCells respond to Objects inside the Environment (2D only). Add objects to the environment using the `Env.add_object()` method. Each OVC has a prefrerred type (which "type" of object it responds to), tuning angle, and tuning distance (direction and distance from object cell will preferentially fire at).
 
-    It is possible for these cells to be "field_of_view" in which case the cell fires iff the agent is looking towards it. Essentially this is an egocentric OVC with tuning angle set to zero (head on).
+    Reference frame can be allocentric or egocentric. In the latter case the tuning angle is relative to the heading direction of the agent.
 
     default_params = {
-        "n": 10,
-        "min_fr": 0,
-        "max_fr": 1,
+        "n": 10, #each will be randomly assigned an object type, tuning angle and tuning distance
         "name": "ObjectVectorCell",
-        "walls_occlude":True, #whether walls occuled OVC firing
-        "field_of_view":False, #set to true for "field of view" OVC
-        "object_locations":None, #otherwise random across Env, the length of this will overwrite "n"
-        "angle_spread_degrees":15, #can be an array, one for each object, spread of von Mises angular preferrence functinon for each OVC
-        "pref_object_dist": 0.25, #can be an array, one for each object, otherwise randomly drawn from a Rayleigh with this sigma. How far away from OVC the OVC fires.
+        "walls_occlude":True, #whether walls occlude OVC firing
+        "reference_frame":"allocentric", #"or "egocentric" (equivalent to field of view neurons)
+        "angle_spread_degrees":15, #spread of von Mises angular preferrence functinon for each OVC, you can also set this array manually after initialisation
+        "pref_object_dist": 0.25, # distance preference drawn from a Rayleigh with this sigma. How far away from object the OVC fires. Can set this array manually after initialisation.
         "xi": 0.08, #parameters determining the distance preferrence function std given the preferred distance. See BoundaryVectorCells or de cothi and barry 2020
         "beta": 12,
+        "max_fr":1, # likely max firing rate of an OVC
+        "min_fr":0, # likely min firing rate
     }
     """
 
@@ -1171,16 +1228,15 @@ class ObjectVectorCells(Neurons):
 
         default_params = {
             "n": 10,
-            "min_fr": 0,
-            "max_fr": 1,
             "name": "ObjectVectorCell",
             "walls_occlude": True,
-            "field_of_view": False,
-            "object_locations": None,
+            "reference_frame": "allocentric",
             "angle_spread_degrees": 15,
             "pref_object_dist": 0.25,
             "xi": 0.08,
             "beta": 12,
+            "max_fr": 1,
+            "min_fr": 0,
         }
 
         self.Agent = Agent
@@ -1193,17 +1249,16 @@ class ObjectVectorCells(Neurons):
 
         super().__init__(Agent, self.params)
 
-        if self.params["object_locations"] is None:
-            self.object_locations = self.Agent.Environment.sample_positions(
-                n=int(self.params["n"])
-            )
-            print(
-                f"No object locations passed so {self.params['n']} object locations have been randomly sampled across the environment"
-            )
-        else:
-            self.n = len(params["object_locations"])
+        self.object_locations = self.Agent.Environment.objects["objects"]
+        assert len(self.object_locations) > 0, print(
+            "No objects in Environments, add objects using `Env.add_object(object_position=[x,y]) method"
+        )
 
-        # preferred distance and angle to objects and their tuning widths (set these yourself if needed)
+        # preferred object types, distance and angle to objects and their tuning widths (set these yourself if needed)
+        self.object_types = self.Agent.Environment.objects["object_types"]
+        self.tuning_types = np.random.choice(
+            np.unique(self.object_types), replace=True, size=(self.n,)
+        )
         self.tuning_angles = np.random.uniform(0, 2 * np.pi, size=self.n)
         self.tuning_distances = np.random.rayleigh(
             scale=self.pref_object_dist, size=self.n
@@ -1212,9 +1267,6 @@ class ObjectVectorCells(Neurons):
         self.sigma_angles = np.array(
             [(self.angle_spread_degrees / 360) * 2 * np.pi] * self.n
         )
-
-        if self.field_of_view == True:
-            self.tuning_angles = np.zeros(self.n)
 
         if self.walls_occlude == True:
             self.wall_geometry = "line_of_sight"
@@ -1255,25 +1307,27 @@ class ObjectVectorCells(Neurons):
         pos = pos.reshape(-1, pos.shape[-1])  # (N_pos, 2)
         N_pos = pos.shape[0]
         N_cells = self.n
+        N_objects = len(self.object_locations)
 
         (
-            distances_to_OVCs,
-            vectors_to_OVCs,
+            distances_to_objects,
+            vectors_to_objects,
         ) = self.Agent.Environment.get_distances_between___accounting_for_environment(
             pos,
             self.object_locations,
             return_vectors=True,
             wall_geometry=self.wall_geometry,
-        )  # (N_pos,N_cells) (N_pos,N_cells,2)
-        flattened_vectors_to_OVCs = vectors_to_OVCs.reshape(
+        )  # (N_pos,N_objects) (N_pos,N_objects,2)
+        flattened_vectors_to_objects = vectors_to_objects.reshape(
             -1, 2
-        )  # (N_pos x N_cells, 2)
-        bearings_to_OVCs = utils.get_angle(
-            flattened_vectors_to_OVCs, is_array=True
-        ).reshape(
-            N_pos, N_cells
-        )  # (N_cells,N_pos)
-        if self.field_of_view == True:
+        )  # (N_pos x N_objects, 2)
+        bearings_to_objects = (
+            utils.get_angle(flattened_vectors_to_objects, is_array=True).reshape(
+                N_pos, N_objects
+            )
+            - np.pi
+        )  # (N_pos,N_objects) #vectors go from pos2 to pos1 so must do subtract pi from bearing
+        if self.reference_frame == "egocentric":
             if evaluate_at == "agent":
                 vel = self.Agent.velocity
             elif "vel" in kwargs.keys():
@@ -1284,42 +1338,55 @@ class ObjectVectorCells(Neurons):
                     "Field of view OVCs require a velocity vector but none was passed. Using [1,0]"
                 )
             head_bearing = utils.get_angle(vel)
-            bearings_to_OVCs -= head_bearing
+            bearings_to_objects -= head_bearing  # account for head direction
 
         tuning_distances = np.tile(
-            np.expand_dims(self.tuning_distances, axis=0), reps=(N_pos, 1)
-        )  # (N_pos,N_cell)
+            np.expand_dims(np.expand_dims(self.tuning_distances, axis=0), axis=0),
+            reps=(N_pos, N_objects, 1),
+        )  # (N_pos,N_objects,N_cell)
         sigma_distances = np.tile(
-            np.expand_dims(self.sigma_distances, axis=0), reps=(N_pos, 1)
-        )  # (N_pos,N_cell)
+            np.expand_dims(np.expand_dims(self.sigma_distances, axis=0), axis=0),
+            reps=(N_pos, N_objects, 1),
+        )  # (N_pos,N_objects,N_cell)
         tuning_angles = np.tile(
-            np.expand_dims(self.tuning_angles, axis=0), reps=(N_pos, 1)
-        )  # (N_pos,N_cell)
+            np.expand_dims(np.expand_dims(self.tuning_angles, axis=0), axis=0),
+            reps=(N_pos, N_objects, 1),
+        )  # (N_pos,N_objects,N_cell)
         sigma_angles = np.tile(
-            np.expand_dims(self.sigma_angles, axis=0), reps=(N_pos, 1)
-        )  # (N_pos,N_cell)
+            np.expand_dims(np.expand_dims(self.sigma_angles, axis=0), axis=0),
+            reps=(N_pos, N_objects, 1),
+        )  # (N_pos,N_objects,N_cell)
+        tuning_types = np.tile(
+            np.expand_dims(self.tuning_types, axis=0), reps=(N_objects, 1)
+        )
+        object_types = np.tile(
+            np.expand_dims(self.object_types, axis=-1), reps=(1, N_cells)
+        )
 
-        firingrate = (
-            utils.gaussian(distances_to_OVCs, tuning_distances, sigma_distances, norm=1)
-            * utils.von_mises(bearings_to_OVCs, tuning_angles, sigma_angles, norm=1)
-        ).T  # (N_cell,N_pos)
+        distances_to_objects = np.tile(
+            np.expand_dims(distances_to_objects, axis=-1), reps=(1, 1, N_cells)
+        )  # (N_pos,N_objects,N_cells)
+        bearings_to_objects = np.tile(
+            np.expand_dims(bearings_to_objects, axis=-1), reps=(1, 1, N_cells)
+        )  # (N_pos,N_objects,N_cells)
+
+        firingrate = utils.gaussian(
+            distances_to_objects, tuning_distances, sigma_distances, norm=1
+        ) * utils.von_mises(
+            bearings_to_objects, tuning_angles, sigma_angles, norm=1
+        )  # (N_pos,N_objects,N_cell)
+
+        tuning_mask = np.expand_dims(
+            np.array(object_types == tuning_types, int), axis=0
+        )  # (1,N_objects,N_cells)
+        firingrate *= tuning_mask
+        firingrate = np.sum(
+            firingrate, axis=1
+        ).T  # (N_cell,N_pos), sum over objects which this cell is selective to
         firingrate = (
             firingrate * (self.max_fr - self.min_fr) + self.min_fr
         )  # scales from being between [0,1] to [min_fr, max_fr]
         return firingrate
-
-    def plot_rate_map(self, chosen_neurons="all", **kwargs):
-        """Plots the rate maps, takes identical kwargs as the parent Neurons class function plot_rate_map, just also plots location of the object in question
-        Returns:
-            fig, ax
-        """
-        chosen_neurons = self.return_list_of_neurons(chosen_neurons=chosen_neurons)
-        fig, ax = super().plot_rate_map(chosen_neurons, **kwargs)
-        locations = self.object_locations[chosen_neurons]
-        for (i, ax) in enumerate(ax):
-            loc = locations[i]
-            ax.scatter(loc[0], loc[1], color="w", s=10)
-        return fig, ax
 
 
 class HeadDirectionCells(Neurons):
@@ -1351,7 +1418,7 @@ class HeadDirectionCells(Neurons):
             "min_fr": 0,
             "max_fr": 1,
             "n": 4,
-            "angular_spread_degrees": 30,  # width of HDC preference function (degrees)
+            "angular_spread_degrees": 45,  # width of HDC preference function (degrees)
             "name": "HeadDirectionCells",
         }
         self.Agent = Agent
@@ -1408,9 +1475,46 @@ class HeadDirectionCells(Neurons):
         return firingrate
 
     def plot_HDC_receptive_field(
-        self,
+        self, chosen_neurons="all", fig=None, ax=None, autosave=True
     ):
-        return
+        """Plots the receptive fields, in polar coordinates, of hte head direction cells. The receptive field is a von mises function centred around the preferred direction of the cell.
+
+        Args:
+            chosen_neurons (str, optional): The neurons to plot. Defaults to "all".
+            fig, ax (_type_, optional): matplotlib fig, ax objects ot plot onto (optional).
+            autosave (bool, optional): if True, will try to save the figure into `ratinabox.figure_directory`
+
+        Returns:
+            fig, ax
+        """
+        chosen_neurons = self.return_list_of_neurons(chosen_neurons=chosen_neurons)
+        if fig is None and ax is None:
+            fig, ax = plt.subplots(
+                1,
+                len(chosen_neurons),
+                figsize=(2 * len(chosen_neurons), 2),
+                subplot_kw={"projection": "polar"},
+            )
+
+        for i, n in enumerate(chosen_neurons):
+            theta = np.linspace(0, 2 * np.pi, 100)
+            pref_theta = self.preferred_angles[n]
+            sigma_theta = self.angular_tunings[n]
+            fr = utils.von_mises(theta, pref_theta, sigma_theta, norm=1)
+            fr = fr * (self.max_fr - self.min_fr) + self.min_fr
+            ax[i].plot(theta, fr, linewidth=2, color=self.color, zorder=11)
+            ax[i].set_yticks([])
+            ax[i].set_xticks([])
+            ax[i].set_xticks([0, np.pi / 2, np.pi, 3 * np.pi / 2])
+            ax[i].fill_between(theta, fr, 0, color=self.color, alpha=0.2)
+            ax[i].set_ylim([0, self.max_fr])
+            ax[i].tick_params(pad=-18)
+            ax[i].set_xticklabels(["E", "N", "W", "S"])
+
+        if autosave is True:
+            ratinabox.utils.save_figure(fig, self.name + "_ratemaps")
+
+        return fig, ax
 
 
 class VelocityCells(HeadDirectionCells):
@@ -1651,7 +1755,9 @@ class FeedForwardLayer(Neurons):
         V += biases
 
         firingrate = utils.activate(V, other_args=self.activation_params)
-        # firingrate_prime = utils.activate(
-        #    V, other_args=self.activation_params, deriv=True
-        # )
+        # saves current copy of activation derivative at firing rate (useful for learning rules)
+        if evaluate_at == "last":
+            self.firingrate_prime = utils.activate(
+                V, other_args=self.activation_params, deriv=True
+            )
         return firingrate

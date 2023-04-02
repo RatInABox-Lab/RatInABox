@@ -22,7 +22,7 @@ class Environment:
         ...that you might use:
             • add_wall()
             • plot_environment()
-        ...that you probably won't directly use:
+        ...that you probably won't directly use/use very often:
             • sample_positions()
             • discretise_environment()
             • get_vectors_between___accounting_for_environment()
@@ -31,6 +31,8 @@ class Environment:
             • check_wall_collisions()
             • vectors_from_walls()
             • apply_boundary_conditions()
+            • add_object()
+
 
     The default_params are
     default_params = {
@@ -125,6 +127,15 @@ class Environment:
                     self.holes_polygons.append(shapely.Polygon(h))
             self.boundary_polygon = shapely.Polygon(self.boundary)
 
+            # make list of "objects" within the Env
+            self.objects = {
+                "objects": np.empty((0, 2)),
+                "object_types": np.empty(0, int),
+            }
+            self.n_object_types = 0
+            self.object_colormap = "rainbow"
+            self.plot_objects = True
+
             # make some other attributes
             left = min([c[0] for c in b])
             right = max([c[0] for c in b])
@@ -162,20 +173,49 @@ class Environment:
             self.walls = np.concatenate((self.walls, wall), axis=0)
         return
 
-    def plot_environment(self, fig=None, ax=None, height=1):
+    def add_object(self, object, type="new"):
+        """Adds an object to the environment. Objects can be seen by object vector cells but otherwise do very little. Objects have "types". By default when adding a new object a new type is created (n objects n types) but you can specify a type (n objects <n types). Boundary vector cells may be selective to one type.
+
+        Args:
+            object (array): The location of the object, 2D list or array
+            type (_type_): The "type" of the object, any integer. By default ("new") a new type is made s.t. the first object is type 0, 2nd type 1... n'th object will be type n-1, etc.... If type == "same" then the added object has the same type as the last
+
+        """
+        object = np.array(object).reshape(1, 2)
+        assert object.shape[1] == 2
+
+        if type == "new":
+            type = self.n_object_types
+        elif type == "same":
+            if len(self.objects["object_types"]) == 0:
+                type = 0
+            else:
+                type = self.objects["object_types"][-1]
+        else:
+            assert type <= self.n_object_types, print(
+                f"Newly added object must be one of the existing types (currently {np.unique(self.objects['object_types'])}) or the next one along ({self.n_object_types}), not {type}"
+            )
+        type = np.array([type], int)
+
+        self.objects["objects"] = np.append(self.objects["objects"], object, axis=0)
+        self.objects["object_types"] = np.append(
+            self.objects["object_types"], type, axis=0
+        )
+        self.n_object_types = len(np.unique(self.objects["object_types"]))
+        return
+
+    def plot_environment(self, fig=None, ax=None, autosave=True):
         """Plots the environment on the x axis, dark grey lines show the walls
         Args:
             fig,ax: the fig and ax to plot on (can be None)
-            height: if 1D, how many line plots will be stacked (5.5mm per line)
+            autosave: if True, will try to save the figure to the figure directory `ratinabox.figure_directory`
         Returns:
             fig, ax: the environment figures, can be used for further downstream plotting.
         """
 
         if self.dimensionality == "1D":
             extent = self.extent
-            fig, ax = plt.subplots(
-                figsize=(2 * (extent[1] - extent[0]), height * (5.5 / 25))
-            )
+            fig, ax = plt.subplots(figsize=(2 * (extent[1] - extent[0]), (5.5 / 25)))
             ax.set_xlim(left=extent[0], right=extent[1])
             ax.spines["left"].set_color("none")
             ax.spines["right"].set_color("none")
@@ -241,6 +281,7 @@ class Environment:
                     setattr(background, "name", "hole")
                     ax.add_patch(anti_arena_segment)
 
+            # plot walls
             for wall in walls:
                 ax.plot(
                     [wall[0][0], wall[1][0]],
@@ -250,11 +291,34 @@ class Environment:
                     solid_capstyle="round",
                     zorder=2,
                 )
+
+            # plot objects
+            if self.plot_objects == True:
+                object_cmap = matplotlib.cm.get_cmap(self.object_colormap)
+                for (i, object) in enumerate(self.objects["objects"]):
+                    object_color = object_cmap(
+                        self.objects["object_types"][i]
+                        / (self.n_object_types - 1 + 1e-8)
+                    )
+                    ax.scatter(
+                        object[0],
+                        object[1],
+                        facecolor=[0, 0, 0, 0],
+                        edgecolors=object_color,
+                        s=10,
+                        zorder=2,
+                        marker="o",
+                    )
+
             ax.set_aspect("equal")
             ax.grid(False)
             ax.axis("off")
             ax.set_xlim(left=extent[0] - 0.03, right=extent[1] + 0.03)
             ax.set_ylim(bottom=extent[2] - 0.03, top=extent[3] + 0.03)
+
+        if autosave:
+            ratinabox.utils.save_figure(fig, "Environment")
+
         return fig, ax
 
     def sample_positions(self, n=10, method="uniform_jitter"):
@@ -285,8 +349,12 @@ class Environment:
 
             if method == "random":
                 positions = np.zeros((n, 2))
-                positions[:, 0] = np.random.uniform(self.extent[0], self.extent[1], size=n)
-                positions[:, 1] = np.random.uniform(self.extent[2], self.extent[3], size=n)
+                positions[:, 0] = np.random.uniform(
+                    self.extent[0], self.extent[1], size=n
+                )
+                positions[:, 1] = np.random.uniform(
+                    self.extent[2], self.extent[3], size=n
+                )
             elif method[:7] == "uniform":
                 ex = self.extent
                 area = (ex[1] - ex[0]) * (ex[3] - ex[2])
@@ -306,7 +374,7 @@ class Environment:
                     )
                     positions = np.vstack((positions, positions_remaining))
 
-            if (self.is_rectangular) or (self.has_holes is True):
+            if (self.is_rectangular is False) or (self.has_holes is True):
                 # in this case, the positions you have sampled within the extent of the environment may not actually fall within it's legal area (i.e. they could be outside the polygon boundary or inside a hole). Brute force this by randomly resampling these points until all fall within the env.
                 for (i, pos) in enumerate(positions):
                     if self.check_if_position_is_in_environment(pos) == False:
@@ -369,7 +437,7 @@ class Environment:
             pos1 (array): N x dimensionality array of poisitions
             pos2 (array): M x dimensionality array of positions
             wall_geometry: how the distance calculation handles walls in the env (can be "euclidean", "line_of_sight" or "geodesic")
-            return_vectors (False): If True, returns the distances and the vectors as a tuple
+            return_vectors (False): If True, returns the distances and the vectors (from pos2 to pos1) as a tuple
         Returns:
             N x M array of pairwise distances
         """
