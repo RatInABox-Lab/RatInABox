@@ -138,13 +138,15 @@ class Reward():
         plt.plot(timesteps, rewards[:len(timesteps)],
                label=f"reward={self.preset}, " 
                f"knobs={self.decay_knobs}")
-        plt.axvspan(self.expire_clock, plt.gca().get_ylim()[-1], color='r', alpha=0.2)
+        plt.axvspan(self.expire_clock, plt.gca().get_ylim()[-1], color='r', 
+                    alpha=0.2)
         plt.text(np.mean((plt.gca().get_xlim()[0], self.expire_clock)), 
                  np.mean(plt.gca().get_ylim()), "reward\nactive",
                  backgroundcolor='black', color="white")
         plt.text(np.mean((self.expire_clock, plt.gca().get_xlim()[-1])), 
                  np.mean(plt.gca().get_ylim()), "reward\nexpires",
                  backgroundcolor='black', color="white")
+        plt.gca().set(xlabel="time (s)", ylabel="reward signal")
         return plt.gcf(), plt.gca()
 
 class RewardCache():
@@ -864,7 +866,8 @@ if active and __name__ == "__main__":
     plt.close('all')
 
     # Test reward class
-    r1=Reward(1, 0.01, expire_clock=1, decay="linear")
+    r1=Reward(1, dt=0.01, expire_clock=0.5, decay="linear", 
+              decay_knobs=[6])
     r1.plot_theoretical_reward()
 
     # Test the environment
@@ -897,7 +900,7 @@ if active and __name__ == "__main__":
     # Run the simulation, with the agent drifting towards the goal when
     # it is close to the goal
     s = input("Single Agent. Press enter to start")
-    resets = 0
+    resets, reward_printed = 0, False
     while True:
         dir_to_reward = get_goal_vector()
         # print("dir_to_reward", dir_to_reward)
@@ -905,8 +908,17 @@ if active and __name__ == "__main__":
                 (dir_to_reward / np.linalg.norm(dir_to_reward))
         observation, reward, terminate_episode, _, info = \
                 env.step1(drift_velocity)
+        # --- Report reward to the REPL ------
         if reward > 0:
+            if not reward_printed:
+                print("-"*40,"Reward Initiated","-"*40)
             print("Reward_value:", reward)
+            reward_printed = True
+        else:
+            if reward_printed:
+                print("-"*40,"Reward Ended","-"*40)
+            reward_printed = False
+        # ------------------------------------
         env.render()
         plt.pause(0.00001)
         if terminate_episode:
