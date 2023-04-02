@@ -314,6 +314,9 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             cache = RewardCache()
             self.reward_caches.append(cache)
             agent.reward = cache
+            agent.t = self.t # agent clock is aligned to environment,
+                             # in case a new agent is placed in the env
+                             # on a later episode
 
     def _dict(self, V):
         """
@@ -511,9 +514,10 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         else:
             R["title"].set_text("t={:.2f}".format(self.t))
 
-    def _render_mpl_agents(self, framerate=10, alpha=0.7, **kws):
+    def _render_mpl_agents(self, framerate=60, alpha=0.7, 
+                           t_start="episode", **kws):
         """
-        Render the agents
+        Render the agents 🐀 
 
         Inputs
         ------
@@ -521,37 +525,50 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             the framerate at which to render the agents
         alpha: float
             the alpha value to use for the agents
+        t_start: float
+            the time at which to start rendering the agents
+                - "episode" : start at the beginning of the current episode
+                - "all" : start at the beginning of the first episode
+                - float : start at the given time
         **kws
             keyword arguments to pass to the agent's style (point size, color)
             see _agent_style
         """
         R, fig, ax = self._get_mpl_render_cache()
         initialize = "agents" not in R
+        if t_start is "episode":
+            t_start = self.episodes['start'][-1]
+        elif t_start is "all" or t_start is None:
+            t_start = self.episodes['start'][0]
+        def get_agent_props(agent, color):
+            t = np.array(agent.history['t'])
+            startid = np.nanargmin(np.abs(t - (t_start)))
+            skiprate = int((1.0/framerate)//agent.dt)
+            trajectory = np.array(agent.history['pos'][startid::skiprate])
+            t = t[startid::skiprate]
+            c, s = self._agent_style(agent, t, color, startid=startid, 
+                                     skiprate=skiprate, **kws)
+            return trajectory, c, s
         if initialize:
             R["agents"]        = []
             for (i, agent) in enumerate(self.Agents):
-                # set 🐀 location
-                skiprate = int((1.0/framerate)//agent.dt)
-                c, s = self._agent_style(agent, skiprate=skiprate, color=i, 
-                                         **kws)
-                trajectory = np.array(agent.history['pos'][::skiprate])
+                trajectory, c, s = get_agent_props(agent, i)
                 ax.scatter(*trajectory.T,
                     s=s, alpha=alpha, zorder=0, c=c, linewidth=0)
                 R["agents"].append(ax.collections[-1])
         else:
             for i, agent in enumerate(self.Agents):
                 scat = R["agents"][i]
-                scat.set_offsets(agent.history['pos'])
-                c, s = self._agent_style(agent, color=i, **kws)
+                trajectory, c, s = get_agent_props(agent, i)
+                scat.set_offsets(trajectory)
                 scat.set_facecolors(c)
                 scat.set_edgecolors(c)
                 scat.set_sizes(s)
 
     @staticmethod
-    def _agent_style(agent:Agent, color=0, skiprate=1,
-                     point_size:bool=15, decay_point_size:bool=False, 
+    def _agent_style(agent:Agent, time, color=0, skiprate=1, startid=0,
+                     point_size:bool=15, decay_point_size:bool=False,
                      plot_agent:bool=True, decay_point_timescale:int=10):
-        time = agent.history['t'][::skiprate]
         if isinstance(color, int):
             color=plt.rcParams['axes.prop_cycle'].by_key()['color'][color]
         s = point_size * np.ones_like(time)
@@ -918,10 +935,11 @@ if active and __name__ == "__main__":
     # it is close to the goal
     s = input("Single Agent. Press enter to start")
     resets, reward_printed = 0, False
+    speed = 12 # how fast agent runs
     while True:
         # Get the direction to the goal
         dir_to_reward = get_goal_vector(Ag)
-        drift_velocity = 3 * Ag.speed_mean * \
+        drift_velocity = speed * Ag.speed_mean * \
                 (dir_to_reward / np.linalg.norm(dir_to_reward))
         # Step the environment with actions
         observation, reward, terminate_episode, _, info = \
@@ -960,7 +978,7 @@ if active and __name__ == "__main__":
         # Get the direction to the goal
         dir_to_reward = {"agent_0":get_goal_vector(Ag),
                          "agent_1":get_goal_vector(Ag2)}
-        drift_velocity = {agent : 3 * Ag.speed_mean * 
+        drift_velocity = {agent : speed * Ag.speed_mean * 
                 (dir_to_reward / np.linalg.norm(dir_to_reward))
                 for (agent, dir_to_reward) in dir_to_reward.items()}
         # Step the environment with actions
