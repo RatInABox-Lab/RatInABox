@@ -26,8 +26,9 @@ from ratinabox.Agent import Agent
 
 class Reward():
     """
-    When a reward happens, an reward object is attached to Agent.reward:list. 
-    This object tracks the dynamics of the reward applied to the agent.
+    When an task objective is triggered, reward object is attached an Agent's
+    reward:list. This object tracks the dynamics of the reward applied to the
+    agent.
 
     This implementation allows rewards to be applied:
         - externally (through a task environment) 
@@ -57,19 +58,22 @@ class Reward():
         """
         Parameters
         ----------
-        amplitude : float|function
-            The amplitude of the reward (or a function that returns the
-            amplitude)
+        init_state : float
+            initial reward value
         dt : float
-            The time step of the simulation
-        expire_clock : float
-            The time at which the reward should expire
-        reward_dynamic : str|function
-            The dynamics of the reward. Can be one of the presets, or a
-            function that takes the current reward amplitude and the time step
-            and returns the new reward amplitude
-        reward_dynamic_knobs : list
-            A list of arguments to pass to the reward_dynamic function
+            timestep
+        expire_clock : float|None
+            time until reward expires, if None, reward never expires
+        decay : str|function|None
+            decay function, or decay preset name, or None
+        decay_knobs : list
+            decay function knobs
+        external_drive : function|None
+            external drive function, or None. can be used to attach a goal
+            gradient or reward ramping signal
+        external_drive_strength : float
+            strength of external drive, how quickly the reward follows the
+            external drive
         """
         self.state = init_state if not isinstance(init_state, FunctionType) \
                                else init_state()
