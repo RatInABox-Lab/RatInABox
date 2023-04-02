@@ -219,13 +219,13 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
                  dt=0.01, teleport_on_reset=False, 
                  save_expired_rewards=False, **kws):
         super().__init__(*pos, **kws)
-        self.episode_history:dict = {} # Written to upon completion of an episode
-        self.objectives:List[Objective] = [] # List of current objectives to saitsfy
-        self.dynamic_walls = []      # List of walls that can change/move
-        self.dynamic_objects = []    # List of current objects that can move
-        self.Agents:List[Agent] = [] # List of agents in the environment
-        self.t = 0                   # Current time
-        self.dt = dt                 # Time step
+        self.objectives:List[Objective] = [] # list of current objectives to saitsfy
+        self.dynamic_walls = []      # list of walls that can change/move
+        self.dynamic_objects = []    # list of current objects that can move
+        self.Agents:List[Agent] = [] # list of agents in the environment
+        self.t = 0                   # current time
+        self.dt = dt                 # time step
+        self.history = {'t':[]}      # history of the environment
 
         self.render_every = render_every_framestep # How often to render
         self.verbose = verbose
@@ -248,6 +248,14 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         self.reward_caches:List[RewardCache] = []
         self.agent_names:List[str]     = []
         self.info:dict                 = {} # gymnasium returns info in step()
+
+        # Episode history
+        self.episodes:dict = {} # Written to upon completion of an episode
+        self.episodes['episode']  = []
+        self.episodes['start']    = []
+        self.episodes['end']      = []
+        self.episodes['duration'] = []
+        self.episode = 0
 
         # Reward cache specifics
         self.save_expired_rewards = save_expired_rewards
@@ -336,8 +344,12 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         """
         How to reset the task when finisedh
         """
+        if len(self.episodes['start']) > 0:
+            self.write_end_episode()
+        
         # Clear rendering cache
         self.clear_render_cache()
+
         # If teleport on reset, randomly pick new location for agents
         if self.teleport_on_reset:
             for agent in self.Agents:
@@ -345,18 +357,17 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
                 agent.pos = self.observation_spaces.sample()
                 agent.history['pos'][-1] = agent.pos
 
-    def update(self, update_agents=True):
+        # Increment episode counter
+        self.episode += 1
+        self.write_start_episode()
+
+    def update(self, update_agents=False):
         """
-        How to update the task over time
+        How to update the task over time --- update things
+        directly connected to the task
         """
         self.t += self.dt # base task class only has a clock
-        # ---------------------------------------------------------------
-        # Task environments in OpenAI's gym interface update their agents
-        # ---------------------------------------------------------------
-        if update_agents:
-            for agent in self.Agents:
-                agent.update()
-        # ---------------------------------------------------------------
+        self.history['t'].append(self.t)
 
     def step(self, actions:Union[dict,np.array]=None, dt=None, 
              drift_to_random_strength_ratio=1, *pos, **kws):
@@ -418,14 +429,22 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
                 for name, agent in zip(self.agent_names, self.Agents)}
 
     # ----------------------------------------------
-    # Reading and writing episod data
+    # Reading and writing episode data
     # ----------------------------------------------
+    def _current_episode_start(self):
+        return 0 \
+                if not len(self.episodes['start']) \
+                else self.episodes['end'][-1] + self.dt
 
-    def write_episode(self, **kws):
-        pass
+    def write_start_episode(self, **kws):
+        self.episodes['episode'].append(self.episode)
+        self.episodes['start'].append(self._current_episode_start())
 
-    def read_episodes(self):
-        pass
+    def write_end_episode(self, **kws):
+        self.episodes['end'].append(self.t)
+        self.episodes['duration'].append(self.t - \
+                                         self.episodes['start'][-1])
+
 
     # ----------------------------------------------
     # Rendering
@@ -875,8 +894,9 @@ if active and __name__ == "__main__":
                                  reward=r1, render_every=1, 
                                  teleport_on_reset=False,
                                  verbose=True)
+    # Create an agent
     Ag = Agent(env)
-    env.add_agents(Ag)
+    env.add_agents(Ag) # add it to the environment
     # Note: if Agent() class detects if its env is a TaskEnvironment,
     # we could have the agent's code automate this last step. In other words,
     # after setting the agent's environment, it could automatically add itself
@@ -888,11 +908,8 @@ if active and __name__ == "__main__":
     plt.pause(0.1)
 
     # Define some helper functions
-    # get_goal_vector   = lambda: env.get_goals()[0][0] - Ag.pos
-    get_goal_vector   = lambda: env.get_vectors_between___accounting_for_environment(
+    get_goal_vector   = lambda Ag: env.get_vectors_between___accounting_for_environment(
             env.get_goals()[0][0], Ag.pos)[0]
-    # get_goal_distance = lambda: np.linalg.norm(get_goal_vector())
-
 
     # -----------------------------------------------------------------------
     # TEST 1 AGENT
@@ -902,10 +919,11 @@ if active and __name__ == "__main__":
     s = input("Single Agent. Press enter to start")
     resets, reward_printed = 0, False
     while True:
-        dir_to_reward = get_goal_vector()
-        # print("dir_to_reward", dir_to_reward)
+        # Get the direction to the goal
+        dir_to_reward = get_goal_vector(Ag)
         drift_velocity = 3 * Ag.speed_mean * \
                 (dir_to_reward / np.linalg.norm(dir_to_reward))
+        # Step the environment with actions
         observation, reward, terminate_episode, _, info = \
                 env.step1(drift_velocity)
         # --- Report reward to the REPL ------
@@ -919,8 +937,10 @@ if active and __name__ == "__main__":
                 print("-"*40,"Reward Ended","-"*40)
             reward_printed = False
         # ------------------------------------
+        # Render environment
         env.render()
         plt.pause(0.00001)
+        # Check if we are done
         if terminate_episode:
             resets += 1
             print("done! reward:", reward)
@@ -934,16 +954,22 @@ if active and __name__ == "__main__":
     Ag2 = Agent(env)
     env.add_agents(Ag2)
     s = input("Two agents. Press enter to start")
+    print("Agent names: ",env.agent_names)
     resets = 0
     while True:
-        dir_to_reward = get_goal_vector()
-        # print("dir_to_reward", dir_to_reward)
-        drift_velocity = 3 * Ag.speed_mean * \
+        # Get the direction to the goal
+        dir_to_reward = {"agent_0":get_goal_vector(Ag),
+                         "agent_1":get_goal_vector(Ag2)}
+        drift_velocity = {agent : 3 * Ag.speed_mean * 
                 (dir_to_reward / np.linalg.norm(dir_to_reward))
+                for (agent, dir_to_reward) in dir_to_reward.items()}
+        # Step the environment with actions
         observation, reward, terminate_episode, _, info = \
                 env.step(drift_velocity)
+        # Render environment
         env.render()
         plt.pause(0.00001)
+        # Check if we are done
         if any(terminate_episode.values()):
             resets += 1
             print("done! reward:", reward)
