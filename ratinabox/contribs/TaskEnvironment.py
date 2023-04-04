@@ -160,10 +160,11 @@ class RewardCache():
         self.verbose = verbose
 
     def append(self, reward:Reward, copymode=True):
-        if copymode:
-            self.cache.append(copy(reward))
-        else:
-            self.cache.append(reward)
+        if reward is not None:
+            if copymode:
+                self.cache.append(copy(reward))
+            else:
+                self.cache.append(reward)
 
     def update(self):
         """
@@ -914,10 +915,6 @@ if active and __name__ == "__main__":
     # Create an agent
     Ag = Agent(env)
     env.add_agents(Ag) # add it to the environment
-    # Note: if Agent() class detects if its env is a TaskEnvironment,
-    # we could have the agent's code automate this last step. In other words,
-    # after setting the agent's environment, it could automatically add itself
-    # to the environment's list of agents.
     env.reset()
 
     # Prep the rendering figure
@@ -934,8 +931,8 @@ if active and __name__ == "__main__":
     # Run the simulation, with the agent drifting towards the goal when
     # it is close to the goal
     s = input("Single Agent. Press enter to start")
-    resets, reward_printed = 0, False
-    speed = 12 # how fast agent runs
+    reward_printed = 0
+    speed = 12 # dials how fast agent runs
     while True:
         # Get the direction to the goal
         dir_to_reward = get_goal_vector(Ag)
@@ -963,11 +960,12 @@ if active and __name__ == "__main__":
             resets += 1
             print("done! reward:", reward)
             env.reset()
-            if resets >= 0:
+            if len(env.episodes['episode']) > 3:
                 break
 
     # -----------------------------------------------------------------------
-    # TEST Multi-agent (2 agents, second agent not pointed at goal)
+    # TEST Multi-agent (2 agents, does not show reward values in terminal,
+    #                   as in the above example)
     # -----------------------------------------------------------------------
     Ag2 = Agent(env)
     env.add_agents(Ag2)
@@ -992,6 +990,4 @@ if active and __name__ == "__main__":
             resets += 1
             print("done! reward:", reward)
             env.reset()
-            if resets >= 10:
-                break
 
