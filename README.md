@@ -68,7 +68,7 @@ from ratinabox.Neurons import PlaceCells, GridCells #...
 ```
 
 ## Feature run-down
-Here is a list of features loosely organised into three categories: those pertaining to 
+Here is a list of features loosely organised into those pertaining to 
 
 (i) the [`Environment`](#i-environment-features)
 * [Adding walls](#walls)
@@ -314,33 +314,21 @@ We encourage users to create their own subclasses of `Neurons`. This is easy to 
 
 
 ### (iv) Figures and animations 
+`RatInABox` is built to be highly visual. It is easy to plot or animate data and save these plots/animations. Here are some tips
 
-#### Styling and saving
-`RatInABox` is built to be highly visual. It is easy to plot or animate data. Two functions have been written to help with this: 
+#### Saving
+* `ratinabox.utils.save_figure(fig,fig_name)` saves a figure (or animation) into a dated folder within `ratinabox.figure_directory` as both `".svg"` and `".png"` (`".mp4"` or `".gif"`) for easy access later. The current time will be appended to the `fig_name` so you won't overwrite. 
+* `ratinabox.figure_directory` a global variable specifying the directory into which figures/animations will be saved 
 
-* `ratinabox.stylize_plots()` sets some global rcParams to make plots look pretty 
-* `ratinabox.figure_directory` a global variable specifying the directory figures/animations will be saved into 
-* `utils.save_figure(fig,fig_name)` saves a figure (or animation) into a dated folder within `ratinabox.figure_directory` as both `".svg"` and `".png"` (`".mp4"` or `".gif"`) for easy access later.
+#### Saving (but automatically)
+* Setting `ratinabox.autosave_plots = True` means RatInABox figure will be automatically saved in the figure directory without having to indvidually call the `utils` function above. 
 
-```python
-import ratinabox
-from ratinabox import utils
+#### Styling
+* `ratinabox.stylize_plots()` this call sets some global matplotlib rcParams to make plots look pretty/exactly like they do in this repo
 
-# (optional) stylize plots() sets some global rcParams to make plots look nice
-ratinabox.stylize_plots() 
-
-# set the figure directory where figs and animations will be saved
-ratinabox.figure_directory = "./figures/"
-
-#make a figure (many ays to do this)
-fig, ax = Ag.plot_trajectory() #for example
-
-# save it, will be saved in a date-specific folder with current time so you can find it later
-utils.save_figure(fig,"figure_name") #works for animations too
-```
 
 #### Most important plotting functions
-There most important plotting functions are (see source code for the available arguments/kwargs):
+The most important plotting functions are (see source code for the available arguments/kwargs):
 
 ```python
 Environment.plot_environment() #visualises current environment with walls and objects
