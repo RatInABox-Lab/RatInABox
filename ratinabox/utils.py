@@ -494,12 +494,8 @@ def mountain_plot(
     else:
         NbyX = overlap * NbyX / norm_by
     if fig is None and ax is None:
-<<<<<<< HEAD
         fig, ax = plt.subplots()
-=======
-        fig, ax = plt.subplots(
-        ) 
->>>>>>> 6211b58776edbe7475ef6ca4fb4b097ca6504aca
+
     fig.set_size_inches(4, len(NbyX) * shift / 25)
     zorder = 1
     for i in range(len(NbyX)):
@@ -529,15 +525,11 @@ def mountain_plot(
 
 
 def save_figure(
-<<<<<<< HEAD
     fig,
     save_title="",
     fig_save_types=["svg", "png"],
     anim_save_types=["gif", "mp4"],
     save=True,
-=======
-    fig, save_title="", fig_save_types=["svg", "png"], anim_save_types=["gif", "mp4"]
->>>>>>> 6211b58776edbe7475ef6ca4fb4b097ca6504aca
 ):
     """
     Saves a figure in a dated-folder with the current time appended to save_title, as both '.png' and '.svg'. Same for animations but as ".gif" and ".mp4".
@@ -551,7 +543,6 @@ def save_figure(
         save: whether to save or not, i.e. this function can be called but if save is not True, nothing will happen (expect some warnings). Mostly ignore this.
 
     """
-<<<<<<< HEAD
     if save is None:  # take ratinabox default
         save = ratinabox.autosave_plots
         # print a hint to the first-time user
@@ -585,7 +576,7 @@ def save_figure(
         return
 
     figure_directory = ratinabox.figure_directory
-    if figure_directory == "undefined":
+    if (figure_directory == "undefined") or (figure_directory is None):
         print(
             "This figure cannot be saved because a figure directory has not been set."
         )
@@ -593,18 +584,6 @@ def save_figure(
             '    Set a default figure directory `ratinabox.figure_directory = "path/to/my/figs/"`'
         )
         print(f"       (the current working directory is {os.getcwd()})")
-=======
-    figure_directory = ratinabox.figure_directory
-    if figure_directory is None:
-        if ratinabox.save_warnings is True:
-            print(
-                'This figure cannot be saved because a figure directory has not been set. Either... \n   • set a figure directory: `ratinabox.figure_directory = "path/to/my/figs/"` \n   • or suppress this warning: `ratinabox.save_warnings = False`'
-            )
-            if ratinabox.stylized_plots is False:
-                print(
-                    "By the way, you can stylize plots to make them look like repo/paper by calling `ratinabox.stylize_plots()`\n"
-                )
->>>>>>> 6211b58776edbe7475ef6ca4fb4b097ca6504aca
         return
 
     if not os.path.isdir(figure_directory):

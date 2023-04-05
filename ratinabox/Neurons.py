@@ -147,11 +147,7 @@ class Neurons:
         ax=None,
         xlim=None,
         background_color=None,
-<<<<<<< HEAD
-        autosave=ratinabox.autosave_plots,
-=======
-        autosave=True,
->>>>>>> 6211b58776edbe7475ef6ca4fb4b097ca6504aca
+        autosave=None,
         **kwargs,
     ):
         """Plots a timeseries of the firing rate of the neurons between t_start and t_end
@@ -167,7 +163,7 @@ class Neurons:
             • fig, ax: the figure, axis to plot on (can be None)
             xlim: fix xlim of plot irrespective of how much time you're plotting
             • background_color: color of the background if not matplotlib default (probably white)
-            • autosave: if True, will try to save the figure to the figure directory `ratinabox.figure_directory`
+            • autosave: if True, will try to save the figure to the figure directory `ratinabox.figure_directory`. Defaults to None in which case looks for global constant ratinabox.autosave_plots
             • kwargs sent to mountain plot function, you can ignore these
 
         Returns:
@@ -249,13 +245,7 @@ class Neurons:
             ax.set_yticks([])
             ax.set_ylabel("Neurons")
 
-<<<<<<< HEAD
         ratinabox.utils.save_figure(fig, self.name + "_firingrate", save=autosave)
-=======
-        if autosave:
-            ratinabox.utils.save_figure(fig, self.name + "_firingrate")
->>>>>>> 6211b58776edbe7475ef6ca4fb4b097ca6504aca
-
         return fig, ax
 
     def plot_rate_map(
@@ -269,11 +259,7 @@ class Neurons:
         colorbar=True,
         t_start=0,
         t_end=None,
-<<<<<<< HEAD
-        autosave=ratinabox.autosave_plots,
-=======
-        autosave=True,
->>>>>>> 6211b58776edbe7475ef6ca4fb4b097ca6504aca
+        autosave=None,
         **kwargs,
     ):
         """Plots rate maps of neuronal firing rates across the environment
@@ -289,7 +275,7 @@ class Neurons:
             • shape is the shape of the multipanel figure, must be compatible with chosen neurons
             • colorbar: whether to show a colorbar
             • t_start, t_end: in the case where you are plotting spike, or using historical data to get rate map, this restricts the timerange of data you are using
-            • autosave: if True, will try to save the figure to the figure directory `ratinabox.figure_directory`
+            • autosave: if True, will try to save the figure to the figure directory `ratinabox.figure_directory`. Defaults to None in which case looks for global constant ratinabox.autosave_plots
             • kwargs are sent to get_state and utils.mountain_plot and can be ignore if you don't need to use them
 
         Returns:
@@ -485,13 +471,7 @@ class Neurons:
             ax.set_ylabel("Neurons")
 
             axes = ax
-
-<<<<<<< HEAD
         ratinabox.utils.save_figure(fig, self.name + "_ratemaps", save=autosave)
-=======
-        if autosave:
-            ratinabox.utils.save_figure(fig, self.name + "_ratemaps")
->>>>>>> 6211b58776edbe7475ef6ca4fb4b097ca6504aca
 
         return fig, axes
 
@@ -762,17 +742,13 @@ class PlaceCells(Neurons):
         self,
         fig=None,
         ax=None,
-<<<<<<< HEAD
-        autosave=ratinabox.autosave_plots,
-=======
-        autosave=True,
->>>>>>> 6211b58776edbe7475ef6ca4fb4b097ca6504aca
+        autosave=None,
     ):
         """Scatter plots where the centre of the place cells are
 
         Args:
             fig, ax: if provided, will plot fig and ax onto these instead of making new.
-            autosave (bool, optional): if True, will try to save the figure into `ratinabox.figure_directory`
+            autosave (bool, optional): if True, will try to save the figure into `ratinabox.figure_directory`.Defaults to None in which case looks for global constant ratinabox.autosave_plots
 
         Returns:
             _type_: _description_
@@ -792,12 +768,7 @@ class PlaceCells(Neurons):
             s=15,
             zorder=2,
         )
-<<<<<<< HEAD
         ratinabox.utils.save_figure(fig, "place_cell_locations", save=autosave)
-=======
-        if autosave:
-            ratinabox.utils.save_figure(fig, "place_cell_locations")
->>>>>>> 6211b58776edbe7475ef6ca4fb4b097ca6504aca
 
         return fig, ax
 
@@ -1167,18 +1138,14 @@ class BoundaryVectorCells(Neurons):
         chosen_neurons="all",
         fig=None,
         ax=None,
-<<<<<<< HEAD
-        autosave=ratinabox.autosave_plots,
-=======
-        autosave=True,
->>>>>>> 6211b58776edbe7475ef6ca4fb4b097ca6504aca
+        autosave=None,
     ):
         """Plots the receptive field (in polar corrdinates) of the BVC cells. For allocentric BVCs "up" in this plot == "North", for egocentric BVCs, up == the head direction of the animals
 
         Args:
             chosen_neurons: Which neurons to plot. Can be int, list, array or "all". Defaults to "all".
             fig, ax: the figure/ax object to plot onto (optional)
-            autosave (bool, optional): if True, will try to save the figure into `ratinabox.figure_directory`
+            autosave (bool, optional): if True, will try to save the figure into `ratinabox.figure_directory`. Defaults to None in which case looks for global constant ratinabox.autosave_plots
 
         Returns:
             fig, ax
@@ -1225,12 +1192,7 @@ class BoundaryVectorCells(Neurons):
             ax[i].set_xticks([])
             ax[i].set_yticks([])
 
-<<<<<<< HEAD
         ratinabox.utils.save_figure(fig, "BVC_receptive_fields", save=autosave)
-=======
-        if autosave:
-            ratinabox.utils.save_figure(fig, "BVC_receptive_fields")
->>>>>>> 6211b58776edbe7475ef6ca4fb4b097ca6504aca
 
         return fig, ax
 
@@ -1507,18 +1469,14 @@ class HeadDirectionCells(Neurons):
         return firingrate
 
     def plot_HDC_receptive_field(
-<<<<<<< HEAD
-        self, chosen_neurons="all", fig=None, ax=None, autosave=ratinabox.autosave_plots
-=======
-        self, chosen_neurons="all", fig=None, ax=None, autosave=True
->>>>>>> 6211b58776edbe7475ef6ca4fb4b097ca6504aca
+        self, chosen_neurons="all", fig=None, ax=None, autosave=None
     ):
         """Plots the receptive fields, in polar coordinates, of hte head direction cells. The receptive field is a von mises function centred around the preferred direction of the cell.
 
         Args:
             chosen_neurons (str, optional): The neurons to plot. Defaults to "all".
             fig, ax (_type_, optional): matplotlib fig, ax objects ot plot onto (optional).
-            autosave (bool, optional): if True, will try to save the figure into `ratinabox.figure_directory`
+            autosave (bool, optional): if True, will try to save the figure into `ratinabox.figure_directory`. Defaults to None in which case looks for global constant ratinabox.autosave_plots
 
         Returns:
             fig, ax
@@ -1547,12 +1505,7 @@ class HeadDirectionCells(Neurons):
             ax[i].tick_params(pad=-18)
             ax[i].set_xticklabels(["E", "N", "W", "S"])
 
-<<<<<<< HEAD
         ratinabox.utils.save_figure(fig, self.name + "_ratemaps", save=autosave)
-=======
-        if autosave is True:
-            ratinabox.utils.save_figure(fig, self.name + "_ratemaps")
->>>>>>> 6211b58776edbe7475ef6ca4fb4b097ca6504aca
 
         return fig, ax
 
