@@ -494,9 +494,8 @@ def mountain_plot(
     else:
         NbyX = overlap * NbyX / norm_by
     if fig is None and ax is None:
-        fig, ax = plt.subplots(
-            figsize=(4, len(NbyX) * shift / 25)
-        )  # ~<shift>mm gap between lines
+        fig, ax = plt.subplots()
+    fig.set_size_inches(4, len(NbyX) * shift / 25)
     zorder = 1
     for i in range(len(NbyX)):
         ax.plot(X, NbyX[i] + i + 1, c=c, zorder=zorder)
@@ -524,59 +523,113 @@ def mountain_plot(
     return fig, ax
 
 
-def save_figure(fig,
-                save_title="",
-                fig_save_types=['svg','png'],
-                anim_save_types=['gif','mp4']
+def save_figure(
+    fig,
+    save_title="",
+    fig_save_types=["svg", "png"],
+    anim_save_types=["gif", "mp4"],
+    save=True,
 ):
     """
-    Saves a figures and animations by date (folder) and time (name) as both '.png' and '.svg'
+    Saves a figure in a dated-folder with the current time appended to save_title, as both '.png' and '.svg'. Same for animations but as ".gif" and ".mp4".
+    This function can be used by anyone...just pass a fig object and it will be saved in the right place.
+
     Args:
         fig (matplotlib fig object): the matplotlib figure or animation object to be saved
         save_title (str, optional): name to be saved as. Current time will be appended to this so you won't overwrite old figures, defaults to no name "".
         fig_file_types: what file types to save figure as ['svg','png']
-        fig_file_types: what file types to save figure as ['gif','mp4']
+        anim_file_types: what file types to save figure as ['gif','mp4']
+        save: whether to save or not, i.e. this function can be called but if save is not True, nothing will happen (expect some warnings). Mostly ignore this.
 
     """
-    figure_directory = ratinabox.figure_directory  
-    assert figure_directory is not None, print('A figure directory has not been set. Set one using command `ratinabox.figure_directory = "path/to/my/figs/"')
+    if save is None:  # take ratinabox default
+        save = ratinabox.autosave_plots
+        # print a hint to the first-time user
+        if (
+            (ratinabox._save_plot_warnings_on)
+            and (save == "undefined")
+            and (save != False)
+        ):
+            # None is the default for ratinabox.autosave_plots which is the default for many internal functions that call this function
+            print("WARNING: This figure has not been saved.")
+            print(
+                "    • To AUTOMATICALLY save all plots (recommended), set  `ratinabox.autosave_plots = True`"
+            )
+            print(
+                "    • To MANUALLY save plots, call                        `ratinabox.utils.save_figure(figure_object, save_title)."
+            )
+            print("      This warning will not be shown again")
+            ratinabox._save_plot_warnings_on = False
+
+        if (ratinabox._stylize_plot_warnings_on) and (
+            ratinabox._stylized_plots == False
+        ):
+            print(
+                "HINT: You can stylize plots to make them look like repo/paper by calling `ratinabox.stylize_plots()`"
+            )
+
+            print("      This hint will not be shown again")
+            ratinabox._stylize_plot_warnings_on = False
+
+    if save != True:
+        return
+
+    figure_directory = ratinabox.figure_directory
+    if figure_directory == "undefined":
+        print(
+            "This figure cannot be saved because a figure directory has not been set."
+        )
+        print(
+            '    Set a default figure directory `ratinabox.figure_directory = "path/to/my/figs/"`'
+        )
+        print(f"       (the current working directory is {os.getcwd()})")
+        return
+
     if not os.path.isdir(figure_directory):
         os.mkdir(figure_directory)
 
-    #make today-specific directory inside figure directory  
-    today =  datetime.strftime(datetime.now(),'%y%m%d')
+    # make today-specific directory inside figure directory
+    today = datetime.strftime(datetime.now(), "%y%m%d")
     if not os.path.isdir(figure_directory + f"{today}/"):
         os.mkdir(figure_directory + f"{today}/")
-    
+
     figdir = figure_directory + f"{today}/"
-    now = datetime.strftime(datetime.now(),'%H%M')
+    now = datetime.strftime(datetime.now(), "%H%M")
     path_ = f"{figdir}{save_title}_{now}"
     path = path_
 
     if type(fig) == matplotlib.figure.Figure:
         for filetype in fig_save_types:
-            i=1
-            while True: #checks there isn't an existing figure with this name 
-                if os.path.isfile(path+"." + filetype):
-                    path = path_+"_"+str(i)
-                    i+=1
-                elif i >= 100: break
-                else: break
-            fig.savefig(path+"."+filetype,bbox_inches='tight')
-    
+            i = 1
+            while True:  # checks there isn't an existing figure with this name
+                if os.path.isfile(path + "." + filetype):
+                    path = path_ + "_" + str(i)
+                    i += 1
+                elif i >= 100:
+                    break
+                else:
+                    break
+            fig.savefig(path + "." + filetype, bbox_inches="tight")
+
     elif type(fig) == matplotlib.animation.FuncAnimation:
         for filetype in anim_save_types:
-            i=1
+            i = 1
             while True:
-                if os.path.isfile(path+"." + filetype):
-                    path = path_+"_"+str(i)
-                    i+=1
-                elif i >= 100: break
-                else: break
-            fig.save(path+"."+filetype)
-
+                if os.path.isfile(path + "." + filetype):
+                    path = path_ + "_" + str(i)
+                    i += 1
+                elif i >= 100:
+                    break
+                else:
+                    break
+            fig.save(path + "." + filetype)
 
     return path
+
+
+def save_animation(**kwargs):
+    """Saves an animation. This function just passes the animation object to utils.save_figure() where it is then saved. We only include this function for semantic consistency (you could just use save_figure directly. Takes exactly the same args are save_figure() and just passes the animation over there"""
+    return save_figure(**kwargs)
 
 
 """Other"""

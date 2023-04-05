@@ -204,20 +204,18 @@ class Environment:
         self.n_object_types = len(np.unique(self.objects["object_types"]))
         return
 
-    def plot_environment(self, fig=None, ax=None, height=1):
+    def plot_environment(self, fig=None, ax=None, autosave=ratinabox.autosave_plots):
         """Plots the environment on the x axis, dark grey lines show the walls
         Args:
             fig,ax: the fig and ax to plot on (can be None)
-            height: if 1D, how many line plots will be stacked (5.5mm per line)
+            autosave: if True, will try to save the figure to the figure directory `ratinabox.figure_directory`
         Returns:
             fig, ax: the environment figures, can be used for further downstream plotting.
         """
 
         if self.dimensionality == "1D":
             extent = self.extent
-            fig, ax = plt.subplots(
-                figsize=(2 * (extent[1] - extent[0]), height * (5.5 / 25))
-            )
+            fig, ax = plt.subplots(figsize=(2 * (extent[1] - extent[0]), (5.5 / 25)))
             ax.set_xlim(left=extent[0], right=extent[1])
             ax.spines["left"].set_color("none")
             ax.spines["right"].set_color("none")
@@ -296,7 +294,7 @@ class Environment:
 
             # plot objects
             if self.plot_objects == True:
-                object_cmap = matplotlib.cm.get_cmap(self.object_colormap)
+                object_cmap = matplotlib.colormaps[self.object_colormap]
                 for (i, object) in enumerate(self.objects["objects"]):
                     object_color = object_cmap(
                         self.objects["object_types"][i]
@@ -317,6 +315,9 @@ class Environment:
             ax.axis("off")
             ax.set_xlim(left=extent[0] - 0.03, right=extent[1] + 0.03)
             ax.set_ylim(bottom=extent[2] - 0.03, top=extent[3] + 0.03)
+
+        ratinabox.utils.save_figure(fig, "Environment", save=autosave)
+
         return fig, ax
 
     def sample_positions(self, n=10, method="uniform_jitter"):

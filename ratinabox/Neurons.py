@@ -15,18 +15,22 @@ from ratinabox import utils
 class Neurons:
     """The Neuron class defines a population of Neurons. All Neurons have firing rates which depend on the state of the Agent. As the Agent moves the firing rate of the cells adjust accordingly.
 
-    All Neuron classes must be initalised with the Agent (to whom these cells belong) since the Agent determines the firingrates through its position and velocity. The Agent class will itself contain the Environment. Both the Agent (position/velocity) and the Environment (geometry, walls etc.) determine the firing rates. Optionally (but likely) an input dictionary 'params' specifying other params will be given.
+    All Neuron classes must be initalised with the Agent (to whom these cells belong) since the Agent determines the firingrates through its position and velocity. The Agent class will itself contain the Environment. Both the Agent (position/velocity) and the Environment (geometry, walls, objects etc.) determine the firing rates. Optionally (but likely) an input dictionary 'params' specifying other params will be given.
 
     This is a generic Parent class. We provide several SubClasses of it. These include:
     • PlaceCells()
     • GridCells()
     • BoundaryVectorCells()
+    • ObjectVectorCells()
     • VelocityCells()
     • HeadDirectionCells()
     • SpeedCells()
     • FeedForwardLayer()
+    as well as (in  the contribs)
+    • ValueNeuron()
+    • FieldOfViewNeurons()
 
-    The unique function in each child classes is get_state(). Whenever Neurons.update() is called Neurons.get_state() is then called to calculate and returns the firing rate of the cells at the current moment in time. This is then saved. In order to make your own Neuron subclass you will need to write a class with the following mandatory structure:
+    The unique function in each child classes is get_state(). Whenever Neurons.update() is called Neurons.get_state() is then called to calculate and return the firing rate of the cells at the current moment in time. This is then saved. In order to make your own Neuron subclass you will need to write a class with the following mandatory structure:
 
     ============================================================================================
     MyNeuronClass(Neurons):
@@ -49,7 +53,7 @@ class Neurons:
                 Insert here code which calculates the firing rate.
                 This may work differently depending on what you set evaluate_at as. For example, evaluate_at == 'agent' should means that the position or velocity (or whatever determines the firing rate) will by evaluated using the agents current state. You might also like to have an option like evaluate_at == "all" (all positions across an environment are tested simultaneously - plot_rate_map() tries to call this, for example) or evaluate_at == "last" (in a feedforward layer just look at the last firing rate saved in the input layers saves time over recalculating them.). **kwargs allows you to pass position or velocity in manually.
 
-                By default, the Neurons.update() calls Neurons.get_state() rwithout passing any arguments. So write the default behaviour of get_state() to be what you want it to do in the main training loop.
+                By default, the Neurons.update() calls Neurons.get_state() rwithout passing any arguments. So write the default behaviour of get_state() to be what you want it to do in the main training loop, .
             ###
 
             return firingrate
@@ -143,6 +147,7 @@ class Neurons:
         ax=None,
         xlim=None,
         background_color=None,
+        autosave=ratinabox.autosave_plots,
         **kwargs,
     ):
         """Plots a timeseries of the firing rate of the neurons between t_start and t_end
@@ -158,6 +163,7 @@ class Neurons:
             • fig, ax: the figure, axis to plot on (can be None)
             xlim: fix xlim of plot irrespective of how much time you're plotting
             • background_color: color of the background if not matplotlib default (probably white)
+            • autosave: if True, will try to save the figure to the figure directory `ratinabox.figure_directory`
             • kwargs sent to mountain plot function, you can ignore these
 
         Returns:
@@ -182,7 +188,7 @@ class Neurons:
             kwargs["shift"] = max(
                 1.5, min(4, 40 / n_neurons_to_plot)
             )  # scaled to make plots look nice and be ~constant size
-            # the height must be constant
+            kwargs["shift"] = 2
             kwargs["overlap"] = 2.2
         spike_data = spike_data[startid:endid, chosen_neurons]
         rate_timeseries = rate_timeseries[:, chosen_neurons]
@@ -239,6 +245,8 @@ class Neurons:
             ax.set_yticks([])
             ax.set_ylabel("Neurons")
 
+        ratinabox.utils.save_figure(fig, self.name + "_firingrate", save=autosave)
+
         return fig, ax
 
     def plot_rate_map(
@@ -252,6 +260,7 @@ class Neurons:
         colorbar=True,
         t_start=0,
         t_end=None,
+        autosave=ratinabox.autosave_plots,
         **kwargs,
     ):
         """Plots rate maps of neuronal firing rates across the environment
@@ -267,6 +276,7 @@ class Neurons:
             • shape is the shape of the multipanel figure, must be compatible with chosen neurons
             • colorbar: whether to show a colorbar
             • t_start, t_end: in the case where you are plotting spike, or using historical data to get rate map, this restricts the timerange of data you are using
+            • autosave: if True, will try to save the figure to the figure directory `ratinabox.figure_directory`
             • kwargs are sent to get_state and utils.mountain_plot and can be ignore if you don't need to use them
 
         Returns:
@@ -354,7 +364,9 @@ class Neurons:
                         divider = make_axes_locatable(axes[-1])
                         cax = divider.append_axes("right", size="5%", pad=0.05)
             for (i, ax_) in enumerate(axes):
-                _, ax_ = self.Agent.Environment.plot_environment(fig, ax_)
+                _, ax_ = self.Agent.Environment.plot_environment(
+                    fig, ax_, autosave=False
+                )
             if len(chosen_neurons) != axes.size:
                 print(
                     f"You are trying to plot a different number of neurons {len(chosen_neurons)} than the number of axes provided {axes.size}. Some might be missed. Either change this with the chosen_neurons argument or pass in a list of axes to plot on"
@@ -369,7 +381,7 @@ class Neurons:
                         rate_map = rate_maps[chosen_neurons[i], :].reshape(
                             self.Agent.Environment.discrete_coords.shape[:2]
                         )
-                        im = ax_.imshow(rate_map, extent=ex, zorder=0, cmap='inferno')
+                        im = ax_.imshow(rate_map, extent=ex, zorder=0, cmap="inferno")
                     elif method == "history":
                         rate_timeseries_ = rate_timeseries[chosen_neurons[i], :]
                         rate_map = utils.bin_data_for_histogramming(
@@ -378,7 +390,7 @@ class Neurons:
                         im = ax_.imshow(
                             rate_map,
                             extent=ex,
-                            cmap='inferno',
+                            cmap="inferno",
                             interpolation="bicubic",
                             zorder=1,
                         )
@@ -407,10 +419,8 @@ class Neurons:
                         alpha=0.7,
                     )
 
-            return fig, axes
-
         # PLOT 1D
-        if self.Agent.Environment.dimensionality == "1D":
+        elif self.Agent.Environment.dimensionality == "1D":
             if method == "groundtruth":
                 rate_maps = rate_maps[chosen_neurons, :]
                 x = self.Agent.Environment.flattened_discrete_coords[:, 0]
@@ -431,10 +441,16 @@ class Neurons:
 
             if fig is None and ax is None:
                 fig, ax = self.Agent.Environment.plot_environment(
-                    height=0.5 * len(chosen_neurons)
+                    autosave=False,
                 )
 
             if method != "neither":
+                kwargs = {}
+                kwargs["shift"] = max(
+                    1.5, min(4, 40 / len(chosen_neurons))
+                )  # scaled to make plots look nice and be ~constant size
+                kwargs["shift"] = 2
+                kwargs["overlap"] = 2.2
                 fig, ax = utils.mountain_plot(
                     X=x, NbyX=rate_maps, color=self.color, fig=fig, ax=ax, **kwargs
                 )
@@ -455,7 +471,11 @@ class Neurons:
             ax.set_xlabel("Position / m")
             ax.set_ylabel("Neurons")
 
-        return fig, ax
+            axes = ax
+
+        ratinabox.utils.save_figure(fig, self.name + "_ratemaps", save=autosave)
+
+        return fig, axes
 
     def save_to_history(self):
         cell_spikes = np.random.uniform(0, 1, size=(self.n,)) < (
@@ -663,7 +683,7 @@ class PlaceCells(Neurons):
                 len(self.Agent.Environment.walls) > 5
             ):
                 print(
-                    "'geodesic' wall geometry only supported for enivoronments with 1 additional wall (4 boundaing walls + 1 additional). Sorry. Using 'line_of_sight' instead."
+                    "'geodesic' wall geometry only supported for enivironments with 1 additional wall (4 bounding walls + 1 additional). Sorry. Using 'line_of_sight' instead."
                 )
                 self.wall_geometry = "line_of_sight"
 
@@ -720,19 +740,27 @@ class PlaceCells(Neurons):
         )  # scales from being between [0,1] to [min_fr, max_fr]
         return firingrate
 
-    def plot_place_cell_locations(self, fig=None, ax=None):
+    def plot_place_cell_locations(
+        self,
+        fig=None,
+        ax=None,
+        autosave=ratinabox.autosave_plots,
+    ):
         """Scatter plots where the centre of the place cells are
 
         Args:
             fig, ax: if provided, will plot fig and ax onto these instead of making new.
+            autosave (bool, optional): if True, will try to save the figure into `ratinabox.figure_directory`
 
         Returns:
             _type_: _description_
         """
         if fig is None and ax is None:
-            fig, ax = self.Agent.Environment.plot_environment()
+            fig, ax = self.Agent.Environment.plot_environment(autosave=False)
         else:
-            _, _ = self.Agent.Environment.plot_environment(fig=fig, ax=ax)
+            _, _ = self.Agent.Environment.plot_environment(
+                fig=fig, ax=ax, autosave=False
+            )
         place_cell_centres = self.place_cell_centres
         ax.scatter(
             place_cell_centres[:, 0],
@@ -742,6 +770,8 @@ class PlaceCells(Neurons):
             s=15,
             zorder=2,
         )
+        ratinabox.utils.save_figure(fig, "place_cell_locations", save=autosave)
+
         return fig, ax
 
 
@@ -1105,11 +1135,19 @@ class BoundaryVectorCells(Neurons):
         )
         return pref[..., 0]
 
-    def plot_BVC_receptive_field(self, chosen_neurons="all", fig=None, ax=None):
+    def plot_BVC_receptive_field(
+        self,
+        chosen_neurons="all",
+        fig=None,
+        ax=None,
+        autosave=ratinabox.autosave_plots,
+    ):
         """Plots the receptive field (in polar corrdinates) of the BVC cells. For allocentric BVCs "up" in this plot == "North", for egocentric BVCs, up == the head direction of the animals
 
         Args:
             chosen_neurons: Which neurons to plot. Can be int, list, array or "all". Defaults to "all".
+            fig, ax: the figure/ax object to plot onto (optional)
+            autosave (bool, optional): if True, will try to save the figure into `ratinabox.figure_directory`
 
         Returns:
             fig, ax
@@ -1155,6 +1193,8 @@ class BoundaryVectorCells(Neurons):
             )
             ax[i].set_xticks([])
             ax[i].set_yticks([])
+
+        ratinabox.utils.save_figure(fig, "BVC_receptive_fields", save=autosave)
 
         return fig, ax
 
@@ -1374,7 +1414,7 @@ class HeadDirectionCells(Neurons):
             "min_fr": 0,
             "max_fr": 1,
             "n": 4,
-            "angular_spread_degrees": 30,  # width of HDC preference function (degrees)
+            "angular_spread_degrees": 45,  # width of HDC preference function (degrees)
             "name": "HeadDirectionCells",
         }
         self.Agent = Agent
@@ -1431,9 +1471,45 @@ class HeadDirectionCells(Neurons):
         return firingrate
 
     def plot_HDC_receptive_field(
-        self,
+        self, chosen_neurons="all", fig=None, ax=None, autosave=ratinabox.autosave_plots
     ):
-        return
+        """Plots the receptive fields, in polar coordinates, of hte head direction cells. The receptive field is a von mises function centred around the preferred direction of the cell.
+
+        Args:
+            chosen_neurons (str, optional): The neurons to plot. Defaults to "all".
+            fig, ax (_type_, optional): matplotlib fig, ax objects ot plot onto (optional).
+            autosave (bool, optional): if True, will try to save the figure into `ratinabox.figure_directory`
+
+        Returns:
+            fig, ax
+        """
+        chosen_neurons = self.return_list_of_neurons(chosen_neurons=chosen_neurons)
+        if fig is None and ax is None:
+            fig, ax = plt.subplots(
+                1,
+                len(chosen_neurons),
+                figsize=(2 * len(chosen_neurons), 2),
+                subplot_kw={"projection": "polar"},
+            )
+
+        for i, n in enumerate(chosen_neurons):
+            theta = np.linspace(0, 2 * np.pi, 100)
+            pref_theta = self.preferred_angles[n]
+            sigma_theta = self.angular_tunings[n]
+            fr = utils.von_mises(theta, pref_theta, sigma_theta, norm=1)
+            fr = fr * (self.max_fr - self.min_fr) + self.min_fr
+            ax[i].plot(theta, fr, linewidth=2, color=self.color, zorder=11)
+            ax[i].set_yticks([])
+            ax[i].set_xticks([])
+            ax[i].set_xticks([0, np.pi / 2, np.pi, 3 * np.pi / 2])
+            ax[i].fill_between(theta, fr, 0, color=self.color, alpha=0.2)
+            ax[i].set_ylim([0, self.max_fr])
+            ax[i].tick_params(pad=-18)
+            ax[i].set_xticklabels(["E", "N", "W", "S"])
+
+        ratinabox.utils.save_figure(fig, self.name + "_ratemaps", save=autosave)
+
+        return fig, ax
 
 
 class VelocityCells(HeadDirectionCells):
