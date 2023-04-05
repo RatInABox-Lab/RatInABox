@@ -204,7 +204,7 @@ class Environment:
         self.n_object_types = len(np.unique(self.objects["object_types"]))
         return
 
-    def plot_environment(self, fig=None, ax=None, autosave=ratinabox.autosave_plots):
+    def plot_environment(self, fig=None, ax=None, height=1):
         """Plots the environment on the x axis, dark grey lines show the walls
         Args:
             fig,ax: the fig and ax to plot on (can be None)
@@ -315,9 +315,6 @@ class Environment:
             ax.axis("off")
             ax.set_xlim(left=extent[0] - 0.03, right=extent[1] + 0.03)
             ax.set_ylim(bottom=extent[2] - 0.03, top=extent[3] + 0.03)
-
-        ratinabox.utils.save_figure(fig, "Environment", save=autosave)
-
         return fig, ax
 
     def sample_positions(self, n=10, method="uniform_jitter"):

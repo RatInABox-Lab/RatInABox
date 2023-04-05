@@ -790,6 +790,7 @@ class Agent:
                 vmax=vmax,
                 zorder=0,
             )
+<<<<<<< HEAD
         ratinabox.utils.save_figure(fig, "position_heatmap", save=autosave)
 
         return fig, ax
@@ -801,13 +802,25 @@ class Agent:
         color="C1",
         return_data=False,
         autosave=None,
+=======
+        if autosave:
+            ratinabox.utils.save_figure(fig, "position_heatmap")
+        return fig, ax
+
+    def plot_histogram_of_speeds(
+        self, fig=None, ax=None, color="C1", return_data=False, autosave=True
+>>>>>>> 6211b58776edbe7475ef6ca4fb4b097ca6504aca
     ):
         """Plots a histogram of the observed speeds of the agent.
         args:
             fig, ax: not required. the ax object to be drawn onto.
             color: optional. the color.
             return_data: if True, will return the histogram data (bins and patches)
+<<<<<<< HEAD
             autosave: if True, will try to save the figure into `ratinabox.figure_directory`. Defaults to None in which case looks for global constant ratinabox.autosave_plots
+=======
+            autosave: if True, will try to save the figure into `ratinabox.figure_directory`
+>>>>>>> 6211b58776edbe7475ef6ca4fb4b097ca6504aca
         Returns:
             fig, ax: the figure
         """
@@ -828,7 +841,12 @@ class Agent:
         ax.spines["right"].set_color(None)
         ax.spines["top"].set_color(None)
 
+<<<<<<< HEAD
         ratinabox.utils.save_figure(fig, "speed_histogram", save=autosave)
+=======
+        if autosave:
+            ratinabox.utils.save_figure(fig, "speed_histogram")
+>>>>>>> 6211b58776edbe7475ef6ca4fb4b097ca6504aca
 
         if return_data == True:
             return fig, ax, n, bins, patches
@@ -841,14 +859,22 @@ class Agent:
         ax=None,
         color="C1",
         return_data=False,
+<<<<<<< HEAD
         autosave=None,
+=======
+        autosave=True,
+>>>>>>> 6211b58776edbe7475ef6ca4fb4b097ca6504aca
     ):
         """Plots a histogram of the observed speeds of the agent.
         args:
             fig, ax: not required. the ax object to be drawn onto.
             color: optional. the color.
             return_data: if True, will return the histogram data (bins and patches)
+<<<<<<< HEAD
             auto_save: if True, will try to save the figure into `ratinabox.figure_directory`. Defaults to None in which case looks for global constant ratinabox.autosave_plots
+=======
+            auto_save: if True, will try to save the figure into `ratinabox.figure_directory`
+>>>>>>> 6211b58776edbe7475ef6ca4fb4b097ca6504aca
         Returns:
             fig, ax: the figure
         """
@@ -873,7 +899,12 @@ class Agent:
         ax.spines["top"].set_color(None)
         ax.set_xlabel(r"Rotational velocity / $^{\circ} s^{-1}$")
 
+<<<<<<< HEAD
         ratinabox.utils.save_figure(fig, "rotational_velocity_histogram", save=autosave)
+=======
+        if autosave:
+            ratinabox.utils.save_figure(fig, "rotational_velocity_histogram")
+>>>>>>> 6211b58776edbe7475ef6ca4fb4b097ca6504aca
 
         if return_data == True:
             return fig, ax, n, bins, patches

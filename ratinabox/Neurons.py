@@ -147,7 +147,11 @@ class Neurons:
         ax=None,
         xlim=None,
         background_color=None,
+<<<<<<< HEAD
         autosave=ratinabox.autosave_plots,
+=======
+        autosave=True,
+>>>>>>> 6211b58776edbe7475ef6ca4fb4b097ca6504aca
         **kwargs,
     ):
         """Plots a timeseries of the firing rate of the neurons between t_start and t_end
@@ -245,7 +249,12 @@ class Neurons:
             ax.set_yticks([])
             ax.set_ylabel("Neurons")
 
+<<<<<<< HEAD
         ratinabox.utils.save_figure(fig, self.name + "_firingrate", save=autosave)
+=======
+        if autosave:
+            ratinabox.utils.save_figure(fig, self.name + "_firingrate")
+>>>>>>> 6211b58776edbe7475ef6ca4fb4b097ca6504aca
 
         return fig, ax
 
@@ -260,7 +269,11 @@ class Neurons:
         colorbar=True,
         t_start=0,
         t_end=None,
+<<<<<<< HEAD
         autosave=ratinabox.autosave_plots,
+=======
+        autosave=True,
+>>>>>>> 6211b58776edbe7475ef6ca4fb4b097ca6504aca
         **kwargs,
     ):
         """Plots rate maps of neuronal firing rates across the environment
@@ -473,7 +486,12 @@ class Neurons:
 
             axes = ax
 
+<<<<<<< HEAD
         ratinabox.utils.save_figure(fig, self.name + "_ratemaps", save=autosave)
+=======
+        if autosave:
+            ratinabox.utils.save_figure(fig, self.name + "_ratemaps")
+>>>>>>> 6211b58776edbe7475ef6ca4fb4b097ca6504aca
 
         return fig, axes
 
@@ -744,7 +762,11 @@ class PlaceCells(Neurons):
         self,
         fig=None,
         ax=None,
+<<<<<<< HEAD
         autosave=ratinabox.autosave_plots,
+=======
+        autosave=True,
+>>>>>>> 6211b58776edbe7475ef6ca4fb4b097ca6504aca
     ):
         """Scatter plots where the centre of the place cells are
 
@@ -770,7 +792,12 @@ class PlaceCells(Neurons):
             s=15,
             zorder=2,
         )
+<<<<<<< HEAD
         ratinabox.utils.save_figure(fig, "place_cell_locations", save=autosave)
+=======
+        if autosave:
+            ratinabox.utils.save_figure(fig, "place_cell_locations")
+>>>>>>> 6211b58776edbe7475ef6ca4fb4b097ca6504aca
 
         return fig, ax
 
@@ -1140,7 +1167,11 @@ class BoundaryVectorCells(Neurons):
         chosen_neurons="all",
         fig=None,
         ax=None,
+<<<<<<< HEAD
         autosave=ratinabox.autosave_plots,
+=======
+        autosave=True,
+>>>>>>> 6211b58776edbe7475ef6ca4fb4b097ca6504aca
     ):
         """Plots the receptive field (in polar corrdinates) of the BVC cells. For allocentric BVCs "up" in this plot == "North", for egocentric BVCs, up == the head direction of the animals
 
@@ -1194,7 +1225,12 @@ class BoundaryVectorCells(Neurons):
             ax[i].set_xticks([])
             ax[i].set_yticks([])
 
+<<<<<<< HEAD
         ratinabox.utils.save_figure(fig, "BVC_receptive_fields", save=autosave)
+=======
+        if autosave:
+            ratinabox.utils.save_figure(fig, "BVC_receptive_fields")
+>>>>>>> 6211b58776edbe7475ef6ca4fb4b097ca6504aca
 
         return fig, ax
 
@@ -1471,7 +1507,11 @@ class HeadDirectionCells(Neurons):
         return firingrate
 
     def plot_HDC_receptive_field(
+<<<<<<< HEAD
         self, chosen_neurons="all", fig=None, ax=None, autosave=ratinabox.autosave_plots
+=======
+        self, chosen_neurons="all", fig=None, ax=None, autosave=True
+>>>>>>> 6211b58776edbe7475ef6ca4fb4b097ca6504aca
     ):
         """Plots the receptive fields, in polar coordinates, of hte head direction cells. The receptive field is a von mises function centred around the preferred direction of the cell.
 
@@ -1507,7 +1547,12 @@ class HeadDirectionCells(Neurons):
             ax[i].tick_params(pad=-18)
             ax[i].set_xticklabels(["E", "N", "W", "S"])
 
+<<<<<<< HEAD
         ratinabox.utils.save_figure(fig, self.name + "_ratemaps", save=autosave)
+=======
+        if autosave is True:
+            ratinabox.utils.save_figure(fig, self.name + "_ratemaps")
+>>>>>>> 6211b58776edbe7475ef6ca4fb4b097ca6504aca
 
         return fig, ax
 
