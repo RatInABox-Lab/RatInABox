@@ -32,7 +32,7 @@ def vector_intercepts(vector_list_a, vector_list_b, return_collisions=False):
         vector_list_B.shape = (N_b,2,2)
     where N_a is the number of vectors defined in vector_list_a
 
-    Each line segments define an (infinite) line, parameterised by line_a = p_a_0 + l_a.(p_a_1-p_a_0).
+    Each line segments defines an (infinite) line, parameterised by line_a = p_a_0 + l_a.(p_a_1-p_a_0).
     We want to find the intersection between these lines in terms of the parameters l_a and l_b.
     Iff l_a and l_b are BOTH between 0 and 1 then the line segments intersect. Thus the goal is to return an array, I,  of shape
         I.shape = (N_a,N_b,2)
@@ -586,11 +586,14 @@ def save_figure(
         print(f"       (the current working directory is {os.getcwd()})")
         return
 
+    if figure_directory[-1] != "/":
+        figure_directory += "/"
+
     if not os.path.isdir(figure_directory):
         os.mkdir(figure_directory)
 
     # make today-specific directory inside figure directory
-    today = datetime.strftime(datetime.now(), "%y%m%d")
+    today = datetime.strftime(datetime.now(), "%d_%m_%y")
     if not os.path.isdir(figure_directory + f"{today}/"):
         os.mkdir(figure_directory + f"{today}/")
 
@@ -628,9 +631,9 @@ def save_figure(
     return path
 
 
-def save_animation(**kwargs):
+def save_animation(*args, **kwargs):
     """Saves an animation. This function just passes the animation object to utils.save_figure() where it is then saved. We only include this function for semantic consistency (you could just use save_figure directly. Takes exactly the same args are save_figure() and just passes the animation over there"""
-    return save_figure(**kwargs)
+    return save_figure(*args, **kwargs)
 
 
 """Other"""
@@ -680,6 +683,7 @@ def activate(x, activation="sigmoid", deriv=False, other_args={}):
         "relu",
         "tanh",
         "retanh",
+        "softmax",
     ]
 
     if name == "linear":
@@ -744,3 +748,13 @@ def activate(x, activation="sigmoid", deriv=False, other_args={}):
                 * (1 - np.tanh(x) ** 2)
                 * ((x - other_args["threshold"]) > 0)
             )
+
+    if name == "softmax":
+        other_args_default = {"gain": 1, "threshold": 0}
+        for key in other_args.keys():
+            other_args_default[key] = other_args[key]
+        other_args = other_args_default
+        if deriv == False:
+            return other_args["gain"] * np.log(1 + np.exp(x - other_args["threshold"]))
+        elif deriv == True:
+            return other_args["gain"] / (1 + np.exp(-(x - other_args["threshold"])))

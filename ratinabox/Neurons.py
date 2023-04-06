@@ -495,6 +495,7 @@ class Neurons:
         chosen_neurons="all",
         fps=15,
         speed_up=1,
+        autosave=None,
         **kwargs,
     ):
         """Returns an animation (anim) of the firing rates, 25fps.
@@ -534,6 +535,7 @@ class Neurons:
                 fig=fig,
                 ax=ax,
                 xlim=t_max,
+                autosave=False,
                 **kwargs,
             )
             plt.close()
@@ -544,6 +546,7 @@ class Neurons:
             t_end=10 * self.Agent.dt,
             chosen_neurons=chosen_neurons,
             xlim=t_end,
+            autosave=False,
             **kwargs,
         )
 
@@ -557,6 +560,9 @@ class Neurons:
             blit=False,
             fargs=(fig, ax, chosen_neurons, t_start, t_end, dt, speed_up),
         )
+
+        ratinabox.utils.save_animation(anim, "rat_timeseries", save=autosave)
+
         return anim
 
     def return_list_of_neurons(self, chosen_neurons="all"):

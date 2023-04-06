@@ -145,6 +145,9 @@ class Agent:
         self.dt = dt
         self.t += dt
         self.velocity = self.velocity.astype(float)
+        self.pos = np.array(
+            self.pos
+        )  # check pos is an array (may have external been set as a list)
 
         if self.use_imported_trajectory == False:  # use random motion model
             if self.Environment.dimensionality == "2D":
@@ -801,7 +804,6 @@ class Agent:
         color="C1",
         return_data=False,
         autosave=None,
-
     ):
         """Plots a histogram of the observed speeds of the agent.
         args:
