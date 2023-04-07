@@ -15,7 +15,7 @@ from gymnasium.spaces import Box, Space, Dict
 # see https://gymnasium.farama.org/
 # see https://
 
-from types import NoneType, FunctionType
+from types import FunctionType
 from typing import List, Union
 from functools import partial
 import warnings
@@ -26,7 +26,7 @@ from ratinabox.Agent import Agent
 
 class Reward():
     """
-    When an task objective is triggered, reward object is attached an Agent's
+    When an task goal is triggered, reward goal is attached an Agent's
     reward:list. This object tracks the dynamics of the reward applied to the
     agent.
 
@@ -186,8 +186,8 @@ class RewardCache():
 
 class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
     """
-    Environment with task structure: there is an objective, and when the
-    objective is reached, it terminates an episode, and starts a new episode
+    Environment with task structure: there is a goal, and when the
+    goal is reached, it terminates an episode, and starts a new episode
     (reset). This environment can be static or dynamic, depending on whether
     update() is implemented.
 
@@ -220,7 +220,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
                  dt=0.01, teleport_on_reset=False, 
                  save_expired_rewards=False, **kws):
         super().__init__(*pos, **kws)
-        self.objectives:List[Objective] = [] # list of current objectives to saitsfy
+        self.goals:List[Goal] = [] # list of current goals to saitsfy
         self.dynamic_walls = []      # list of walls that can change/move
         self.dynamic_objects = []    # list of current objects that can move
         self.Agents:List[Agent] = [] # list of agents in the environment
@@ -269,7 +269,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         return self.action_spaces[agent_name]
 
     def add_agents(self, agents:Union[dict, List[Agent], Agent],
-                   names:None|list=None, maxvel:float=50.0, **kws):
+                   names:Union[None,List]=None, maxvel:float=50.0, **kws):
         """
         Add agents to the environment
 
@@ -511,9 +511,12 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         R, fig, ax = self._get_mpl_render_cache()
         if "environment" not in R:
             R["environment"] = self.plot_environment(fig=fig, ax=ax)
-            R["title"] = fig.suptitle("t={:.2f}".format(self.t))
+            R["title"] = fig.suptitle("t={:.2f}\nepisode={}".format(self.t, 
+                                                                    self.episode))
         else:
-            R["title"].set_text("t={:.2f}".format(self.t))
+            R["title"].set_text("t={:.2f}\nepisode={}".format(self.t,
+                                                              self.episode
+                                                              ))
 
     def _render_mpl_agents(self, framerate=60, alpha=0.7, 
                            t_start="episode", **kws):
@@ -550,7 +553,8 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             c, s = self._agent_style(agent, t, color, startid=startid, 
                                      skiprate=skiprate, **kws)
             return trajectory, c, s
-        if initialize:
+        if initialize or \
+                len(R["agents"]) != len(self.Agents):
             R["agents"]        = []
             for (i, agent) in enumerate(self.Agents):
                 trajectory, c, s = get_agent_props(agent, i)
@@ -606,7 +610,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
 
 reward_default=Reward(1, 0.01, expire_clock=1, decay="linear")
 
-class Objective():
+class Goal():
     """
     Abstract `Objective` class that can be used to define finishing coditions
     for a task
@@ -616,11 +620,33 @@ class Objective():
         self.env = env
         self.reward = reward
 
-    def check(self):
+    def check(self, agents:Union[List[Agent],Agent,List[int],int,None]=None):
         """
-        Check if the objective is satisfied
+        Check if the goal is satisfied
+
+        # Returns, when implemented
+        --------------------------
+        Reward | None : optional reward
+        agent index : to which agent?
         """
         raise NotImplementedError("check() must be implemented")
+
+    def _agents(self, 
+                   agents:Union[List[Agent],Agent,List[int],int,None]=None):
+        """
+        Convenience function for processing possible agents argument in 
+        check()
+        """
+        if isinstance(agents, Agent):
+            agents = [agents]
+        elif isinstance(agents, int):
+            agents = [self.env.Agents[agents]]
+        elif agents is None:
+            agents = self.env.Agents
+        return agents
+
+    def __eq__(self, other):
+        raise NotImplementedError("__eq__() must be implemented")
 
     def __call__(self):
         """
@@ -629,8 +655,106 @@ class Objective():
         """
         raise NotImplementedError("__call__() must be implemented")
 
+class GoalCache():
+    """
+        Organizes different ways of checking a collection of goals.
+        In series or parallel? Does each agent have to finish the goal? 
+        Or any?
 
-class SpatialGoalObjective(Objective):
+        # Inputs
+        --------
+        mode : str
+            Goal relations
+            - "sequential"    : goal must be accomplished in sequence
+            - "nonsequential" : any order
+            - "custom" : provide a function that gives valid successor
+                         indices for a given goal
+        agentmode : str
+            Agent handling
+            - "interact" :: an goal is consumed/satisfied if any
+                            one agent satisfies it
+            - "noninteract" :: all agents must satisfy goal
+    """
+    def __init__(self, env, mode="parallel", agentmode="any", *pos, **kws):
+        self.env       = env
+        self.goals:List[Goal] =[]
+        self.mode     = mode
+        self.agentmode = agentmode
+        # records the last goal that was achieved, if sequential
+        self._if_sequential__last_acheived = {
+                i:-1 for i in range(len(self.env.Agents))}
+
+    def check(self, remove_finished:bool=True):
+        """
+        Check if any goals are satisfied
+
+        # Inputs
+        --------
+        remove_finished : bool
+            Remove finished goals from the cache?
+
+        # Returns
+        --------
+        rewards : list of rewards
+        agents : list of agents that satisfied the goal
+        """
+        # Agents must accomplish goal, following the sequence of the
+        # goal list?
+        if self.mode  == "sequential":
+            rewards, agents = [], []
+            for i, agent in enumerate(self.env.Agents):
+                next = self._if_sequential__last_acheived[i] + 1
+                reward, solution_agents = self.goals[next].check(agent)
+                if solution_agents == i:
+                    rewards.append(reward)
+                    agents.append(i)
+                    self._if_sequential__last_acheived[i] = next
+                self._handle_agentmode(agent, remove_finished=remove_finished)
+        # Agents do not have to accomplish goal in sequence, any
+        # order is fine
+        elif self.mode == "nonsequential":
+            rewards, solution_agents = \
+                    zip(*[goal.check() for goal in self.goals])
+            self._handle_agentmode(solution_agents, 
+                                   remove_finished=remove_finished)
+        else:
+            raise ValueError("Unknown mode: {}".format(self.mode))
+        return rewards, agents
+
+    def _handle_agentmode(self, solution_agents, **kws):
+        if self.agentmode == "interact":
+            self._agentmode_is_interact(**kws)
+        elif self.agentmode == "parallel":
+            self._agentmode_is_parallel(**kws)
+
+    def _agentmode_is_interact(self, remove_finished:bool=True):
+        """
+        each goal, when satisfied consumes the goal for all agents
+        """
+        pass
+
+    def _agentmode_is_noninteract(self):
+        """
+        each goal, when satisfied is only consumed for that agent
+        """
+        pass
+
+    def __call__(self):
+        raise NotImplementedError("__call__() must be implemented")
+
+    def append(self, goal):
+        self.goals.append(goal)
+
+    def clear(self):
+        self.goals.clear()
+
+    def find(self, goal:Goal):
+        """ Find an goal in the cache """
+        for cache_goal in self.goals:
+            if cache_goal == goal:
+                return cache_goal
+
+class SpatialGoal(Goal):
     """
     Spatial goal objective: agent must reach a specific position
 
@@ -649,7 +773,7 @@ class SpatialGoalObjective(Objective):
                  goal_radius=None, **kws):
         super().__init__(*pos, **kws)
         if self.env.verbose:
-            print("new SpatialGoalObjective: goal_pos = {}".format(goal_pos))
+            print("new SpatialGoal: goal_pos = {}".format(goal_pos))
         self.goal_pos = goal_pos
         self.radius = np.min((self.env.dx * 10, np.ptp(self.env.extent)/10)) if goal_radius is None else goal_radius
     
@@ -664,14 +788,14 @@ class SpatialGoalObjective(Objective):
         #         else np.abs((pos - goal_pos)) < radius
         return distance(pos, goal_pos) < radius 
 
-    def check(self, agents:List[Agent]):
+    def check(self, agents:Union[List[Agent],Agent,List[int],int,None]=None):
         """
-        Check if the objective is satisfied
+        Check if the goal is satisfied
 
         Parameters
         ----------
         agents : List[Agent]
-            The agents to check the objective for (usually just one)
+            The agents to check the goal for (usually just one)
 
         Returns
         -------
@@ -680,24 +804,26 @@ class SpatialGoalObjective(Objective):
         which_agents : np.ndarray
             The indices of the agents that reached the goal
         """
+        agents = self._agents(agents)
         agents_reached_goal = [
             self._in_goal_radius(agent.pos, self.goal_pos).all().any()
                                for agent in agents]
         rewarded_agents = np.where(agents_reached_goal)[0]
         rewards = [self.reward] * len(rewarded_agents)
-        if self.env.verbose:
-            pass
-            # print("SpatialGoalObjective.check(): ",
-            #       "rewarded_agents = {}".format(rewarded_agents),
-            #       "reward attach = {}".format(rewards))
         return rewards, rewarded_agents
+
+    def __eq__(self, other:Union[Goal, np.ndarray, list]):
+        if isinstance(other, SpatialGoal):
+            return np.all(self.goal_pos == other.goal_pos)
+        elif isinstance(other, (np.ndarray,list)):
+            return np.all(self.goal_pos == np.array(other))
 
     def __call__(self)->np.ndarray:
         """
         Can be used to report its value to the environment
         (Not required -- just a convenience)
         """
-        return self.goal_pos
+        return np.array(self.goal_pos)
 
 
 class SpatialGoalEnvironment(TaskEnvironment):
@@ -723,23 +849,25 @@ class SpatialGoalEnvironment(TaskEnvironment):
     ag_annotate_default={'fontsize':10}
     ag_scatter_default ={'marker':'o'}
 
-    def __init__(self, *pos, 
-                 reward=reward_default, objectivekws=dict(),
-                 possible_goal_pos:List|np.ndarray|str='random_5', 
-                 current_goal_state:Union[NoneType,np.ndarray,List[np.ndarray]]=None, 
+    def __init__(goal_cache, *pos, 
+                 reward=reward_default, goalkws=dict(),
+                 possible_goal_pos:Union[List,np.ndarray,str]='random_5', 
+                 current_goal_state:Union[None,np.ndarray,List[np.ndarray]]=None, 
                  n_goals:int=1,
                  **kws):
         super().__init__(*pos, **kws)
-        self.possible_goal_pos = self._init_poss_goals(possible_goal_pos)
-        self.n_goals = n_goals
-        self.objectives:List[SpatialGoalObjective] = []
-        self.objkws = dict()
-        self.objkws.update({'reward':reward})
-        self.objkws.update(objectivekws)
+        goal_cache.possible_goals:List[SpatialGoal] = \
+                goal_cache._init_poss_goal_positions(possible_goal_pos)
+        goal_cache.goal_cache:GoalCache = GoalCache()
+        goal_cache.n_goals = n_goals
+        goal_cache.goalkws = dict()
+        goal_cache.goalkws.update({'reward':reward})
+        goal_cache.goalkws.update(goalkws)
         if current_goal_state is None:
-            self.reset()
+            goal_cache.reset()
 
-    def _init_poss_goals(self, possible_goal_pos:List|np.ndarray|str):
+    def _init_poss_goal_positions(self, 
+                         possible_goal_position:Union[List,np.ndarray,str]) ->list[SpatialGoal]:
         """ 
         Initialize the possible goal positions 
 
@@ -755,44 +883,45 @@ class SpatialGoalEnvironment(TaskEnvironment):
         possible_goal_pos : np.ndarray
         """
 
-        if isinstance(possible_goal_pos, str):
-            if possible_goal_pos.startswith('random'):
-                n = int(possible_goal_pos.split('_')[1])
+        if isinstance(possible_goal_position, str):
+            if possible_goal_position.startswith('random'):
+                n = int(possible_goal_position.split('_')[1])
                 ext = [self.extent[i:i+2] 
                        for i in np.arange(0, len(self.extent), 2)]
-                possible_goal_pos = [np.random.random(n) * \
+                possible_goal_position = [np.random.random(n) * \
                                      (ext[i][1] - ext[i][0]) + ext[i][0]
                                      for i in range(len(ext))]
-                possible_goal_pos = np.array(possible_goal_pos).T
+                possible_goal_position = np.array(possible_goal_position).T
             else:
                 raise ValueError("possible_goal_pos string must start with "
                                  "'random'")
-        elif not isinstance(possible_goal_pos, (list, np.ndarray)):
-            raise ValueError("possible_goal_pos must be a list of np.ndarrays, "
-                         "a string, or None")
-        return np.array(possible_goal_pos)
+        if isinstance(possible_goal_position, (list, np.ndarray)):
+            possible_goal_position = np.array(possible_goal_position)
+        # Create possible Goal
+        possible_goals = [SpatialGoal(self,
+                                                    goal_pos=pos,
+                                                    **self.goalkws)
+                               for pos in possible_goal_position]
+        return possible_goals
+
+
+    def get_goal_positions(self):
+        """ Get the current goal positions """
+        return self.goal_cache.get_goals()
 
     def _propose_spatial_goal(self):
         """
         Propose a new spatial goal from the possible goal positions
         """
-        if len(self.possible_goal_pos):
-            g = np.random.choice(np.arange(len(self.possible_goal_pos)), 1)
-            goal_pos = self.possible_goal_pos[g]
+        if len(self.possible_goals):
+            g = np.random.choice(np.arange(len(self.possible_goals)), 1)
+            goal_pos = self.possible_goals[g]
         else:
             warnings.warn("No possible goal positions specified yet")
             goal_pos = None # No goal state (this could be, e.g., a lockout time)
         return goal_pos
 
-    def get_goals(self):
-        """
-        Get the current goal positions
-
-        (shortcut func)
-        """
-        return [obj.goal_pos for obj in self.objectives]
-
-    def reset(self, goal_locations:np.ndarray|None=None, n_goals=None) ->Dict:
+    def reset(self, goal_locations:Union[np.ndarray,None]=None, n_objectives=None) ->Dict:
         """
             reset
 
@@ -801,87 +930,43 @@ class SpatialGoalEnvironment(TaskEnvironment):
         """
         super().reset()
 
+
         # How many goals to set?
         if goal_locations is not None:
             ng = len(goal_locations)
-        elif n_goals is not None:
-            ng = n_goals
+        elif n_objectives is not None:
+            ng = n_objectives
         else:
             ng = self.n_goals
-        self.objectives = [] # blank slate
+
+        # Push new spatial objectives to the cache
+        self.goal_cache.clear()
         # Set the number of required spatial spatial goals
         for g in range(ng):
             if goal_locations is None:
-                self.goal_pos = self._propose_spatial_goal()
+                goal_pos = self._propose_spatial_goal()
             else:
-                self.goal_pos = goal_locations[g]
-            objective = SpatialGoalObjective(self, 
-                                             goal_pos=self.goal_pos,
-                                             **self.objkws)
-            self.objectives.append(objective)
+                goal_pos = self.goal_cache.find(goal_locations[g])
+                if goal_pos is None:
+                    raise ValueError("goal_locations must be a subset "
+                      " of possible_goal_pos")
+
+            self.goal_cache.append(goal_pos)
 
         return self.get_observation()
-
-    def _render_matplotlib(self, goalkws=dict(), **kws):
-        """
-        Take existing mpl render and add spatial goals
-        """
-        if super()._render_matplotlib(**kws):
-            # Render the spatial goals
-            self._render_mpl_spat_goals(**goalkws)
-
-    def _render_mpl_spat_goals(self, facecolor="red", alpha=0.1,
-                               marker="x", c="red"):
-        R, fig, ax = self._get_mpl_render_cache()
-        initialize = "spat_goals" not in R or \
-                len(self.objectives) != len(R["spat_goals"])
-        if initialize:
-            R["spat_goals"]       = []
-            R["spat_goal_radius"] = []
-            for spat_goal in self.objectives:                
-                if self.dimensionality == "2D":
-                    x, y = spat_goal().T
-                else:
-                    x, y = np.zeros(np.shape(spat_goal())), spat_goal()
-                sg = plt.scatter(x,y, marker=marker, c=c)
-                ci = plt.Circle(spat_goal().ravel(), spat_goal.radius,
-                                facecolor=facecolor, alpha=alpha)
-                ax.add_patch(ci)
-                R["spat_goals"].append(sg)
-                R["spat_goal_radius"].append(sg)
-        else:
-            for i, obj in enumerate(self.objectives):
-                scat = R["spat_goals"][i]
-                scat.set_offsets(obj())
-                ci = R["spat_goal_radius"][i]
-                # TODO blitting circles?
-                # ci.set_center(obj().ravel())
-                # ci.set_radius(obj.radius)
-
 
     def _is_terminal_state(self):
         """
         Whether the current state is a terminal state
         """
         # Check our objectives
-        test_objective = 0
+        test_goal = 0
         # Loop through objectives, checking if they are satisfied
-        while test_objective < len(self.objectives):
-            rewards, agents = self.objectives[test_objective].check(self.Agents)
-            if len(agents):
-                self.objectives.pop(test_objective)
-                # Set the reward for the agent(s)
-                for (agent, reward) in zip(agents, rewards):
-                    self.reward_caches[agent].append(reward)
-                # Verbose debugging
-                if self.verbose:
-                    print("objective {} satisfied by agents {}".format(
-                    test_objective, agents),
-                    "remaining objectives {}".format(len(self.objectives)))
-            else:
-                test_objective += 1
+        rewards, agents = self.goal_cache.check_and_remove_satisfied()
+        for reward, agent in zip(rewards, agents):
+            self.reward_caches[agent].append(reward)
         # Return if no objectives left
-        no_objectives_left = len(self.objectives) == 0
+        no_objectives_left = len(self.goal_cache) == 0
         return no_objectives_left
 
     def update(self, *pos, **kws):
@@ -896,6 +981,53 @@ class SpatialGoalEnvironment(TaskEnvironment):
         # Check if we are done
         if self._is_terminal_state():
             self.reset()
+
+
+    # --------------------------------------
+    # Rendering
+    # --------------------------------------
+
+    def _render_matplotlib(self, goalkws=dict(), **kws):
+        """
+        Take existing mpl render and add spatial goals
+        
+        Parameters
+        ----------
+        goalkws : dict
+            keyword arguments to pass to the spatial goal rendering
+        """
+        if super()._render_matplotlib(**kws):
+            # Render the spatial goals
+            self._render_mpl_spat_goals(**goalkws)
+
+    def _render_mpl_spat_goals(self, facecolor="red", alpha=0.1,
+                               marker="x", c="red"):
+        R, fig, ax = self._get_mpl_render_cache()
+        initialize = "spat_goals" not in R or \
+                len(self.goal_cache) != len(R["spat_goals"])
+        if initialize:
+            R["spat_goals"]       = []
+            R["spat_goal_radius"] = []
+            for spat_goal in self.goal_cache:                
+                if self.dimensionality == "2D":
+                    x, y = spat_goal().T
+                else:
+                    x, y = np.zeros(np.shape(spat_goal())), spat_goal()
+                sg = plt.scatter(x,y, marker=marker, c=c)
+                ci = plt.Circle(spat_goal().ravel(), spat_goal.radius,
+                                facecolor=facecolor, alpha=alpha)
+                ax.add_patch(ci)
+                R["spat_goals"].append(sg)
+                R["spat_goal_radius"].append(sg)
+        else:
+            for i, obj in enumerate(self.goal_cache):
+                scat = R["spat_goals"][i]
+                scat.set_offsets(obj())
+                ci = R["spat_goal_radius"][i]
+                # TODO blitting circles?
+                # ci.set_center(obj().ravel())
+                # ci.set_radius(obj.radius)
+
 
 active = True
 if active and __name__ == "__main__":
@@ -923,17 +1055,19 @@ if active and __name__ == "__main__":
 
     # Define some helper functions
     get_goal_vector   = lambda Ag: env.get_vectors_between___accounting_for_environment(
-            env.get_goals()[0][0], Ag.pos)[0]
+            env.get_goal_positions()[0][0], Ag.pos)[0]
 
     # -----------------------------------------------------------------------
     # TEST 1 AGENT
     # -----------------------------------------------------------------------
     # Run the simulation, with the agent drifting towards the goal when
     # it is close to the goal
-    s = input("Single Agent. Press enter to start")
+    # s = input("Single Agent. Press enter to start")
     reward_printed = 0
     speed = 12 # dials how fast agent runs
-    while True:
+    pausetime = 0.000001
+
+    while env.episode < 4:
         # Get the direction to the goal
         dir_to_reward = get_goal_vector(Ag)
         drift_velocity = speed * Ag.speed_mean * \
@@ -954,14 +1088,11 @@ if active and __name__ == "__main__":
         # ------------------------------------
         # Render environment
         env.render()
-        plt.pause(0.00001)
+        plt.pause(pausetime)
         # Check if we are done
         if terminate_episode:
-            resets += 1
             print("done! reward:", reward)
             env.reset()
-            if len(env.episodes['episode']) > 3:
-                break
 
     # -----------------------------------------------------------------------
     # TEST Multi-agent (2 agents, does not show reward values in terminal,
@@ -969,10 +1100,9 @@ if active and __name__ == "__main__":
     # -----------------------------------------------------------------------
     Ag2 = Agent(env)
     env.add_agents(Ag2)
-    s = input("Two agents. Press enter to start")
+    # s = input("Two agents. Press enter to start")
     print("Agent names: ",env.agent_names)
-    resets = 0
-    while True:
+    while env.episode < 6:
         # Get the direction to the goal
         dir_to_reward = {"agent_0":get_goal_vector(Ag),
                          "agent_1":get_goal_vector(Ag2)}
@@ -984,10 +1114,11 @@ if active and __name__ == "__main__":
                 env.step(drift_velocity)
         # Render environment
         env.render()
-        plt.pause(0.00001)
+        plt.pause(pausetime)
         # Check if we are done
         if any(terminate_episode.values()):
-            resets += 1
             print("done! reward:", reward)
             env.reset()
+
+
 
