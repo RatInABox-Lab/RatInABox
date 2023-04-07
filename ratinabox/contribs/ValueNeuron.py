@@ -36,8 +36,8 @@ class ValueNeuron(FeedForwardLayer):
             "input_layer": None,  # the features it is using as inputs
             "tau": 2,  # discount time horizon (equivalent to gamma in discrete RL)
             "tau_e": None,  # eligibility trace timescale, must be <= tau (defaults to tau/2)
-            "eta": 0.1,  # learning rate
-            "L2": 0.01,  # L2 regularisation
+            "eta": 0.001,  # learning rate
+            "L2": 0.001,  # L2 regularisation
             "activation_params": {"activation": "relu"},  # non-linearity for
             "n": 1,  # how many rewards there will be and thus how many Values function (each represented by one ValueNeuron) there are
         }
@@ -50,9 +50,10 @@ class ValueNeuron(FeedForwardLayer):
 
         if self.tau_e == None:
             self.tau_e = self.tau / 2
-        self.et = np.zeros(params["input_layer"].n)  # initialise eligibility trace
-        self.firingrate = np.zeros(1)  # initialise firing rate
-        self.firingrate_deriv = np.zeros(1)  # initialise firing rate derivative
+        self.et = np.zeros(self.n)  # initialise eligibility trace
+        self.firingrate = np.zeros(self.n)  # initialise firing rate
+        self.firingrate_deriv = np.zeros(self.n)  # initialise firing rate derivative
+        self.td_error = np.zeros(self.n)  # initialise td error
 
     def update(self):
         """Updates firing rate as weighted linear sum of feature inputs"""
@@ -90,7 +91,20 @@ class ValueNeuron(FeedForwardLayer):
             * (np.outer(self.td_error * self.firingrate_prime, self.et))
             - self.eta * self.Agent.dt * self.L2 * w
         )  # note L2 regularisation
+        if np.linalg.norm(dw) > 10:
+            print(np.linalg.norm(dw))
         self.inputs[self.input_layer.name]["w"] += dw
+        return
+
+    def reset(
+        self,
+    ):
+        """Resets the value neuron by wiping the current eligibility trace and firing rate"""
+        self.et = np.zeros(self.n)  # reinitialise eligibility trace
+        self.firingrate = np.zeros(self.n)  # reinitialise firing rate
+        self.firingrate_deriv = np.zeros(self.n)  # reinitialise firing rate derivative
+        self.td_error = np.zeros(self.n)  # reinitialise td error
+
         return
 
 

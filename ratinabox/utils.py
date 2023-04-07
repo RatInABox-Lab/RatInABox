@@ -32,7 +32,7 @@ def vector_intercepts(vector_list_a, vector_list_b, return_collisions=False):
         vector_list_B.shape = (N_b,2,2)
     where N_a is the number of vectors defined in vector_list_a
 
-    Each line segments define an (infinite) line, parameterised by line_a = p_a_0 + l_a.(p_a_1-p_a_0).
+    Each line segments defines an (infinite) line, parameterised by line_a = p_a_0 + l_a.(p_a_1-p_a_0).
     We want to find the intersection between these lines in terms of the parameters l_a and l_b.
     Iff l_a and l_b are BOTH between 0 and 1 then the line segments intersect. Thus the goal is to return an array, I,  of shape
         I.shape = (N_a,N_b,2)
@@ -494,8 +494,8 @@ def mountain_plot(
     else:
         NbyX = overlap * NbyX / norm_by
     if fig is None and ax is None:
-        fig, ax = plt.subplots(
-        ) 
+        fig, ax = plt.subplots()
+
     fig.set_size_inches(4, len(NbyX) * shift / 25)
     zorder = 1
     for i in range(len(NbyX)):
@@ -525,34 +525,75 @@ def mountain_plot(
 
 
 def save_figure(
-    fig, save_title="", fig_save_types=["svg", "png"], anim_save_types=["gif", "mp4"]
+    fig,
+    save_title="",
+    fig_save_types=["svg", "png"],
+    anim_save_types=["gif", "mp4"],
+    save=True,
 ):
     """
-    Saves a figures and animations by date (folder) and time (name) as both '.png' and '.svg'
+    Saves a figure in a dated-folder with the current time appended to save_title, as both '.png' and '.svg'. Same for animations but as ".gif" and ".mp4".
+    This function can be used by anyone...just pass a fig object and it will be saved in the right place.
+
     Args:
         fig (matplotlib fig object): the matplotlib figure or animation object to be saved
         save_title (str, optional): name to be saved as. Current time will be appended to this so you won't overwrite old figures, defaults to no name "".
         fig_file_types: what file types to save figure as ['svg','png']
-        fig_file_types: what file types to save figure as ['gif','mp4']
+        anim_file_types: what file types to save figure as ['gif','mp4']
+        save: whether to save or not, i.e. this function can be called but if save is not True, nothing will happen (expect some warnings). Mostly ignore this.
 
     """
-    figure_directory = ratinabox.figure_directory
-    if figure_directory is None:
-        if ratinabox.save_warnings is True:
+    if save is None:  # take ratinabox default
+        save = ratinabox.autosave_plots
+        # print a hint to the first-time user
+        if (
+            (ratinabox._save_plot_warnings_on)
+            and (save == "undefined")
+            and (save != False)
+        ):
+            # None is the default for ratinabox.autosave_plots which is the default for many internal functions that call this function
+            print("WARNING: This figure has not been saved.")
             print(
-                'This figure cannot be saved because a figure directory has not been set. Either... \n   • set a figure directory: `ratinabox.figure_directory = "path/to/my/figs/"` \n   • or suppress this warning: `ratinabox.save_warnings = False`'
+                "    • To AUTOMATICALLY save all plots (recommended), set  `ratinabox.autosave_plots = True`"
             )
-            if ratinabox.stylized_plots is False:
-                print(
-                    "By the way, you can stylize plots to make them look like repo/paper by calling `ratinabox.stylize_plots()`\n"
-                )
+            print(
+                "    • To MANUALLY save plots, call                        `ratinabox.utils.save_figure(figure_object, save_title)."
+            )
+            print("      This warning will not be shown again")
+            ratinabox._save_plot_warnings_on = False
+
+        if (ratinabox._stylize_plot_warnings_on) and (
+            ratinabox._stylized_plots == False
+        ):
+            print(
+                "HINT: You can stylize plots to make them look like repo/paper by calling `ratinabox.stylize_plots()`"
+            )
+
+            print("      This hint will not be shown again")
+            ratinabox._stylize_plot_warnings_on = False
+
+    if save != True:
         return
+
+    figure_directory = ratinabox.figure_directory
+    if (figure_directory == "undefined") or (figure_directory is None):
+        print(
+            "This figure cannot be saved because a figure directory has not been set."
+        )
+        print(
+            '    Set a default figure directory `ratinabox.figure_directory = "path/to/my/figs/"`'
+        )
+        print(f"       (the current working directory is {os.getcwd()})")
+        return
+
+    if figure_directory[-1] != "/":
+        figure_directory += "/"
 
     if not os.path.isdir(figure_directory):
         os.mkdir(figure_directory)
 
     # make today-specific directory inside figure directory
-    today = datetime.strftime(datetime.now(), "%y%m%d")
+    today = datetime.strftime(datetime.now(), "%d_%m_%y")
     if not os.path.isdir(figure_directory + f"{today}/"):
         os.mkdir(figure_directory + f"{today}/")
 
@@ -588,6 +629,11 @@ def save_figure(
             fig.save(path + "." + filetype)
 
     return path
+
+
+def save_animation(*args, **kwargs):
+    """Saves an animation. This function just passes the animation object to utils.save_figure() where it is then saved. We only include this function for semantic consistency (you could just use save_figure directly. Takes exactly the same args are save_figure() and just passes the animation over there"""
+    return save_figure(*args, **kwargs)
 
 
 """Other"""
@@ -637,6 +683,7 @@ def activate(x, activation="sigmoid", deriv=False, other_args={}):
         "relu",
         "tanh",
         "retanh",
+        "softmax",
     ]
 
     if name == "linear":
@@ -701,3 +748,13 @@ def activate(x, activation="sigmoid", deriv=False, other_args={}):
                 * (1 - np.tanh(x) ** 2)
                 * ((x - other_args["threshold"]) > 0)
             )
+
+    if name == "softmax":
+        other_args_default = {"gain": 1, "threshold": 0}
+        for key in other_args.keys():
+            other_args_default[key] = other_args[key]
+        other_args = other_args_default
+        if deriv == False:
+            return other_args["gain"] * np.log(1 + np.exp(x - other_args["threshold"]))
+        elif deriv == True:
+            return other_args["gain"] / (1 + np.exp(-(x - other_args["threshold"])))

@@ -1,16 +1,20 @@
+verbose = False  # verbosity of ratinabox, recommend False unless debugging
+
+# SOME PLOT FORMATTING STUFF
+# These two variables are bools but default to None so they trigger a warning recommending them to be set
+autosave_plots = "undefined"  # whether to save figures automatically
+figure_directory = "undefined"  # where to save figures, must be a director i.e. end in "/", for example "../figures/"
+
+_save_plot_warnings_on = True  # whether to warn that autosave is turned off
+_stylize_plot_warnings_on = (
+    True  # whether to warn that rcParams haven't been set to make plots look good
+)
+_stylized_plots = False  # whether rcParams have been set to make plots look good
 from .Environment import *
 from .Agent import *
 from .Neurons import *
 
 from . import contribs
-
-verbose = False
-
-
-# SOME PLOT FORMATTING STUFF
-figure_directory = None  # where to save figures
-save_warnings = True  # warn that no figure directory has been set
-stylized_plots = False  # whether rcParams are set to make plots look good
 
 
 def stylize_plots():
@@ -90,4 +94,9 @@ def stylize_plots():
         ],
     )
 
-    ratinabox.stylized_plots = True
+    ratinabox._stylized_plots = True
+
+
+# print(
+#     "RatInABox successfully imported.\n    (optional) To automatically format and save RatInABox figures \n           • set  `ratinabox.autosave_plots = True`\n           • set  `ratinabox.figure_directory = 'path/to/figures/'`\n           • call `ratinabox.stylize_plots()`",end="\n\n"
+# )

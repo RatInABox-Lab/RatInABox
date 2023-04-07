@@ -204,11 +204,11 @@ class Environment:
         self.n_object_types = len(np.unique(self.objects["object_types"]))
         return
 
-    def plot_environment(self, fig=None, ax=None, autosave=True):
+    def plot_environment(self, fig=None, ax=None, autosave=None):
         """Plots the environment on the x axis, dark grey lines show the walls
         Args:
             fig,ax: the fig and ax to plot on (can be None)
-            autosave: if True, will try to save the figure to the figure directory `ratinabox.figure_directory`
+            autosave: if True, will try to save the figure to the figure directory `ratinabox.figure_directory`. Defaults to None in which case looks for global constant ratinabox.autosave_plots
         Returns:
             fig, ax: the environment figures, can be used for further downstream plotting.
         """
@@ -294,7 +294,7 @@ class Environment:
 
             # plot objects
             if self.plot_objects == True:
-                object_cmap = matplotlib.cm.get_cmap(self.object_colormap)
+                object_cmap = matplotlib.colormaps[self.object_colormap]
                 for (i, object) in enumerate(self.objects["objects"]):
                     object_color = object_cmap(
                         self.objects["object_types"][i]
@@ -315,9 +315,8 @@ class Environment:
             ax.axis("off")
             ax.set_xlim(left=extent[0] - 0.03, right=extent[1] + 0.03)
             ax.set_ylim(bottom=extent[2] - 0.03, top=extent[3] + 0.03)
-
-        if autosave:
-            ratinabox.utils.save_figure(fig, "Environment")
+        
+        ratinabox.utils.save_figure(fig, "Environment", save=autosave)
 
         return fig, ax
 
@@ -487,7 +486,7 @@ class Environment:
                 ), "geodesic geometry is not available for periodic boundary conditions"
                 assert (
                     len(walls) <= 5
-                ), """unfortunately geodesic geomtry is only defined in closed rooms with one additional wall
+                ), """unfortunately geodesic geometry is only defined in closed rooms with one additional wall
                 (efficient geometry calculations with more than 1 wall are super hard I have discovered!)"""
                 distances = utils.get_distances_between(vectors=vectors)
                 if len(walls) == 4:

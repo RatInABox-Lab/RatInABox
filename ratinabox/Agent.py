@@ -145,6 +145,9 @@ class Agent:
         self.dt = dt
         self.t += dt
         self.velocity = self.velocity.astype(float)
+        self.pos = np.array(
+            self.pos
+        )  # check pos is an array (may have external been set as a list)
 
         if self.use_imported_trajectory == False:  # use random motion model
             if self.Environment.dimensionality == "2D":
@@ -560,7 +563,7 @@ class Agent:
         xlim=None,
         background_color=None,
         axis_labels=True,
-        autosave=True,
+        autosave=None,
         **kwargs,
     ):
 
@@ -580,7 +583,7 @@ class Agent:
             • xlim: In 1D, forces the xlim to be a certain time (minutes) (useful if animating this function)
             • background_color: color of the background if not matplotlib default, only for 1D (probably white)
             • axis_labels: whether to show axes labels
-            • autosave: if True, will try to save the figure to the figure directory `ratinabox.figure_directory`
+            • autosave: if True, will try to save the figure to the figure directory `ratinabox.figure_directory`. Defaults to None in which case looks for global constant ratinabox.autosave_plots
 
         Returns:
             fig, ax
@@ -630,7 +633,7 @@ class Agent:
                 c=color,
                 linewidth=0,
             )
-            # #plot the rat? TODO haha 
+            # #plot the rat? TODO haha
             # ratpath = os.path.join(
             #     os.path.abspath(os.path.join(ratinabox.__file__, os.pardir)),
             #         "data/rat.png",
@@ -663,13 +666,12 @@ class Agent:
                 ax.set_facecolor(background_color)
                 fig.patch.set_facecolor(background_color)
 
-        if autosave:
-            ratinabox.utils.save_figure(fig, "trajectory")
+        ratinabox.utils.save_figure(fig, "trajectory", save=autosave)
 
         return fig, ax
 
     def animate_trajectory(
-        self, t_start=None, t_end=None, fps=15, speed_up=1, **kwargs
+        self, t_start=None, t_end=None, fps=15, speed_up=1, autosave=None, **kwargs
     ):
         """Returns an animation (anim) of the trajectory, 25fps.
         Should be saved using command like
@@ -682,6 +684,7 @@ class Agent:
             t_end (_type_, optional): _description_. Defaults to None.
             fps: frames per second of end video
             speed_up: #times real speed animation should come out at
+            autosave (bool): whether to automatical try and save this. Defaults to None in which case looks for global constant ratinabox.autosave_plots
             kwargs: passed to trajectory plotting function (chuck anything you wish in here). A particularly useful kwarg is 'additional_plot_func': any function which takes a fig, ax and t as input. The animation wll be passed through this each time after plotting the trajectory, use it to modify your animations however you like
 
         Returns:
@@ -735,15 +738,24 @@ class Agent:
             fargs=(fig, ax, t_start, t_end, speed_up, dt, kwargs),
         )
 
+        ratinabox.utils.save_animation(anim, "trajectory", save=autosave)
+
         return anim
 
-    def plot_position_heatmap(self, dx=None, fig=None, ax=None, autosave=True):
+    def plot_position_heatmap(
+        self,
+        dx=None,
+        fig=None,
+        ax=None,
+        autosave=None,
+    ):
         """Plots a heatmap of postions the agent has been in.
         vmin is always set to zero, so the darkest colormap color (if seen) represents locations which have never been visited
         Args:
             dx (float, optional): The heatmap bin size. Defaults to 5cm in 2D or 1cm in 1D.
             fig, ax: if provided, will plot onto this
-            autosave (bool, optional): If True, will try to save the figure into `ratinabox.figure_directory`
+            autosave (bool, optional): If True, will try to save the figure into `ratinabox.figure_directory`. Defaults to None in which case looks for global constant ratinabox.autosave_plots
+
         """
         if self.Environment.dimensionality == "1D":
             if dx is None:
@@ -781,19 +793,24 @@ class Agent:
                 vmax=vmax,
                 zorder=0,
             )
-        if autosave:
-            ratinabox.utils.save_figure(fig, "position_heatmap")
+        ratinabox.utils.save_figure(fig, "position_heatmap", save=autosave)
+
         return fig, ax
 
     def plot_histogram_of_speeds(
-        self, fig=None, ax=None, color="C1", return_data=False, autosave=True
+        self,
+        fig=None,
+        ax=None,
+        color="C1",
+        return_data=False,
+        autosave=None,
     ):
         """Plots a histogram of the observed speeds of the agent.
         args:
             fig, ax: not required. the ax object to be drawn onto.
             color: optional. the color.
             return_data: if True, will return the histogram data (bins and patches)
-            autosave: if True, will try to save the figure into `ratinabox.figure_directory`
+            autosave: if True, will try to save the figure into `ratinabox.figure_directory`. Defaults to None in which case looks for global constant ratinabox.autosave_plots
         Returns:
             fig, ax: the figure
         """
@@ -814,8 +831,7 @@ class Agent:
         ax.spines["right"].set_color(None)
         ax.spines["top"].set_color(None)
 
-        if autosave:
-            ratinabox.utils.save_figure(fig, "speed_histogram")
+        ratinabox.utils.save_figure(fig, "speed_histogram", save=autosave)
 
         if return_data == True:
             return fig, ax, n, bins, patches
@@ -828,14 +844,14 @@ class Agent:
         ax=None,
         color="C1",
         return_data=False,
-        autosave=True,
+        autosave=None,
     ):
         """Plots a histogram of the observed speeds of the agent.
         args:
             fig, ax: not required. the ax object to be drawn onto.
             color: optional. the color.
             return_data: if True, will return the histogram data (bins and patches)
-            auto_save: if True, will try to save the figure into `ratinabox.figure_directory`
+            auto_save: if True, will try to save the figure into `ratinabox.figure_directory`. Defaults to None in which case looks for global constant ratinabox.autosave_plots
         Returns:
             fig, ax: the figure
         """
@@ -860,8 +876,7 @@ class Agent:
         ax.spines["top"].set_color(None)
         ax.set_xlabel(r"Rotational velocity / $^{\circ} s^{-1}$")
 
-        if autosave:
-            ratinabox.utils.save_figure(fig, "rotational_velocity_histogram")
+        ratinabox.utils.save_figure(fig, "rotational_velocity_histogram", save=autosave)
 
         if return_data == True:
             return fig, ax, n, bins, patches
