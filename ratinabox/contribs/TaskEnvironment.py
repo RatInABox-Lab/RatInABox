@@ -22,167 +22,6 @@ from copy import copy, deepcopy
 from ratinabox.Environment import Environment
 from ratinabox.Agent import Agent
 
-class Reward():
-    """
-    When an task goal is triggered, reward goal is attached an Agent's
-    reward:list. This object tracks the dynamics of the reward applied to the
-    agent.
-
-    This implementation allows rewards to be applied:
-        - externally (through a task environment) 
-        - or internally (through the agent's internal neuronal dynamics),
-          e.g. through a set of neurons tracking rewards, attached to the agent
-
-    This tracker specifies what the animals reward value should be at a given
-    time while the reward is activate
-    """
-    decay_preset = {
-        "constant":    lambda a, x: a,
-        "linear":      lambda a, x: a * x,
-        "exponential": lambda a, x: a * np.exp(x),
-        "none":        lambda a, x: 0
-    }
-    decay_knobs_preset = {
-        "linear":      [1],
-        "constant":    [1],
-        "exponential": [2],
-        "none":        []
-    }
-    def __init__(self, init_state, dt,
-                 expire_clock=None, decay=None,
-                 decay_knobs=[], 
-                 external_drive:Union[FunctionType,None]=None,
-                 external_drive_strength=1):
-        """
-        Parameters
-        ----------
-        init_state : float
-            initial reward value
-        dt : float
-            timestep
-        expire_clock : float|None
-            time until reward expires, if None, reward never expires
-        decay : str|function|None
-            decay function, or decay preset name, or None
-        decay_knobs : list
-            decay function knobs
-        external_drive : function|None
-            external drive function, or None. can be used to attach a goal
-            gradient or reward ramping signal
-        external_drive_strength : float
-            strength of external drive, how quickly the reward follows the
-            external drive
-        """
-        self.state = init_state if not isinstance(init_state, FunctionType) \
-                               else init_state()
-        self.dt = dt
-        self.expire_clock = expire_clock if \
-                isinstance(expire_clock, (int,float)) else \
-                dt
-        if isinstance(decay, str):
-            self.preset = decay
-            self.decay_knobs = decay_knobs or self.decay_knobs_preset[self.preset]
-            self.decay = partial(self.decay_preset[self.preset], *self.decay_knobs)
-        else:
-            self.preset = "custom" if decay is not None \
-                                   else "constant"
-            self.decay_knobs = decay_knobs or \
-                                        self.decay_knobs_preset[self.preset]
-            self.decay = decay or self.decay_preset["constant"]
-        self.external_drive = external_drive
-        self.external_drive_strength = external_drive_strength
-        self.history = {'state':[], 'expire_clock':[]}
-
-    def update(self):
-        """
-        update reward, 
-
-        grows towards the gradient target value from its initial value, if a
-        target_value() function is defined. otherwise, reward is only
-        controlled by decay from some initial value. if decay is 0, and target
-        gradient is not defined then its constant, until the reward expire time
-        is reached.
-
-        # Returns
-        True if reward is still active, False if reward has expired
-        """
-        self.state = self.state + self.get_delta() * self.dt
-        self.expire_clock -= self.dt
-        self.history['state'].append(self.state)
-        self.history['expire_clock'].append(self.expire_clock)
-        return not (self.expire_clock <= 0)
-
-    def get_delta(self, state=None):
-        """ \delta(reward) for a dt """
-        state = self.state if state is None else state
-        if self.external_drive is not None:
-            target_gradient = self.external_drive()
-            strength = self.external_drive_strength
-            change = (strength*(target_gradient - state) - self.decay(state)) 
-        else:
-            change = -(self.decay(state)) 
-        return change
-
-    def plot_theoretical_reward(self, timerange=(0,1)):
-        """
-        plot the reward dynamics : shows the user how their parameters of
-        interest setup reward dynamics, without updating the object
-        """
-        rewards = [self.state]
-        timesteps = np.arange(timerange[0], timerange[1], self.dt)
-        for t in timesteps[1:]:
-            r = rewards[-1] + self.get_delta(state=rewards[-1]) * self.dt
-            rewards.append(r)
-        plt.plot(timesteps, rewards[:len(timesteps)],
-               label=f"reward={self.preset}, " 
-               f"knobs={self.decay_knobs}")
-        plt.axvspan(self.expire_clock, plt.gca().get_ylim()[-1], color='r', 
-                    alpha=0.2)
-        plt.text(np.mean((plt.gca().get_xlim()[0], self.expire_clock)), 
-                 np.mean(plt.gca().get_ylim()), "reward\nactive",
-                 backgroundcolor='black', color="white")
-        plt.text(np.mean((self.expire_clock, plt.gca().get_xlim()[-1])), 
-                 np.mean(plt.gca().get_ylim()), "reward\nexpires",
-                 backgroundcolor='black', color="white")
-        plt.gca().set(xlabel="time (s)", ylabel="reward signal")
-        return plt.gcf(), plt.gca()
-
-class RewardCache():
-    """
-    RewardCache
-
-    A cache of all `active` rewards attached to an agent
-    """
-    def __init__(self, verbose=False):
-        self.cache:List[Reward] = []
-        self.verbose = verbose
-
-    def append(self, reward:Reward, copymode=True):
-        assert isinstance(reward, Reward), "reward must be a Reward object"
-        if reward is not None:
-            if copymode:
-                self.cache.append(copy(reward))
-            else:
-                self.cache.append(reward)
-
-    def update(self):
-        """
-            Update
-        """
-        for reward in self.cache:
-            reward_still_active = reward.update()
-            if not reward_still_active:
-                self.cache.remove(reward)
-                if self.verbose:
-                    print("Reward removed from cache")
-    
-    def get_total(self):
-        """
-        If there are any active rewards, return the sum of their values.
-        """
-        return sum([reward.state for reward in self.cache])
-
-
 class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
     """
     Environment with task structure: there is a goal, and when the
@@ -642,6 +481,167 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         if "fig" in self._stable_render_objects:
             if isinstance(self._stable_render_objects["fig"], plt.Figure):
                 plt.close(self._stable_render_objects["fig"])
+
+class Reward():
+    """
+    When an task goal is triggered, reward goal is attached an Agent's
+    reward:list. This object tracks the dynamics of the reward applied to the
+    agent.
+
+    This implementation allows rewards to be applied:
+        - externally (through a task environment) 
+        - or internally (through the agent's internal neuronal dynamics),
+          e.g. through a set of neurons tracking rewards, attached to the agent
+
+    This tracker specifies what the animals reward value should be at a given
+    time while the reward is activate
+    """
+    decay_preset = {
+        "constant":    lambda a, x: a,
+        "linear":      lambda a, x: a * x,
+        "exponential": lambda a, x: a * np.exp(x),
+        "none":        lambda a, x: 0
+    }
+    decay_knobs_preset = {
+        "linear":      [1],
+        "constant":    [1],
+        "exponential": [2],
+        "none":        []
+    }
+    def __init__(self, init_state, dt,
+                 expire_clock=None, decay=None,
+                 decay_knobs=[], 
+                 external_drive:Union[FunctionType,None]=None,
+                 external_drive_strength=1):
+        """
+        Parameters
+        ----------
+        init_state : float
+            initial reward value
+        dt : float
+            timestep
+        expire_clock : float|None
+            time until reward expires, if None, reward never expires
+        decay : str|function|None
+            decay function, or decay preset name, or None
+        decay_knobs : list
+            decay function knobs
+        external_drive : function|None
+            external drive function, or None. can be used to attach a goal
+            gradient or reward ramping signal
+        external_drive_strength : float
+            strength of external drive, how quickly the reward follows the
+            external drive
+        """
+        self.state = init_state if not isinstance(init_state, FunctionType) \
+                               else init_state()
+        self.dt = dt
+        self.expire_clock = expire_clock if \
+                isinstance(expire_clock, (int,float)) else \
+                dt
+        if isinstance(decay, str):
+            self.preset = decay
+            self.decay_knobs = decay_knobs or self.decay_knobs_preset[self.preset]
+            self.decay = partial(self.decay_preset[self.preset], *self.decay_knobs)
+        else:
+            self.preset = "custom" if decay is not None \
+                                   else "constant"
+            self.decay_knobs = decay_knobs or \
+                                        self.decay_knobs_preset[self.preset]
+            self.decay = decay or self.decay_preset["constant"]
+        self.external_drive = external_drive
+        self.external_drive_strength = external_drive_strength
+        self.history = {'state':[], 'expire_clock':[]}
+
+    def update(self):
+        """
+        update reward, 
+
+        grows towards the gradient target value from its initial value, if a
+        target_value() function is defined. otherwise, reward is only
+        controlled by decay from some initial value. if decay is 0, and target
+        gradient is not defined then its constant, until the reward expire time
+        is reached.
+
+        # Returns
+        True if reward is still active, False if reward has expired
+        """
+        self.state = self.state + self.get_delta() * self.dt
+        self.expire_clock -= self.dt
+        self.history['state'].append(self.state)
+        self.history['expire_clock'].append(self.expire_clock)
+        return not (self.expire_clock <= 0)
+
+    def get_delta(self, state=None):
+        """ \delta(reward) for a dt """
+        state = self.state if state is None else state
+        if self.external_drive is not None:
+            target_gradient = self.external_drive()
+            strength = self.external_drive_strength
+            change = (strength*(target_gradient - state) - self.decay(state)) 
+        else:
+            change = -(self.decay(state)) 
+        return change
+
+    def plot_theoretical_reward(self, timerange=(0,1)):
+        """
+        plot the reward dynamics : shows the user how their parameters of
+        interest setup reward dynamics, without updating the object
+        """
+        rewards = [self.state]
+        timesteps = np.arange(timerange[0], timerange[1], self.dt)
+        for t in timesteps[1:]:
+            r = rewards[-1] + self.get_delta(state=rewards[-1]) * self.dt
+            rewards.append(r)
+        plt.plot(timesteps, rewards[:len(timesteps)],
+               label=f"reward={self.preset}, " 
+               f"knobs={self.decay_knobs}")
+        plt.axvspan(self.expire_clock, plt.gca().get_ylim()[-1], color='r', 
+                    alpha=0.2)
+        plt.text(np.mean((plt.gca().get_xlim()[0], self.expire_clock)), 
+                 np.mean(plt.gca().get_ylim()), "reward\nactive",
+                 backgroundcolor='black', color="white")
+        plt.text(np.mean((self.expire_clock, plt.gca().get_xlim()[-1])), 
+                 np.mean(plt.gca().get_ylim()), "reward\nexpires",
+                 backgroundcolor='black', color="white")
+        plt.gca().set(xlabel="time (s)", ylabel="reward signal")
+        return plt.gcf(), plt.gca()
+
+class RewardCache():
+    """
+    RewardCache
+
+    A cache of all `active` rewards attached to an agent
+    """
+    def __init__(self, verbose=False):
+        self.cache:List[Reward] = []
+        self.verbose = verbose
+
+    def append(self, reward:Reward, copymode=True):
+        assert isinstance(reward, Reward), "reward must be a Reward object"
+        if reward is not None:
+            if copymode:
+                self.cache.append(copy(reward))
+            else:
+                self.cache.append(reward)
+
+    def update(self):
+        """
+            Update
+        """
+        for reward in self.cache:
+            reward_still_active = reward.update()
+            if not reward_still_active:
+                self.cache.remove(reward)
+                if self.verbose:
+                    print("Reward removed from cache")
+    
+    def get_total(self):
+        """
+        If there are any active rewards, return the sum of their values.
+        """
+        return sum([reward.state for reward in self.cache])
+
 
 reward_default=Reward(1, 0.01, expire_clock=1, decay="linear")
 
