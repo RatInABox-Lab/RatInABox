@@ -17,7 +17,7 @@ from types import FunctionType
 from typing import List, Union
 from functools import partial
 import warnings
-from copy import copy
+from copy import copy, deepcopy
 
 from ratinabox.Environment import Environment
 from ratinabox.Agent import Agent
@@ -297,7 +297,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             start = len(self.Agents)
             names = ["agent_" + str(start+i) for i in range(len(agents))]
         # Enlist agents
-        for (name, agent) in zip(names, agents):
+        for i, (name, agent) in enumerate(zip(names, agents)):
             self.Agents[name] = agent
             self.agent_names.append(name)
             agent.name = name # attach name to agent
@@ -318,7 +318,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             agent.t = self.t # agent clock is aligned to environment,
                              # in case a new agent is placed in the env
                              # on a later episode
-            self.goal_cache.goals[name] = []
+        self.reset()   
 
     def _agentnames(self, agents=None) ->list[str]:
         """
@@ -385,7 +385,11 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
                 agent.history['pos'][-1] = agent.pos
 
         # Increment episode counter
-        self.episode += 1
+        if len(self.episodes['duration']) and \
+                self.episodes['duration'][-1] == 0:
+            pass
+        else:
+            self.episode += 1
         self.write_start_episode()
 
     def update(self, update_agents=False):
@@ -466,11 +470,18 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
     def write_start_episode(self):
         self.episodes['episode'].append(self.episode)
         self.episodes['start'].append(self._current_episode_start())
+        if self.verbose:
+            print("starting episode {}".format(self.episode))
+            print("episode start time: {}".format(self.episodes['start'][-1]))
 
     def write_end_episode(self):
         self.episodes['end'].append(self.t)
         self.episodes['duration'].append(self.t - \
                                          self.episodes['start'][-1])
+        if self.verbose:
+            print("ending episode {}".format(self.episode))
+            print("episode end time: {}".format(self.episodes['end'][-1]))
+            print("episode duration: {}".format(self.episodes['duration'][-1]))
 
 
     # ----------------------------------------------
@@ -645,14 +656,8 @@ class Goal():
 
     def check(self, agents=None):
         """
-        Check if the goal is satisfied
-        agents : see TaskEnvironment._agentnames(agents) for valid inputs
-            which agents to check, if None, check all
-
-        # Returns, when implemented
-        --------------------------
-        Reward | None : optional reward
-        agent index : to which agent?
+        Check if the goal is satisfied for agents and report which agents
+        satisfied the goal and if any rewards are rendered
         """
         raise NotImplementedError("check() must be implemented")
 
@@ -669,9 +674,11 @@ class Goal():
 
 class GoalCache():
     """
-        Organizes different ways of checking a collection of goals.
-        In series or parallel? Does each agent have to finish the goal? 
-        Or any?
+        Organizes a collection of goals shared across agents.
+        Can agents tackle goals in series or parallel? 
+        Does each agent have to finish the goal? Or first agent to a goal
+        consumes it? The cache handles the logic of how several goals
+        are handled by several agents.
 
         # Inputs
         --------
@@ -712,8 +719,10 @@ class GoalCache():
         rewards : list of rewards
         agents : list of agents that satisfied the goal
         """
+        # -------------------------------------------------------
         # Agents must accomplish goal, following the sequence of the
         # goal list?
+        # -------------------------------------------------------
         if self.mode  == "sequential":
             rewards, agents = [], []
             for i, agent in enumerate(self.env.agent_names):
@@ -726,8 +735,10 @@ class GoalCache():
                     self._if_sequential__last_acheived[i] = this
                     if remove_finished:
                         self.pop(agent, g)
+        # -------------------------------------------------------
         # Agents do not have to accomplish goal in sequence, any
         # order is fine
+        # -------------------------------------------------------
         elif self.mode == "nonsequential":
             rewards, agents = [], []
             for i, agent in enumerate(self.env.agent_names):
@@ -748,8 +759,10 @@ class GoalCache():
     def pop(self, agent_name:str, goal_index:int):
         """ Remove a goal from the cache """
         if self.agentmode == "noninteract":
+            print("Non-interact mode, pop only agent's index")
             self.goals[agent_name].pop(goal_index)
         elif self.agentmode == "interact":
+            print("Interacting mode")
             for agent in self.env.agent_names:
                 self.goals[agent].pop(goal_index)
 
@@ -774,10 +787,7 @@ class GoalCache():
         """ Find an goal in the cache """
         agentnames = self.env._agentnames(agents)
         results = dict()
-        for agentname, (ag, goals) in zip(self.goals.items(), agentnames):
-            for goal in goals:
-                if goal == other_goal and ag == agentname:
-                    results[ag] = goal
+        raise NotImplementedError("find() not implemented")
         return results
 
 class SpatialGoal(Goal):
@@ -886,8 +896,6 @@ class SpatialGoalEnvironment(TaskEnvironment):
         self.possible_goals:List[SpatialGoal] = \
                 self._init_poss_goal_positions(possible_goal_pos)
         self.n_goals = n_goals
-        if current_goal_state is None:
-            self.reset()
 
     def _init_poss_goal_positions(self, 
                          possible_goal_position:Union[List,np.ndarray,str]) ->list[SpatialGoal]:
@@ -968,8 +976,6 @@ class SpatialGoalEnvironment(TaskEnvironment):
                 goal_pos = self._propose_spatial_goal()
             else:
                 goal_obj = np.array(goal_locations[g])
-                import pdb;pdb.set_trace()
-                goal_pos = self.goal_cache.find(goal_obj)
                 if goal_pos is None:
                     raise ValueError("goal_locations must be a subset "
                       " of possible_goal_pos")
@@ -1068,7 +1074,6 @@ if active and __name__ == "__main__":
     # Create an agent
     Ag = Agent(env)
     env.add_agents(Ag) # add it to the environment
-    env.reset()
 
     # Prep the rendering figure
     plt.ion(); env.render(); plt.show()
@@ -1096,16 +1101,6 @@ if active and __name__ == "__main__":
         # Step the environment with actions
         observation, reward, terminate_episode, _, info = \
                 env.step1(drift_velocity)
-        # --- Report reward to the REPL ------
-        if reward > 0:
-            if not reward_printed:
-                print("-"*40,"Reward Initiated","-"*40)
-            print("Reward_value:", reward)
-            reward_printed = True
-        else:
-            if reward_printed:
-                print("-"*40,"Reward Ended","-"*40)
-            reward_printed = False
         # ------------------------------------
         # Render environment
         env.render()
