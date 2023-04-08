@@ -217,12 +217,12 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
                  render_mode='matplotlib', 
                  render_every=None, render_every_framestep=2,
                  dt=0.01, teleport_on_reset=False, 
-                 save_expired_rewards=False, **kws):
+                 save_expired_rewards=False, goalcachekws=dict(), **kws):
         super().__init__(*pos, **kws)
         self.dynamic_walls = []      # list of walls that can change/move
         self.dynamic_objects = []    # list of current objects that can move
         self.Agents:dict[str,Agent] = {} # dict of agents in the environment
-        self.goal_cache:GoalCache = GoalCache(self) # list of current goals to satisfy per agent
+        self.goal_cache:GoalCache = GoalCache(self, **goalcachekws) # list of current goals to satisfy per agent
         self.t = 0                   # current time
         self.dt = dt                 # time step
         self.history = {'t':[]}      # history of the environment
@@ -683,7 +683,7 @@ class GoalCache():
 
         # Inputs
         --------
-        mode : str
+        goalorder : str
             Goal relations
             - "sequential"    : goal must be accomplished in sequence
             - "nonsequential" : any order
@@ -695,12 +695,12 @@ class GoalCache():
                             one agent satisfies it
             - "noninteract" :: all agents must satisfy goal
     """
-    def __init__(self, env, mode="nonsequential", agentmode="interact", 
+    def __init__(self, env, goalorder="nonsequential", agentmode="interact", 
                  *pos, **kws):
         self.env       = env
         self.goals:dict[str,list[Goal]] = {name:[] 
                                            for name in self.env.Agents.keys()}
-        self.mode     = mode
+        self.goalorder     = goalorder
         self.agentmode = agentmode
         # records the last goal that was achieved, if sequential
         self._if_sequential__last_acheived = {
@@ -724,7 +724,7 @@ class GoalCache():
         # Agents must accomplish goal, following the sequence of the
         # goal list?
         # -------------------------------------------------------
-        if self.mode  == "sequential":
+        if self.goalorder  == "sequential":
             rewards, agents = [], []
             for i, agent in enumerate(self.env.agent_names):
                 this:int = self._if_sequential__last_acheived[i] + 1
@@ -740,7 +740,7 @@ class GoalCache():
         # Agents do not have to accomplish goal in sequence, any
         # order is fine
         # -------------------------------------------------------
-        elif self.mode == "nonsequential":
+        elif self.goalorder == "nonsequential":
             rewards, agents = [], []
             for i, agent in enumerate(self.env.agent_names):
                 g = 0
@@ -754,7 +754,7 @@ class GoalCache():
                             self.pop(agent, g)
                     g += 1
         else:
-            raise ValueError("Unknown mode: {}".format(self.mode))
+            raise ValueError("Unknown mode: {}".format(self.goalorder))
         return rewards, agents
 
     def pop(self, agent_name:str, goal_index:int):
@@ -1060,21 +1060,42 @@ class SpatialGoalEnvironment(TaskEnvironment):
 active = True
 if active and __name__ == "__main__":
 
+    speed = 12 # dials how fast agent runs
+    pausetime = 0.000001 # pause time in plot
     plt.close('all')
 
-    # Test reward class
+    #################################################################
+    #                   GOAL AND REWARD OPTIONS
+    #################################################################
+    # Create a reward that goals emit (this is optional, there is a default
+    #                                   reward, but this could be set to None)
     r1=Reward(1, dt=0.01, expire_clock=0.5, decay="linear", 
               decay_knobs=[6])
     r1.plot_theoretical_reward()
+    # Any options for the goal objects that track whether animals satisfy a
+    # goal?
+    goalkws = dict()
+    # Any options for the object that tracks all activate goals across all 
+    # agents?
+    goalcachekws = dict(agentmode="interact", goalorder="nonsequential")
 
-    # Test the environment
+    #################################################################
+    #                   ENVIRONMENT
+    #################################################################
+    # Create a test environment
     env = SpatialGoalEnvironment(n_goals=2, params={'dimensionality':'2D'},
                                  reward=r1, render_every=1, 
                                  teleport_on_reset=False,
+                                 goalkws=goalkws, goalcachekws=goalcachekws,
                                  verbose=True)
+    #################################################################
+    #                   AGENT
+    #################################################################
     # Create an agent
     Ag = Agent(env)
     env.add_agents(Ag) # add it to the environment
+    #################################################################
+    #################################################################
 
     # Prep the rendering figure
     plt.ion(); env.render(); plt.show()
@@ -1089,10 +1110,6 @@ if active and __name__ == "__main__":
     # -----------------------------------------------------------------------
     # Run the simulation, with the agent drifting towards the goal when
     # it is close to the goal
-    # s = input("Single Agent. Press enter to start")
-    reward_printed = 0
-    speed = 12 # dials how fast agent runs
-    pausetime = 0.000001
 
     while env.episode < 4:
         # Get the direction to the goal
@@ -1136,6 +1153,4 @@ if active and __name__ == "__main__":
         if any(terminate_episode.values()):
             print("done! reward:", reward)
             env.reset()
-
-
 
