@@ -387,7 +387,8 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         # Increment episode counter
         if len(self.episodes['duration']) and \
                 self.episodes['duration'][-1] == 0:
-            pass
+            for key in self.episodes:
+                self.episodes[key].pop()
         else:
             self.episode += 1
         self.write_start_episode()
@@ -465,7 +466,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
     def _current_episode_start(self):
         return 0 \
                 if not len(self.episodes['start']) \
-                else self.episodes['end'][-1] + self.dt
+                else self.episodes['end'][-1] 
 
     def write_start_episode(self):
         self.episodes['episode'].append(self.episode)
