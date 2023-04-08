@@ -805,14 +805,17 @@ class SpatialGoal(Goal):
         The position that the agent must reach
     goal_radius : float | None
         The radius around the goal position that the agent must reach
+
+    see also : Goal
     """
-    def __init__(self, *positionals, reward=reward_default, pos:Union[np.ndarray,None], 
-                 goal_radius=None, **kws):
+    def __init__(self, *positionals, reward=reward_default, 
+                 pos:Union[np.ndarray,None], goal_radius=None, **kws):
         super().__init__(*positionals, **kws)
         if self.env.verbose:
             print("new SpatialGoal: goal_pos = {}".format(pos))
         self.pos = pos
-        self.radius = np.min((self.env.dx * 10, np.ptp(self.env.extent)/10)) if goal_radius is None else goal_radius
+        self.radius = np.min((self.env.dx * 10, np.ptp(self.env.extent)/10)) \
+                if goal_radius is None else goal_radius
     
     def _in_goal_radius(self, pos, goal_pos):
         """
@@ -1067,10 +1070,16 @@ if active and __name__ == "__main__":
               decay_knobs=[6])
     r1.plot_theoretical_reward()
     # Any options for the goal objects that track whether animals satisfy a
-    # goal?
-    goalkws = dict()
+    # goal? These can be either reward, position and radius of the goal.
+    goalkws = dict(reward=r1)
     # Any options for the object that tracks all activate goals across all 
     # agents?
+    #   agentmode = "interact" means that one agent completing a goal completes
+    #                       for all agents. "noninteract" means that each agent
+    #                       must complete the goal individually.
+    #   goalorder = "nonsequential" means that goals can be completed in any order
+    #                           "sequential" means that goals must be completed
+    #                           in the order they are set
     goalcachekws = dict(agentmode="interact", goalorder="nonsequential")
 
     #################################################################
@@ -1078,7 +1087,7 @@ if active and __name__ == "__main__":
     #################################################################
     # Create a test environment
     env = SpatialGoalEnvironment(n_goals=2, params={'dimensionality':'2D'},
-                                 reward=r1, render_every=1, 
+                                 render_every=1, 
                                  teleport_on_reset=False,
                                  goalkws=goalkws, goalcachekws=goalcachekws,
                                  verbose=True)
