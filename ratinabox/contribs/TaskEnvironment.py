@@ -939,18 +939,6 @@ class SpatialGoalEnvironment(TaskEnvironment):
         """ Get the current goal positions """
         return [goal.pos for goal in self.goal_cache.get_goals()]
 
-    def _propose_spatial_goal(self):
-        """
-        Propose a new spatial goal from the possible goal positions
-        """
-        if len(self.possible_goals):
-            g = np.random.choice(np.arange(len(self.possible_goals)), 1)
-            goal_pos = np.array(self.possible_goals)[g]
-        else:
-            warnings.warn("No possible goal positions specified yet")
-            goal_pos = None # No goal state (this could be, e.g., a lockout time)
-        print("Proposed goal: ", goal_pos)
-        return goal_pos
 
     def reset(self, goal_locations:Union[np.ndarray,None]=None, n_objectives=None) ->Dict:
         """
@@ -974,9 +962,15 @@ class SpatialGoalEnvironment(TaskEnvironment):
         # Set the number of required spatial spatial goals
         for g in range(ng):
             if goal_locations is None:
-                goal_pos = self._propose_spatial_goal()
+                if len(self.possible_goals):
+                    g = np.random.choice(np.arange(len(self.possible_goals)), 1)
+                    goal_pos = np.array(self.possible_goals)[g]
+                else:
+                    warnings.warn("No possible goal positions specified yet")
+                    goal_pos = None # No goal state (this could be, e.g., a lockout time)
+                print("Proposed goal: ", goal_pos)
             else:
-                goal_obj = np.array(goal_locations[g])
+                goal_pos = np.array(goal_locations[g])
                 if goal_pos is None:
                     raise ValueError("goal_locations must be a subset "
                       " of possible_goal_pos")
