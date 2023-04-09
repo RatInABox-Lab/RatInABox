@@ -84,7 +84,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         # Setup observation space from the Environment space
         self.observation_spaces:Dict[Space] = Dict({})
         self.action_spaces:Dict[Space]      = Dict({})
-        self.reward_caches:List[RewardCache] = []
+        self.reward_caches:dict[str, RewardCache] = {}
         self.agent_names:List[str]     = []
         self.info:dict                 = {} # gymnasium returns info in step()
 
@@ -152,7 +152,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             self.observation_spaces[name] = \
                     Box(low=lows, high=highs, dtype=np.float_)
             cache = RewardCache()
-            self.reward_caches.append(cache)
+            self.reward_caches[name] = cache
             agent.reward = cache
             agent.t = self.t # agent clock is aligned to environment,
                              # in case a new agent is placed in the env
@@ -266,7 +266,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
                                  drift_to_random_strength_ratio)
 
         # Update the reward caches for time decay of existing rewards
-        for reward_cache in self.reward_caches:
+        for reward_cache in self.reward_caches.values():
             reward_cache.update()
 
         # Udpate the environment, which can add new rewards to caches
@@ -726,13 +726,13 @@ class GoalCache():
         # -------------------------------------------------------
         if self.goalorder  == "sequential":
             rewards, agents = [], []
-            for i, agent in enumerate(self.env.agent_names):
+            for agent in self.env.agent_names:
                 this:int = self._if_sequential__last_acheived[i] + 1
                 reward, solution_agents = self.goals[agent][this].check(agent)
-                if i in solution_agents:
+                if agent in solution_agents:
                     rewards.append(reward[0] if reward is not None
                                    else None)
-                    agents.append(i)
+                    agents.append(agent)
                     self._if_sequential__last_acheived[i] = this
                     if remove_finished:
                         self.pop(agent, g)
@@ -742,14 +742,14 @@ class GoalCache():
         # -------------------------------------------------------
         elif self.goalorder == "nonsequential":
             rewards, agents = [], []
-            for i, agent in enumerate(self.env.agent_names):
+            for agent in self.env.agent_names:
                 g = 0
                 while g < len(self.goals[agent]):
                     reward, solution_agents = self.goals[agent][g].check(agent)
-                    if i in solution_agents:
+                    if agent in solution_agents:
                         rewards.append(reward[0] if reward is not None
                                        else None)
-                        agents.append(i)
+                        agents.append(agent)
                         if remove_finished:
                             self.pop(agent, g)
                     g += 1
@@ -828,13 +828,13 @@ class SpatialGoal(Goal):
         #         else np.abs((pos - goal_pos)) < radius
         return distance(pos, goal_pos) < radius 
 
-    def check(self, agents:Union[List[Agent],Agent,List[int],int,None]=None):
+    def check(self, agents=None):
         """
         Check if the goal is satisfied
 
         Parameters
         ----------
-        agents : List[Agent]
+        agents : List[Agent] | List[int] | int | string | List[string]
             The agents to check the goal for (usually just one), None=All
             see TaskEnvironment._agentnames
 
@@ -843,13 +843,14 @@ class SpatialGoal(Goal):
         rewards : List[float]
             The rewards for each agent
         which_agents : np.ndarray
-            The indices of the agents that reached the goal
+            The names of the agents that satisfied the goal
         """
         agents = self.env._agentnames(agents)
-        agents_reached_goal = [
-            self._in_goal_radius(env.Agents[agent].pos, self.pos).all().any()
-                               for agent in agents]
-        rewarded_agents = np.where(agents_reached_goal)[0]
+        agents_reached_goal = []
+        for agent in agents:
+            agents_reached_goal.append(
+            self._in_goal_radius(env.Agents[agent].pos, self.pos).all().any())
+        rewarded_agents = np.array(agents)[agents_reached_goal]
         rewards = [self.reward] * len(rewarded_agents)
         return rewards, rewarded_agents
 
@@ -1114,22 +1115,22 @@ if active and __name__ == "__main__":
     # Run the simulation, with the agent drifting towards the goal when
     # it is close to the goal
 
-    while env.episode < 4:
-        # Get the direction to the goal
-        dir_to_reward = get_goal_vector(Ag)
-        drift_velocity = speed * Ag.speed_mean * \
-                (dir_to_reward / np.linalg.norm(dir_to_reward))
-        # Step the environment with actions
-        observation, reward, terminate_episode, _, info = \
-                env.step1(drift_velocity)
-        # ------------------------------------
-        # Render environment
-        env.render()
-        plt.pause(pausetime)
-        # Check if we are done
-        if terminate_episode:
-            print("done! reward:", reward)
-            env.reset()
+    # while env.episode < 4:
+    #     # Get the direction to the goal
+    #     dir_to_reward = get_goal_vector(Ag)
+    #     drift_velocity = speed * Ag.speed_mean * \
+    #             (dir_to_reward / np.linalg.norm(dir_to_reward))
+    #     # Step the environment with actions
+    #     observation, reward, terminate_episode, _, info = \
+    #             env.step1(drift_velocity)
+    #     # ------------------------------------
+    #     # Render environment
+    #     env.render()
+    #     plt.pause(pausetime)
+    #     # Check if we are done
+    #     if terminate_episode:
+    #         print("done! reward:", reward)
+    #         env.reset()
 
     # -----------------------------------------------------------------------
     # TEST Multi-agent (2 agents, does not show reward values in terminal,
