@@ -51,13 +51,13 @@ Many [demos](./demos/) are provided. Reading through the [example scripts](#exam
 ```console
 $ pip install ratinabox
 ```
-Alternatively, in particular if you would like to edit `RatInABox` code, install locally using  
+Alternatively, in particular if you would like to edit `RatInABox` code of if you want the bleeding edge (may occasioanlly break), install from this repo using  
 ```console
 $ git clone --depth 1 https://github.com/TomGeorge1234/RatInABox.git
 $ cd RatInABox
 $ pip install -e .
 ```
-n.b. the `-e` (`--editable`) handle means this install points *directly* to the cloned repository itself. Any changes made here will be reflected when you next import `RatInABox` into your code. If you want to run the demo jupyter scripts please replace the last call with `pip install -e .[demos]`.
+n.b. the "editable" `-e` handle means changes made to your clone will be reflected when you next import `RatInABox` into your code. If you want to run the demo jupyter scripts please replace the last call with `pip install -e .[demos]`. 
 
 **Import** into your python project with  
 ```python
