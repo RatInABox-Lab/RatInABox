@@ -417,12 +417,12 @@ def von_mises(theta, mu, sigma, norm=None):
 """Plotting functions"""
 
 
-def bin_data_for_histogramming(data, extent, dx, weights=None):
+def bin_data_for_histogramming(data, extent, dx, weights=None, norm_by_bincount=False):
     """Bins data ready for plotting.
     So for example if the data is 1D the extent is broken up into bins (leftmost edge = extent[0], rightmost edge = extent[1]) and then data is
     histogrammed into these bins.
     weights weights the histogramming process so the contribution of each data point to a bin count is the weight, not 1.
-
+    norm_by_bincount divides the histogram by the number of data points in each bin. This is useful if you want to plot just the average of the wegihts normalising out any contribution from the number of data points in each bin.
     Args:
         data (array): (2,N) for 2D or (N,) for 1D)
         extent (_type_): _description_
@@ -433,9 +433,13 @@ def bin_data_for_histogramming(data, extent, dx, weights=None):
         (heatmap,bin_centres): if 1D
         (heatmap): if 2D
     """
+    print("binning")
     if len(extent) == 2:  # dimensionality = "1D"
         bins = np.arange(extent[0], extent[1] + dx, dx)
         heatmap, xedges = np.histogram(data, bins=bins, weights=weights)
+        if norm_by_bincount:
+            bincount = np.histogram(data, bins=bins)[0]
+            heatmap = heatmap / bincount
         centres = (xedges[1:] + xedges[:-1]) / 2
         return (heatmap, centres)
 
@@ -445,6 +449,12 @@ def bin_data_for_histogramming(data, extent, dx, weights=None):
         heatmap, xedges, yedges = np.histogram2d(
             data[:, 0], data[:, 1], bins=[bins_x, bins_y], weights=weights
         )
+        if norm_by_bincount:
+            bincount, xedges, yedges = np.histogram2d(
+                data[:, 0], data[:, 1], bins=[bins_x, bins_y]
+            )
+            bincount[bincount == 0] = 1
+            heatmap = heatmap / bincount
         heatmap = heatmap.T[::-1, :]
         return heatmap
 

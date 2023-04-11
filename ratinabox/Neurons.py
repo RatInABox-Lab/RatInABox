@@ -362,7 +362,7 @@ class Neurons:
 
                         divider = make_axes_locatable(axes[-1])
                         cax = divider.append_axes("right", size="5%", pad=0.05)
-            for (i, ax_) in enumerate(axes):
+            for i, ax_ in enumerate(axes):
                 _, ax_ = self.Agent.Environment.plot_environment(
                     fig, ax_, autosave=False
                 )
@@ -374,7 +374,7 @@ class Neurons:
             vmin, vmax = 0, 0
             ims = []
             if method in ["groundtruth", "history"]:
-                for (i, ax_) in enumerate(axes):
+                for i, ax_ in enumerate(axes):
                     ex = self.Agent.Environment.extent
                     if method == "groundtruth":
                         rate_map = rate_maps[chosen_neurons[i], :].reshape(
@@ -384,7 +384,11 @@ class Neurons:
                     elif method == "history":
                         rate_timeseries_ = rate_timeseries[chosen_neurons[i], :]
                         rate_map = utils.bin_data_for_histogramming(
-                            data=pos, extent=ex, dx=0.05, weights=rate_timeseries_
+                            data=pos,
+                            extent=ex,
+                            dx=0.05,
+                            weights=rate_timeseries_,
+                            norm_by_bincount=True,
                         )
                         im = ax_.imshow(
                             rate_map,
@@ -408,7 +412,7 @@ class Neurons:
                     cbar.outline.set_visible(False)
 
             if spikes is True:
-                for (i, ax_) in enumerate(axes):
+                for i, ax_ in enumerate(axes):
                     pos_where_spiked = pos[spike_data[chosen_neurons[i], :]]
                     ax_.scatter(
                         pos_where_spiked[:, 0],
@@ -433,6 +437,7 @@ class Neurons:
                         extent=ex,
                         dx=0.01,
                         weights=rate_timeseries[neuron_id, :],
+                        norm_by_bincount=True,
                     )
                     x, rate_map = utils.interpolate_and_smooth(x, rate_map, sigma=0.03)
                     rate_maps.append(rate_map)
@@ -1225,7 +1230,6 @@ class ObjectVectorCells(Neurons):
     """
 
     def __init__(self, Agent, params={}):
-
         default_params = {
             "n": 10,
             "name": "ObjectVectorCell",
@@ -1713,7 +1717,7 @@ class FeedForwardLayer(Neurons):
         self.inputs[name]["w"] = w
         self.inputs[name]["w_init"] = w.copy()
         self.inputs[name]["I"] = I
-        for (key, value) in kwargs.items():
+        for key, value in kwargs.items():
             self.inputs[name][key] = value
         if ratinabox.verbose is True:
             print(
