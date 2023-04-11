@@ -294,14 +294,17 @@ Choose how you want `PlaceCells` to interact with walls in the `Environment`. We
 
 
 #### Egocentric encodings
-Most `RatInABox` cell classes are allocentric (e.g. `PlaceCells`, `GridCells` etc. do not depend on the agents point of view) not egocentric however `BoundaryVectorCells` (BVCs) and `ObjectVectorCells` (OVCs) can be either. `FieldOfViewNeurons` exploit this by arranging sets of egocentric BVC or OVCs to tile to agents local field of view creating a comprehensive egocentric encoding of what boundaries or objects the agent can 'see' from it's current point of view. A custom plotting function displays the tiling and the firing rates as shown below. 
+Most `RatInABox` cell classes are allocentric (e.g. `PlaceCells`, `GridCells` etc. do not depend on the agents point of view) not egocentric. `BoundaryVectorCells` (BVCs) and `ObjectVectorCells` (OVCs) can be either. `FieldOfViewNeurons` exploit this by arranging sets of egocentric BVC or OVCs to tile to agents local field of view creating a comprehensive egocentric encoding of what boundaries or objects the agent can 'see' from it's current point of view. A custom plotting function displays the tiling and the firing rates as shown below. With an adequately defined field of view these can make, for example, "whisker cells". 
 
 ```python
 FoV_BVCs = FieldOfViewNeurons(Ag)
 FoV_OVCs = FieldOfViewNeurons(Ag,params={
     'cell_type':'OVC',
-    #other params defining the field of view area (see source code),
     })
+FoV_whiskers = FieldOfViewNeurons(Ag,params={
+    "FoV_angles":[75,105],
+    "FoV_distance":[0.1,0.2],
+    "spatial_resolution":0.02,})
 ```
 
 <img src=".images/readme/field_of_view.gif" width=600>
@@ -317,8 +320,9 @@ We encourage users to create their own subclasses of `Neurons`. This is easy to 
 `RatInABox` is built to be highly visual. It is easy to plot or animate data and save these plots/animations. Here are some tips
 
 #### Saving
-* `ratinabox.utils.save_figure(fig,fig_name)` saves a figure (or animation) into a dated folder within `ratinabox.figure_directory` as both `".svg"` and `".png"` (`".mp4"` or `".gif"`) for easy access later. The current time will be appended to the `fig_name` so you won't overwrite. 
 * `ratinabox.figure_directory` a global variable specifying the directory into which figures/animations will be saved 
+* `ratinabox.utils.save_figure(fig,fig_name)` saves a figure (or animation) into a dated folder within the figure directory  as both `".svg"` and `".png"` (`".mp4"` or `".gif"`). The current time will be appended to the `fig_name` so you won't ever overwrite. 
+
 
 #### Saving (but automatically)
 * Setting `ratinabox.autosave_plots = True` means RatInABox figure will be automatically saved in the figure directory without having to indvidually call the `utils` function above. 
