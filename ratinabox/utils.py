@@ -433,7 +433,6 @@ def bin_data_for_histogramming(data, extent, dx, weights=None, norm_by_bincount=
         (heatmap,bin_centres): if 1D
         (heatmap): if 2D
     """
-    print("binning")
     if len(extent) == 2:  # dimensionality = "1D"
         bins = np.arange(extent[0], extent[1] + dx, dx)
         heatmap, xedges = np.histogram(data, bins=bins, weights=weights)
