@@ -504,8 +504,8 @@ def mountain_plot(
         NbyX = overlap * NbyX / norm_by
     if fig is None and ax is None:
         fig, ax = plt.subplots()
+        fig.set_size_inches(4, len(NbyX) * shift / 25)
 
-    fig.set_size_inches(4, len(NbyX) * shift / 25)
     zorder = 1
     for i in range(len(NbyX)):
         ax.plot(X, NbyX[i] + i + 1, c=c, zorder=zorder)
@@ -536,8 +536,8 @@ def mountain_plot(
 def save_figure(
     fig,
     save_title="",
-    fig_save_types=["svg", "png"],
-    anim_save_types=["gif", "mp4"],
+    fig_save_types=["png", "svg"],
+    anim_save_types=["mp4", "gif"],
     save=True,
 ):
     """
@@ -612,6 +612,8 @@ def save_figure(
     path = path_
 
     if type(fig) == matplotlib.figure.Figure:
+        file_type = "Figure"
+        save_types = "  & .".join(fig_save_types)
         for filetype in fig_save_types:
             i = 1
             while True:  # checks there isn't an existing figure with this name
@@ -625,6 +627,8 @@ def save_figure(
             fig.savefig(path + "." + filetype, bbox_inches="tight")
 
     elif type(fig) == matplotlib.animation.FuncAnimation:
+        file_type = "Animation"
+        save_types = "  & .".join(anim_save_types)
         for filetype in anim_save_types:
             i = 1
             while True:
@@ -636,6 +640,8 @@ def save_figure(
                 else:
                     break
             fig.save(path + "." + filetype)
+
+    print(f"{file_type} saved to {os.path.abspath(path)}.{save_types}")
 
     return path
 

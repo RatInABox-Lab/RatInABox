@@ -57,7 +57,7 @@ $ git clone --depth 1 https://github.com/TomGeorge1234/RatInABox.git
 $ cd RatInABox
 $ pip install -e .
 ```
-n.b. the "editable" `-e` handle means changes made to your clone will be reflected when you next import `RatInABox` into your code. If you want to run the demo jupyter scripts please replace the last call with `pip install -e .[demos]`. 
+n.b. the "editable" `-e` handle means changes made to your clone will be reflected when you next import `RatInABox` into your code.
 
 **Import** into your python project with  
 ```python
