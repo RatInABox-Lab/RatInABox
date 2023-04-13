@@ -146,6 +146,7 @@ class Neurons:
         fig=None,
         ax=None,
         xlim=None,
+        color=None,
         background_color=None,
         autosave=None,
         **kwargs,
@@ -162,6 +163,7 @@ class Neurons:
             • imshow - if True will not dispaly as mountain plot but as an image (plt.imshow)
             • fig, ax: the figure, axis to plot on (can be None)
             xlim: fix xlim of plot irrespective of how much time you're plotting
+            • color: color of the line, if None, defaults to cell class default (probalby "C1")
             • background_color: color of the background if not matplotlib default (probably white)
             • autosave: if True, will try to save the figure to the figure directory `ratinabox.figure_directory`. Defaults to None in which case looks for global constant ratinabox.autosave_plots
             • kwargs sent to mountain plot function, you can ignore these
@@ -192,7 +194,8 @@ class Neurons:
             kwargs["overlap"] = 2.2
         spike_data = spike_data[startid:endid, chosen_neurons]
         rate_timeseries = rate_timeseries[:, chosen_neurons]
-
+        if color is None:
+            color = self.color
         if imshow == False:
             firingrates = rate_timeseries.T
             fig, ax = utils.mountain_plot(
