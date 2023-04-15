@@ -1,5 +1,6 @@
+# ======================================
 # Environments that implement tasks
-# -----# -----# -----# -----# ----------
+# ======================================
 #
 # Key OpenAI Gym defines:
 # (1) step()
@@ -159,24 +160,32 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
                              # on a later episode
         self.reset()   
 
-    def _agentnames(self, agents=None) ->list[str]:
+    def _agentnames(self, agents=None)->list[str]:
         """
-        Convenience function for turning different wags of specifying agents
-        (the objects themselves, integrers, or a None) into those names of
-        the agents in the environment
+        Convenience function for generally hanlding all the ways that
+        users might want to specify agents, names, numbers, or objects
+        themselves. Also as a "scalar" or list of such thing. This makes
+        several functions that call this robust to ways users specify
+        agents.
         """
         if isinstance(agents, Agent):
-            agents = [agents]
+            agents:list[str] = [agents.name]
         if isinstance(agents, int):
             agents = [self.agent_names[agents]]
         elif isinstance(agents, str):
             agents = [agents]
         elif isinstance(agents, list):
+            new:list[str] = []
             for agent in agents:
                 if isinstance(agent, int):
-                    agent = [self.agent_names[agent]]
+                    new.append(self.agent_names[agent])
                 elif isinstance(agent, Agent):
-                    agent = [agent.name]
+                    new.append(agent.name)
+                elif isinstance(agent, str):
+                    new.append(agent)
+                else:
+                    raise TypeError("agent must be an Agent, int, or str")
+            agents = new
         elif agents is None:
             agents = self.agent_names
         return agents
@@ -210,6 +219,8 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         """
         How to reset the task when finisedh
         """
+        if self.verbose:
+            print("Resetting")
         if len(self.episodes['start']) > 0:
             self.write_end_episode()
         
@@ -655,16 +666,22 @@ class Goal():
         self.env = env
         self.reward = reward
 
+    def __hash__(self):
+        """ hash for uniquely identifying a goal """
+        hashes = []
+        for value in self.__dict__.values():
+            try:
+                hashes.append(hash(value))
+            except:
+                pass
+        return hash(tuple(hashes))
+
     def check(self, agents=None):
         """
         Check if the goal is satisfied for agents and report which agents
         satisfied the goal and if any rewards are rendered
         """
         raise NotImplementedError("check() must be implemented")
-
-
-    def __eq__(self, other):
-        raise NotImplementedError("__eq__() must be implemented")
 
     def __call__(self):
         """
@@ -694,9 +711,11 @@ class GoalCache():
             - "interact" :: an goal is consumed/satisfied if any
                             one agent satisfies it
             - "noninteract" :: all agents must satisfy goal
+        verbose : bool
+            Print debug statements?
     """
     def __init__(self, env, goalorder="nonsequential", agentmode="interact", 
-                 *pos, **kws):
+                 verbose=False, *pos, **kws):
         self.env       = env
         self.goals:dict[str,list[Goal]] = {name:[] 
                                            for name in self.env.Agents.keys()}
@@ -704,7 +723,8 @@ class GoalCache():
         self.agentmode = agentmode
         # records the last goal that was achieved, if sequential
         self._if_sequential__last_acheived = {
-                i:-1 for i in range(len(self.env.Agents))}
+                agent:-1 for agent in self.env.Agents.keys()}
+        self.verbose = verbose
 
     def check(self, remove_finished:bool=True):
         """
@@ -720,6 +740,10 @@ class GoalCache():
         rewards : list of rewards
         agents : list of agents that satisfied the goal
         """
+        verbose = self.verbose
+        if verbose:
+            print("entering check")
+            pre = repr(self.goals)
         # -------------------------------------------------------
         # Agents must accomplish goal, following the sequence of the
         # goal list?
@@ -727,15 +751,17 @@ class GoalCache():
         if self.goalorder  == "sequential":
             rewards, agents = [], []
             for agent in self.env.agent_names:
-                this:int = self._if_sequential__last_acheived[i] + 1
+                if len(self.goals[agent]) == 0:
+                    continue
+                this:int = self._if_sequential__last_acheived[agent] + 1
                 reward, solution_agents = self.goals[agent][this].check(agent)
                 if agent in solution_agents:
                     rewards.append(reward[0] if reward is not None
                                    else None)
                     agents.append(agent)
-                    self._if_sequential__last_acheived[i] = this
+                    self._if_sequential__last_acheived[agent] = this
                     if remove_finished:
-                        self.pop(agent, g)
+                        self.pop(agent, this)
         # -------------------------------------------------------
         # Agents do not have to accomplish goal in sequence, any
         # order is fine
@@ -743,7 +769,9 @@ class GoalCache():
         elif self.goalorder == "nonsequential":
             rewards, agents = [], []
             for agent in self.env.agent_names:
-                g = 0
+                if len(self.goals[agent]) == 0:
+                    continue
+                g = 0 # goal index
                 while g < len(self.goals[agent]):
                     reward, solution_agents = self.goals[agent][g].check(agent)
                     if agent in solution_agents:
@@ -755,33 +783,74 @@ class GoalCache():
                     g += 1
         else:
             raise ValueError("Unknown mode: {}".format(self.goalorder))
+        if verbose:
+            post = repr(self.goals)
+            if pre != post:
+                print("---- PRE-check, GoalCache ----")
+                print(pre)
+                print("---- POST-check, GoalCache ----")
+                print(post)
+                print("exiting check")
         return rewards, agents
 
     def pop(self, agent_name:str, goal_index:int):
         """ Remove a goal from the cache """
         if self.agentmode == "noninteract":
-            print("Non-interact mode, pop only agent's index")
+            if self.verbose:
+                print(f"popping {agent_name}.{goal_index}!")
+            # print("Non-interact mode, pop only agent's index")
             self.goals[agent_name].pop(goal_index)
+            if self.goalorder == "sequential":
+                s = self._if_sequential__last_acheived[agent_name]
+                self._if_sequential__last_acheived[agent_name] = max( s-1, -1)
         elif self.agentmode == "interact":
-            print("Interacting mode")
+            if self.verbose:
+                print(f"popping all.{goal_index}!")
+            # print("Interacting mode")
             for agent in self.env.agent_names:
                 self.goals[agent].pop(goal_index)
+                if self.goalorder == "sequential":
+                    s = self._if_sequential__last_acheived[agent]
+                    self._if_sequential__last_acheived[agent] = max( s-1, -1)
 
-    def get_goals(self):
+    def is_empty():
+        """ checks if empty cache """
+        return [len(g)==0 for g in self.goals.values()]
+
+    def get_goals(self)->tuple:
         """ Get all unique goals """
-        return tuple(self.goals.values())[0]
+        from itertools import chain
+        if self.agentmode == "noninteract":
+            return tuple(self.goals.values())[0]
+        elif self.agentmode == "interact":
+            return tuple(set(chain(*self.goals.values())))
+
+    def get_agent_goals(self, agent)->dict:
+        """ Get all goals for each agent
+        Inputs
+        ------
+        agent : str | list of str | int | list of int | 
+                    agent | list of agent | None
+        """
+        agent = self.env._agentnames(agent)
+        return {a:self.goals[a] for a in agent}
 
     def __len__(self):
         return len(self.get_goals())
 
     def append(self, goal:Goal, agent=None):
+        if self.verbose:
+            print(f"appending {goal} to agents={agent}")
         names = self.env._agentnames(agent)
         for name in names:
             if name not in self.goals:
                 self.goals[name] = []
             self.goals[name].append(goal)
+            self._if_sequential__last_acheived[name] = -1
 
     def clear(self):
+        if self.verbose:
+            print("Clearing goals")
         self.goals.clear()
 
     def find(self, other_goal:Goal, agents=None) ->dict[str,Goal]:
@@ -827,6 +896,9 @@ class SpatialGoal(Goal):
         #         if np.ndim(goal_pos) > 1 \
         #         else np.abs((pos - goal_pos)) < radius
         return distance(pos, goal_pos) < radius 
+
+    def __hash__(self):
+        return super().__hash__()
 
     def check(self, agents=None):
         """
@@ -939,12 +1011,15 @@ class SpatialGoalEnvironment(TaskEnvironment):
         return possible_goals
 
 
-    def get_goal_positions(self):
-        """ Get the current goal positions """
-        return [goal.pos for goal in self.goal_cache.get_goals()]
+    def get_goal_positions(self)->np.ndarray:
+        """ Get the current goal positions
+        dimensions: (n_goals, n_dimensions)
+        """
+        return np.array([goal.pos for goal in self.goal_cache.get_goals()])
 
 
-    def reset(self, goal_locations:Union[np.ndarray,None]=None, n_objectives=None) ->Dict:
+    def reset(self, goal_locations:Union[np.ndarray,None]=None,
+              n_objectives=None)->Dict:
         """
             reset
 
@@ -972,7 +1047,8 @@ class SpatialGoalEnvironment(TaskEnvironment):
                 else:
                     warnings.warn("No possible goal positions specified yet")
                     goal_pos = None # No goal state (this could be, e.g., a lockout time)
-                print("Proposed goal: ", goal_pos)
+                if self.verbose:
+                    print("Proposed goal: ", goal_pos)
             else:
                 goal_pos = np.array(goal_locations[g])
                 if goal_pos is None:
@@ -991,6 +1067,8 @@ class SpatialGoalEnvironment(TaskEnvironment):
         rewards, agents = self.goal_cache.check(remove_finished=True)
         for reward, agent in zip(rewards, agents):
             self.reward_caches[agent].append(reward)
+        if self.verbose:
+            print("GOALS:",self.goal_cache.goals)
         # Return if no objectives left
         no_objectives_left = len(self.goal_cache) == 0
         return no_objectives_left
@@ -1067,8 +1145,7 @@ if active and __name__ == "__main__":
     #################################################################
     # Create a reward that goals emit (this is optional, there is a default
     #                                   reward, but this could be set to None)
-    r1=Reward(1, dt=0.01, expire_clock=0.5, decay="linear", 
-              decay_knobs=[6])
+    r1=Reward(1, dt=0.01, expire_clock=0.5, decay="linear", decay_knobs=[6])
     r1.plot_theoretical_reward()
     # Any options for the goal objects that track whether animals satisfy a
     # goal? These can be either reward, position and radius of the goal.
@@ -1081,7 +1158,7 @@ if active and __name__ == "__main__":
     #   goalorder = "nonsequential" means that goals can be completed in any order
     #                           "sequential" means that goals must be completed
     #                           in the order they are set
-    goalcachekws = dict(agentmode="interact", goalorder="nonsequential")
+    goalcachekws = dict(agentmode="noninteract", goalorder="nonsequential")
 
     #################################################################
     #                   ENVIRONMENT
@@ -1091,7 +1168,8 @@ if active and __name__ == "__main__":
                                  render_every=1, 
                                  teleport_on_reset=False,
                                  goalkws=goalkws, goalcachekws=goalcachekws,
-                                 verbose=True)
+                                 verbose=False)
+    env.goal_cache.verbose = False
     #################################################################
     #                   AGENT
     #################################################################
@@ -1103,11 +1181,19 @@ if active and __name__ == "__main__":
 
     # Prep the rendering figure
     plt.ion(); env.render(); plt.show()
-    plt.pause(0.1)
+    plt.pause(pausetime)
 
     # Define some helper functions
-    get_goal_vector   = lambda Ag: env.get_vectors_between___accounting_for_environment(
-            env.get_goal_positions()[0], Ag.pos)[0]
+    def get_goal_vector(Ag:Agent):
+        """ Direction vector to nearest goal """
+        goals = env.get_goal_positions()
+        vecs  = env.get_vectors_between___accounting_for_environment(
+            goals, Ag.pos)
+        if env.goal_cache.goalorder == "sequential":
+            shortest = 0
+        elif env.goal_cache.goalorder == "nonsequential":
+            shortest = np.argmin(np.linalg.norm(vecs, axis=2))
+        return vecs[shortest].squeeze()
 
     # -----------------------------------------------------------------------
     # TEST 1 AGENT
