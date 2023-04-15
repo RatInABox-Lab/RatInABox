@@ -1,5 +1,5 @@
 # RatInABox 
-![Tests](https://github.com/TomGeorge1234/RatInABox/actions/workflows/test.yml/badge.svg)   [![PyPI version](https://badge.fury.io/py/ratinabox.svg)](https://badge.fury.io/py/ratinabox)
+![Tests](https://github.com/TomGeorge1234/RatInABox/actions/workflows/test.yml/badge.svg)   [![PyPI version](https://badge.fury.io/py/ratinabox.svg)](https://badge.fury.io/py/ratinabox) [![Downloads](https://static.pepy.tech/badge/ratinabox)](https://pepy.tech/project/ratinabox)
 
 `RatInABox` (see [paper](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v3)) is a toolkit for generating locomotion trajectories and complementary neural data for spatially and/or velocity selective cell types in complex continuous environments. 
 
@@ -42,7 +42,7 @@ The top animation shows an example use case: an `Agent` randomly explores a 2D `
 
 
 ## Get started 
-Many [demos](./demos/) are provided. Reading through the [example scripts](#example-scripts) (one simple and one extensive, duplicated at the bottom of the readme) these should be enough to get started. We also provide numerous interactive jupyter scripts as more in-depth case studies; for example one where `RatInABox` is used for [reinforcement learning](./demos/reinforcement_learning_example.ipynb), another for [neural decoding](./demos/decoding_position_example.ipynb) of position from firing rate. Jupyter scripts reproducing all figures in the [paper](./demos/paper_figures.ipynb) and [readme](./demos/readme_figures.ipynb) are also provided.
+Many [demos](./demos/) are provided. Reading through the [example scripts](#example-scripts) (one simple and one extensive, duplicated at the bottom of the readme) these should be enough to get started. We also provide numerous interactive jupyter scripts as more in-depth case studies; for example one where `RatInABox` is used for [reinforcement learning](./demos/reinforcement_learning_example.ipynb), another for [neural decoding](./demos/decoding_position_example.ipynb) of position from firing rate. Jupyter scripts reproducing all figures in the [paper](./demos/paper_figures.ipynb) and [readme](./demos/readme_figures.ipynb) are also provided. All [demos](./demos/) can be run on Google Colab [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](./demos/)
 
 ## Installing and Importing
 **Requirements** are minimal (`python3`, `numpy`, `scipy` and `matplotlib`, listed in `setup.cfg`) and will be installed automatically. 
@@ -51,13 +51,13 @@ Many [demos](./demos/) are provided. Reading through the [example scripts](#exam
 ```console
 $ pip install ratinabox
 ```
-Alternatively, in particular if you would like to edit `RatInABox` code, install locally using  
+Alternatively, in particular if you would like to develop `RatInABox` code or if you want the bleeding edge (may occasioanlly break), install from this repo using  
 ```console
 $ git clone --depth 1 https://github.com/TomGeorge1234/RatInABox.git
 $ cd RatInABox
 $ pip install -e .
 ```
-n.b. the `-e` (`--editable`) handle means this install points *directly* to the cloned repository itself. Any changes made here will be reflected when you next import `RatInABox` into your code. If you want to run the demo jupyter scripts please replace the last call with `pip install -e .[demos]`.
+n.b. the "editable" `-e` handle means changes made to your clone will be reflected when you next import `RatInABox` into your code.
 
 **Import** into your python project with  
 ```python
@@ -294,14 +294,17 @@ Choose how you want `PlaceCells` to interact with walls in the `Environment`. We
 
 
 #### Egocentric encodings
-Most `RatInABox` cell classes are allocentric (e.g. `PlaceCells`, `GridCells` etc. do not depend on the agents point of view) not egocentric however `BoundaryVectorCells` (BVCs) and `ObjectVectorCells` (OVCs) can be either. `FieldOfViewNeurons` exploit this by arranging sets of egocentric BVC or OVCs to tile to agents local field of view creating a comprehensive egocentric encoding of what boundaries or objects the agent can 'see' from it's current point of view. A custom plotting function displays the tiling and the firing rates as shown below. 
+Most `RatInABox` cell classes are allocentric (e.g. `PlaceCells`, `GridCells` etc. do not depend on the agents point of view) not egocentric. `BoundaryVectorCells` (BVCs) and `ObjectVectorCells` (OVCs) can be either. `FieldOfViewNeurons` exploit this by arranging sets of egocentric BVC or OVCs to tile to agents local field of view creating a comprehensive egocentric encoding of what boundaries or objects the agent can 'see' from it's current point of view. A custom plotting function displays the tiling and the firing rates as shown below. With an adequately defined field of view these can make, for example, "whisker cells". 
 
 ```python
 FoV_BVCs = FieldOfViewNeurons(Ag)
 FoV_OVCs = FieldOfViewNeurons(Ag,params={
     'cell_type':'OVC',
-    #other params defining the field of view area (see source code),
     })
+FoV_whiskers = FieldOfViewNeurons(Ag,params={
+    "FoV_angles":[75,105],
+    "FoV_distance":[0.1,0.2],
+    "spatial_resolution":0.02,})
 ```
 
 <img src=".images/readme/field_of_view.gif" width=600>
@@ -317,8 +320,9 @@ We encourage users to create their own subclasses of `Neurons`. This is easy to 
 `RatInABox` is built to be highly visual. It is easy to plot or animate data and save these plots/animations. Here are some tips
 
 #### Saving
-* `ratinabox.utils.save_figure(fig,fig_name)` saves a figure (or animation) into a dated folder within `ratinabox.figure_directory` as both `".svg"` and `".png"` (`".mp4"` or `".gif"`) for easy access later. The current time will be appended to the `fig_name` so you won't overwrite. 
 * `ratinabox.figure_directory` a global variable specifying the directory into which figures/animations will be saved 
+* `ratinabox.utils.save_figure(fig,fig_name)` saves a figure (or animation) into a dated folder within the figure directory  as both `".svg"` and `".png"` (`".mp4"` or `".gif"`). The current time will be appended to the `fig_name` so you won't ever overwrite. 
+
 
 #### Saving (but automatically)
 * Setting `ratinabox.autosave_plots = True` means RatInABox figure will be automatically saved in the figure directory without having to indvidually call the `utils` function above. 

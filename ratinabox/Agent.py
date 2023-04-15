@@ -566,7 +566,6 @@ class Agent:
         autosave=None,
         **kwargs,
     ):
-
         """Plots the trajectory between t_start (seconds) and t_end (defaulting to the last time available)
         Args:
             • t_start: start time in seconds
@@ -629,11 +628,11 @@ class Agent:
                 trajectory[:, 1],
                 s=s,
                 alpha=alpha,
-                zorder=0,
+                zorder=1.1,
                 c=color,
                 linewidth=0,
             )
-            # #plot the rat? TODO haha
+            # #plot the rat? TODO haha probably never gonna do this
             # ratpath = os.path.join(
             #     os.path.abspath(os.path.join(ratinabox.__file__, os.pardir)),
             #         "data/rat.png",

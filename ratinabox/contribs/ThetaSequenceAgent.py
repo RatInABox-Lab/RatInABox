@@ -262,6 +262,7 @@ class ThetaSequenceAgent(Agent):
         kwargs_["color"] = "C1"
         kwargs_["alpha"] = 0.4
         kwargs_["plot_agent"] = False
+        kwargs_["autosave"] = False
 
         if sequences_ontop == False:
             fig, ax = super(ThetaSequenceAgent, self).plot_trajectory(**kwargs_)
