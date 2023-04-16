@@ -163,6 +163,25 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
                              # on a later episode
         self.reset()   
 
+    def remove_agents(self, agents):
+        """
+        Remove agents from the environment
+
+        Parameters
+        ----------
+        agents
+        """
+        agents = self._agentnames(agents)
+        for name in agents:
+            self.reward_caches.pop(name)
+            self.observation_spaces.spaces.pop(name)
+            self.action_spaces.spaces.pop(name)
+            self.Agents.pop(name)
+            self.agent_names.remove(name)
+            if name in self.agents:
+                self.agents.remove(name)
+        self.reset()
+
     def _agentnames(self, agents=None)->list[str]:
         """
         Convenience function for generally hanlding all the ways that
