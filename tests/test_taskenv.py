@@ -7,14 +7,13 @@ from ratinabox.contribs.TaskEnvironment import (SpatialGoalEnvironment,
 from ratinabox.Agent import Agent
 
 import numpy as np
-import pandas as pd
 from pettingzoo.test import parallel_api_test 
 
 import matplotlib.pyplot as plt
 plt.ion()
 
 speed_const = 18 # dials how fast agent runs
-records = pd.DataFrame()
+records = []
 
 @pytest.fixture(params=[dict(dt=dt) for dt in (0.01,)])
 def Ag(request, Env):
@@ -103,7 +102,7 @@ def test_agent_can_reach_goal(EnvWithAgents: SpatialGoalEnvironment,
             # This should be reached before because we're taking the best
             # action
             break
-    records.append(dict(steps=steps, reward=reward), ignore_index=True)
+    records.append(dict(steps=steps, reward=reward))
     assert all(terminate_episode.values())
 
 def test_parallel_api(EnvWithAgents):
