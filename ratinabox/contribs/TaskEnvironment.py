@@ -87,6 +87,9 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         self.action_spaces:Dict[Space]      = Dict({})
         self.reward_caches:dict[str, RewardCache] = {}
         self.agent_names:List[str]     = []
+        self.agents:List[str] = [] # pettingzoo variable
+                                   # that tracks all agents who are
+                                   # still active in an episode
         self.info:dict                 = {} # gymnasium returns info in step()
 
         # Episode history
@@ -223,6 +226,9 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             print("Resetting")
         if len(self.episodes['start']) > 0:
             self.write_end_episode()
+
+        # Reset active non-terminated agents
+        self.agents = copy(self.agent_names)
         
         # Clear rendering cache
         self.clear_render_cache()
@@ -269,10 +275,11 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         # If the user passed drift_velocity, update the agents
         actions = actions if isinstance(actions, dict) else \
                   self._dict(actions)
-        for (agent, action) in zip(self.Agents.values(), actions.values()):
-            dt = dt if dt is not None else agent.dt
+        for (agent, action) in zip(self.agents, actions.values()):
+            Ag = self.Agents[agent]
+            dt = dt if dt is not None else Ag.dt
             action = np.array(action).ravel()
-            agent.update(dt=dt, drift_velocity=action,
+            Ag.update(dt=dt, drift_velocity=action,
                          drift_to_random_strength_ratio= \
                                  drift_to_random_strength_ratio)
 
@@ -282,6 +289,11 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
 
         # Udpate the environment, which can add new rewards to caches
         self.update(*pos, **kws)
+
+        # If any terminal agents, remove from set of active agents
+        for agent, term in self._dict(self._is_terminal_state()).items():
+            if term:
+                self.agents.remove(agent)
         
         # Return the next state, reward, whether the state is terminal,
         return (self.get_observation(), 
@@ -719,12 +731,17 @@ class GoalCache():
         self.env       = env
         self.goals:dict[str,list[Goal]] = {name:[] 
                                            for name in self.env.Agents.keys()}
-        self.goalorder     = goalorder
+        self.goalorder = goalorder
         self.agentmode = agentmode
         # records the last goal that was achieved, if sequential
         self._if_sequential__last_acheived = {
                 agent:-1 for agent in self.env.Agents.keys()}
         self.verbose = verbose
+        if self.goalorder not in ["sequential", "nonsequential", "custom"]:
+            raise ValueError("goalorder must be 'sequential', 'nonsequential'"
+                             ", or 'custom'")
+        if self.agentmode not in ["interact", "noninteract"]:
+            raise ValueError("agentmode must be 'interact' or 'noninteract'")
 
     def check(self, remove_finished:bool=True):
         """
@@ -824,6 +841,8 @@ class GoalCache():
             return tuple(self.goals.values())[0]
         elif self.agentmode == "interact":
             return tuple(set(chain(*self.goals.values())))
+        else:
+            raise ValueError("Unknown mode: {}".format(self.agentmode))
 
     def get_agent_goals(self, agent)->dict:
         """ Get all goals for each agent
@@ -921,7 +940,7 @@ class SpatialGoal(Goal):
         agents_reached_goal = []
         for agent in agents:
             agents_reached_goal.append(
-            self._in_goal_radius(env.Agents[agent].pos, self.pos).all().any())
+            self._in_goal_radius(self.env.Agents[agent].pos, self.pos).all().any())
         rewarded_agents = np.array(agents)[agents_reached_goal]
         rewards = [self.reward] * len(rewarded_agents)
         return rewards, rewarded_agents
@@ -1019,13 +1038,13 @@ class SpatialGoalEnvironment(TaskEnvironment):
 
 
     def reset(self, goal_locations:Union[np.ndarray,None]=None,
-              n_objectives=None)->Dict:
+              n_objectives=None, **kws)->dict:
         """
             reset
 
         resets the environement to a new episode
         """
-        super().reset()
+        super().reset(**kws)
 
 
         # How many goals to set?
@@ -1054,8 +1073,8 @@ class SpatialGoalEnvironment(TaskEnvironment):
                 if goal_pos is None:
                     raise ValueError("goal_locations must be a subset "
                       " of possible_goal_pos")
-
-            [self.goal_cache.append(g) for g in goal_pos]
+            if goal_pos is not None:
+                [self.goal_cache.append(g) for g in goal_pos]
 
         return self.get_observation()
 
@@ -1133,6 +1152,38 @@ class SpatialGoalEnvironment(TaskEnvironment):
                 # ci.set_radius(obj.radius)
 
 
+def get_goal_vector(Ag=None):
+    """ 
+    Direction vector to nearest goal
+    (Primarily for testing)
+    """
+    import warnings
+    if isinstance(Ag, Agent):
+        goals = Ag.Environment.get_goal_positions()
+        if (goals.shape == np.array(0)).any():
+            warnings.warn(f"no goals for Agent={Ag}, emitting (0,0)")
+            return np.array([0,0])
+        vecs  = Ag.Environment.get_vectors_between___accounting_for_environment(
+            goals, Ag.pos)
+        if Ag.Environment.goal_cache.goalorder == "sequential":
+            shortest = 0
+        elif Ag.Environment.goal_cache.goalorder == "nonsequential":
+            shortest = np.argmin(np.linalg.norm(vecs, axis=2))
+        else:
+            raise ValueError("Unknown goalorder")
+        return vecs[shortest].squeeze()
+    elif isinstance(Ag, list) and isinstance(Ag[0], Agent):
+        agents = Ag
+        agentnames = Ag[0].Environment._agentnames(Ag)
+        return {name:get_goal_vector(agent) 
+                for name, agent in zip(agentnames, agents)}
+    elif isinstance(Ag, dict):
+        return {name:get_goal_vector(agent) 
+                for name, agent in Ag.items()}
+    else:
+        raise TypeError("Unknown input type")
+
+
 active = True
 if active and __name__ == "__main__":
 
@@ -1183,17 +1234,6 @@ if active and __name__ == "__main__":
     plt.ion(); env.render(); plt.show()
     plt.pause(pausetime)
 
-    # Define some helper functions
-    def get_goal_vector(Ag:Agent):
-        """ Direction vector to nearest goal """
-        goals = env.get_goal_positions()
-        vecs  = env.get_vectors_between___accounting_for_environment(
-            goals, Ag.pos)
-        if env.goal_cache.goalorder == "sequential":
-            shortest = 0
-        elif env.goal_cache.goalorder == "nonsequential":
-            shortest = np.argmin(np.linalg.norm(vecs, axis=2))
-        return vecs[shortest].squeeze()
 
     # -----------------------------------------------------------------------
     # TEST 1 AGENT
@@ -1243,4 +1283,5 @@ if active and __name__ == "__main__":
         if any(terminate_episode.values()):
             print("done! reward:", reward)
             env.reset()
+
 
