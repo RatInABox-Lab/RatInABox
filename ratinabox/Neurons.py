@@ -201,7 +201,7 @@ class Neurons:
             fig, ax = utils.mountain_plot(
                 X=t / 60,
                 NbyX=firingrates,
-                color=self.color,
+                color=color,
                 xlabel="Time / min",
                 ylabel="Neurons",
                 xlim=None,
@@ -222,9 +222,15 @@ class Neurons:
                         s=5,
                         linewidth=0,
                     )
-            ax.set_xlim(left=t_start / 60, right=t_end / 60)
-            ax.set_xticks([t_start / 60, t_end / 60])
-            ax.set_xticklabels([round(t_start / 60, 2), round(t_end / 60, 2)])
+
+            xmin = min(t_start / 60, ax.get_xlim()[0])
+            xmax = max(t_end / 60, ax.get_xlim()[1])
+            ax.set_xlim(
+                left=xmin,
+                right=xmax,
+            )
+            ax.set_xticks([xmin, xmax])
+            ax.set_xticklabels([round(xmin, 2), round(xmax, 2)])
             if xlim is not None:
                 ax.set_xlim(right=xlim / 60)
                 ax.set_xticks([round(t_start / 60, 2), round(xlim / 60, 2)])
@@ -1017,11 +1023,11 @@ class BoundaryVectorCells(Neurons):
             2. These define an array of line segments stretching from [pos, pos+test vector]
             3. Where these line segments collide with all walls in the environment is established, this uses the function "utils.vector_intercepts()"
             4. This pays attention to only consider the first (closest) wall forawrd along a line segment. Walls behind other walls are "shaded" by closer walls. Its a little complex to do this and requires the function "boundary_vector_preference_function()"
-            5. Now that, for every test direction, the closest wall is established it is simple a process of finding the response of the neuron to that wall at that angle (multiple of two gaussians, see de Cothi (2020)) and then summing over all the test angles.
+            5. Now that, for every test direction, the closest wall is established it is simple a process of finding the response of the neuron to that wall segment at that angle (multiple of two gaussians, see de Cothi (2020)) and then summing over all wall segments for all test angles.
 
         We also apply a check in the middle to utils.rotate the reference frame into that of the head direction of the agent iff self.reference_frame='egocentric'.
 
-        By default position is taken from the Agent and used to calculate firing rates. This can also by passed directly (evaluate_at=None, pos=pass_array_of_positions) or ou can use all the positions in the environment (evaluate_at="all").
+        By default position is taken from the Agent and used to calculate firing rates. This can also by passed directly (evaluate_at=None, pos=pass_array_of_positions) or you can use all the positions in the environment (evaluate_at="all").
         """
         if evaluate_at == "agent":
             pos = self.Agent.pos
