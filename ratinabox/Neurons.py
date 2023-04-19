@@ -780,9 +780,16 @@ class PlaceCells(Neurons):
                 fig=fig, ax=ax, autosave=False
             )
         place_cell_centres = self.place_cell_centres
+
+        x = place_cell_centres[:, 0]
+        if self.Agent.Environment.dimensionality == "1D":
+            y = np.zeros_like(x)
+        elif self.Agent.Environment.dimensionality == "2D":
+            y = place_cell_centres[:, 1]
+
         ax.scatter(
-            place_cell_centres[:, 0],
-            place_cell_centres[:, 1],
+            x,
+            y,
             c="C1",
             marker="x",
             s=15,
