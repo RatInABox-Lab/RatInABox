@@ -97,7 +97,7 @@ class Agent:
         if self.Environment.dimensionality == "2D":
             self.pos = self.Environment.sample_positions(n=1, method="random")[0]
             direction = np.random.uniform(0, 2 * np.pi)
-            self.velocity = self.speed_std * np.array(
+            self.velocity = self.speed_mean * np.array(
                 [np.cos(direction), np.sin(direction)]
             )
             self.rotational_velocity = 0
