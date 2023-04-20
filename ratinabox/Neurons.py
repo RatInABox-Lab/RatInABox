@@ -1768,7 +1768,9 @@ class FeedForwardLayer(Neurons):
 
         firingrate = utils.activate(V, other_args=self.activation_params)
         # saves current copy of activation derivative at firing rate (useful for learning rules)
-        if evaluate_at == "last":
+        if (
+            evaluate_at == "last"
+        ):  # save copy of the firing rate through the dervative of the activation function
             self.firingrate_prime = utils.activate(
                 V, other_args=self.activation_params, deriv=True
             )
