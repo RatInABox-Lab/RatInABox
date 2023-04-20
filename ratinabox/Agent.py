@@ -79,8 +79,8 @@ class Agent:
         self.params = copy.deepcopy(self.__class__.default_params)        
         self.params.update(params)
 
-        utils.check_params(self, params.keys())
         utils.update_class_params(self, self.params, get_all_defaults=True)
+        utils.check_params(self, params.keys())
 
         # initialise history dataframes
         self.history = {}

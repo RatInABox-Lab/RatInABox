@@ -107,8 +107,8 @@ class Neurons:
         self.params = copy.deepcopy(self.__class__.default_params)        
         self.params.update(params)
 
-        utils.check_params(self, params.keys())
         utils.update_class_params(self, self.params, get_all_defaults=True)
+        utils.check_params(self, params.keys())
 
         self.firingrate = np.zeros(self.n)
         self.noise = np.zeros(self.n)
@@ -849,8 +849,8 @@ class GridCells(Neurons):
 
         self.Agent = Agent
 
-        # self.params = copy.deepcopy(self.__class__.default_params)      
-        # self.params.update(params)
+        self.params = copy.deepcopy(self.__class__.default_params)      
+        self.params.update(params)
 
         super().__init__(Agent, self.params)
 

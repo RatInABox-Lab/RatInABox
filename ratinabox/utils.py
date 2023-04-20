@@ -751,10 +751,10 @@ def check_params(Obj, param_keys):
         unexpected_keys = ", ".join(
             [f"'{attr}'" for attr in unexpected_keys]
             )
+        object_name = str(Obj)
         if hasattr(Obj, "name"):
-            object_name = Obj.name
-        else:
-            object_name = str(Obj)
+            object_name = f"{object_name} ('{Obj.name}')"
+
         warnings.warn(
             f"Found {num} unexpected params key(s) while initializing "
             f"{object_name}: {unexpected_keys}"
