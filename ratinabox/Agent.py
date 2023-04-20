@@ -1,5 +1,6 @@
 import ratinabox
 
+import copy
 import numpy as np
 import os
 import matplotlib
@@ -48,6 +49,24 @@ class Agent:
         }
     """
 
+    default_params = {
+        "dt": 0.01,
+        # Speed params (leave empty if you are importing trajectory data)
+        # These defaults are fit to match data from Sargolini et al. (2016)
+        # also given are the parameter names as refered to in the methods section of the paper
+        "speed_coherence_time": 0.7,  # time over which speed decoheres, τ_v1 & τ_v2
+        "speed_mean": 0.08,  # mean of speed, σ_v2 μ_v1
+        "speed_std": 0.08,  # std of speed (meaningless in 2D where speed ~rayleigh), σ_v1
+        "rotational_velocity_coherence_time": 0.08,  # time over which speed decoheres, τ_w
+        "rotational_velocity_std": (
+            120 * (np.pi / 180)
+        ),  # std of rotational speed, σ_w wall following parameter
+        "thigmotaxis": 0.5,  # tendency for agents to linger near walls [0 = not at all, 1 = max]
+        "wall_repel_distance": 0.1,
+        "walls_repel": True,  # whether or not the walls repel
+        "save_history": True,  # whether to save position and velocity history as you go
+    }
+
     def __init__(self, Environment, params={}):
         """Initialise Agent, takes as input a parameter dictionary.
         Any values not provided by the params dictionary are taken from a default dictionary below.
@@ -55,27 +74,13 @@ class Agent:
         Args:
             params (dict, optional). Defaults to {}.
         """
-        default_params = {
-            "dt": 0.01,
-            # Speed params (leave empty if you are importing trajectory data)
-            # These defaults are fit to match data from Sargolini et al. (2016)
-            # also given are the parameter names as refered to in the methods section of the paper
-            "speed_coherence_time": 0.7,  # time over which speed decoheres, τ_v1 & τ_v2
-            "speed_mean": 0.08,  # mean of speed, σ_v2 μ_v1
-            "speed_std": 0.08,  # std of speed (meaningless in 2D where speed ~rayleigh), σ_v1
-            "rotational_velocity_coherence_time": 0.08,  # time over which speed decoheres, τ_w
-            "rotational_velocity_std": (
-                120 * (np.pi / 180)
-            ),  # std of rotational speed, σ_w wall following parameter
-            "thigmotaxis": 0.5,  # tendency for agents to linger near walls [0 = not at all, 1 = max]
-            "wall_repel_distance": 0.1,
-            "walls_repel": True,  # whether or not the walls repel
-            "save_history": True,  # whether to save position and velocity history as you go
-        }
         self.Environment = Environment
-        default_params.update(params)
-        self.params = default_params
-        utils.update_class_params(self, self.params)
+
+        self.params = copy.deepcopy(self.__class__.default_params)        
+        self.params.update(params)
+
+        utils.check_params(self, params.keys())
+        utils.update_class_params(self, self.params, get_all_defaults=True)
 
         # initialise history dataframes
         self.history = {}

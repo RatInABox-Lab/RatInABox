@@ -1,5 +1,6 @@
 import ratinabox
 
+import copy
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
@@ -34,14 +35,17 @@ class Neurons:
 
     ============================================================================================
     MyNeuronClass(Neurons):
+
+        default_params = {'a_default_param":3.14159} # default params dictionary is defined in the preamble, as a class attribute. Note its values are passed upwards and used in all the parents classes of your class.
+    
         def __init__(self,
                      Agent,
                      params={}): #<-- do not change these
 
-            default_params = {'a_default_param":3.14159} #note this params dictionary is passed upwards and used in all the parents classes of your class.
 
-            default_params.update(params)
-            self.params = default_params
+            self.params = copy.deepcopy(self.__class__.default_params) # it is best to retrieve the default param dictionary as self.__class__. Then, make sure to deepcopy it, as only making a shallow copy can have unintended consequences (i.e., any modifications to it would be propagated to ALL instances of this class!).
+            self.params.update(params)
+
             super().__init__(Agent,self.params)
 
         def get_state(self,
@@ -80,6 +84,15 @@ class Neurons:
         }
     """
 
+    default_params = {
+        "n": 10,
+        "name": "Neurons",
+        "color": None,  # just for plotting
+        "noise_std": 0,  # 0 means no noise, std of the noise you want to add (Hz)
+        "noise_coherence_time": 0.5,
+        "save_history": True,  # whether to save history (set to False if you don't intend to access Neuron.history for data after, for better memory performance)
+    }
+
     def __init__(self, Agent, params={}):
         """Initialise Neurons(), takes as input a parameter dictionary. Any values not provided by the params dictionary are taken from a default dictionary below.
 
@@ -88,18 +101,14 @@ class Neurons:
 
         Typically you will not actually initialise a Neurons() class, instead you will initialised by one of it's subclasses.
         """
-        default_params = {
-            "n": 10,
-            "name": "Neurons",
-            "color": None,  # just for plotting
-            "noise_std": 0,  # 0 means no noise, std of the noise you want to add (Hz)
-            "noise_coherence_time": 0.5,
-            "save_history": True,  # whether to save history (set to Falsem if you don't intend to acess Neuron.history for data after, for better memory performance)
-        }
+
         self.Agent = Agent
-        default_params.update(params)
-        self.params = default_params
-        utils.update_class_params(self, self.params)
+
+        self.params = copy.deepcopy(self.__class__.default_params)        
+        self.params.update(params)
+
+        utils.check_params(self, params.keys())
+        utils.update_class_params(self, self.params, get_all_defaults=True)
 
         self.firingrate = np.zeros(self.n)
         self.noise = np.zeros(self.n)
@@ -640,26 +649,30 @@ class PlaceCells(Neurons):
            }
     """
 
+    default_params = {
+        "n": 10,
+        "name": "PlaceCells",
+        "description": "gaussian",
+        "widths": 0.20,  # the radii
+        "place_cell_centres": None,  # if given this will overwrite 'n',
+        "wall_geometry": "geodesic",
+        "min_fr": 0,
+        "max_fr": 1,
+        "name": "PlaceCells",
+    }
+
     def __init__(self, Agent, params={}):
         """Initialise PlaceCells(), takes as input a parameter dictionary. Any values not provided by the params dictionary are taken from a default dictionary below.
 
         Args:
             params (dict, optional). Defaults to {}.
         """
-        default_params = {
-            "n": 10,
-            "name": "PlaceCells",
-            "description": "gaussian",
-            "widths": 0.20,  # the radii
-            "place_cell_centres": None,  # if given this will overwrite 'n',
-            "wall_geometry": "geodesic",
-            "min_fr": 0,
-            "max_fr": 1,
-            "name": "PlaceCells",
-        }
+
         self.Agent = Agent
-        default_params.update(params)
-        self.params = default_params
+
+        self.params = copy.deepcopy(self.__class__.default_params)        
+        self.params.update(params)
+        
         super().__init__(Agent, self.params)
 
         if self.place_cell_centres is None:
@@ -816,25 +829,29 @@ class GridCells(Neurons):
         }
     """
 
+    default_params = {
+        "n": 10,
+        "gridscale": 0.45,
+        "random_orientations": True,
+        "random_gridscales": True,
+        "random_phase_offsets": True,
+        "min_fr": 0,
+        "max_fr": 1,
+        "name": "GridCells",
+    }
+
+
     def __init__(self, Agent, params={}):
         """Initialise GridCells(), takes as input a parameter dictionary. Any values not provided by the params dictionary are taken from a default dictionary below.
 
         Args:
             params (dict, optional). Defaults to {}."""
 
-        default_params = {
-            "n": 10,
-            "gridscale": 0.45,
-            "random_orientations": True,
-            "random_gridscales": True,
-            "random_phase_offsets": True,
-            "min_fr": 0,
-            "max_fr": 1,
-            "name": "GridCells",
-        }
         self.Agent = Agent
-        default_params.update(params)
-        self.params = default_params
+
+        # self.params = copy.deepcopy(self.__class__.default_params)      
+        # self.params.update(params)
+
         super().__init__(Agent, self.params)
 
         # Initialise grid cells
@@ -950,27 +967,30 @@ class BoundaryVectorCells(Neurons):
         }
     """
 
+    default_params = {
+        "n": 10,
+        "reference_frame": "allocentric",
+        "pref_wall_dist": 0.15,
+        "angle_spread_degrees": 11.25,
+        "xi": 0.08,
+        "beta": 12,
+        "dtheta": 2,
+        "min_fr": 0,
+        "max_fr": 1,
+        "name": "BoundaryVectorCells",
+    }
+
     def __init__(self, Agent, params={}):
         """Initialise BoundaryVectorCells(), takes as input a parameter dictionary. Any values not provided by the params dictionary are taken from a default dictionary below.
 
         Args:
             params (dict, optional). Defaults to {}."""
 
-        default_params = {
-            "n": 10,
-            "reference_frame": "allocentric",
-            "pref_wall_dist": 0.15,
-            "angle_spread_degrees": 11.25,
-            "xi": 0.08,
-            "beta": 12,
-            "dtheta": 2,
-            "min_fr": 0,
-            "max_fr": 1,
-            "name": "BoundaryVectorCells",
-        }
         self.Agent = Agent
-        default_params.update(params)
-        self.params = default_params
+
+        self.params = copy.deepcopy(self.__class__.default_params)        
+        self.params.update(params)
+
         super().__init__(Agent, self.params)
 
         assert (
@@ -1239,23 +1259,26 @@ class ObjectVectorCells(Neurons):
     }
     """
 
+    default_params = {
+        "n": 10,
+        "name": "ObjectVectorCell",
+        "walls_occlude": True,
+        "reference_frame": "allocentric",
+        "angle_spread_degrees": 15,
+        "pref_object_dist": 0.25,
+        "xi": 0.08,
+        "beta": 12,
+        "max_fr": 1,
+        "min_fr": 0,
+    }
+
+
     def __init__(self, Agent, params={}):
-        default_params = {
-            "n": 10,
-            "name": "ObjectVectorCell",
-            "walls_occlude": True,
-            "reference_frame": "allocentric",
-            "angle_spread_degrees": 15,
-            "pref_object_dist": 0.25,
-            "xi": 0.08,
-            "beta": 12,
-            "max_fr": 1,
-            "min_fr": 0,
-        }
 
         self.Agent = Agent
-        default_params.update(params)
-        self.params = default_params
+
+        self.params = copy.deepcopy(self.__class__.default_params)        
+        self.params.update(params)
 
         assert (
             self.Agent.Environment.dimensionality == "2D"
@@ -1424,21 +1447,23 @@ class HeadDirectionCells(Neurons):
         }
     """
 
+    default_params = {
+        "min_fr": 0,
+        "max_fr": 1,
+        "n": 4,
+        "angular_spread_degrees": 45,  # width of HDC preference function (degrees)
+        "name": "HeadDirectionCells",
+    }
+
     def __init__(self, Agent, params={}):
         """Initialise HeadDirectionCells(), takes as input a parameter dictionary. Any values not provided by the params dictionary are taken from a default dictionary below.
         Args:
             params (dict, optional). Defaults to {}."""
-        default_params = {
-            "min_fr": 0,
-            "max_fr": 1,
-            "n": 4,
-            "angular_spread_degrees": 45,  # width of HDC preference function (degrees)
-            "name": "HeadDirectionCells",
-        }
+
         self.Agent = Agent
-        for key in params.keys():
-            default_params[key] = params[key]
-        self.params = default_params
+
+        self.params = copy.deepcopy(self.__class__.default_params)        
+        self.params.update(params)
 
         if self.Agent.Environment.dimensionality == "2D":
             self.n = self.params["n"]
@@ -1548,18 +1573,21 @@ class VelocityCells(HeadDirectionCells):
         }
     """
 
+    default_params = {
+        "min_fr": 0,
+        "max_fr": 1,
+        "name": "VelocityCells",
+    }
+
     def __init__(self, Agent, params={}):
         """Initialise VelocityCells(), takes as input a parameter dictionary. Any values not provided by the params dictionary are taken from a default dictionary below.
         Args:
             params (dict, optional). Defaults to {}."""
-        default_params = {
-            "min_fr": 0,
-            "max_fr": 1,
-            "name": "VelocityCells",
-        }
         self.Agent = Agent
-        default_params.update(params)
-        self.params = default_params
+
+        self.params = copy.deepcopy(self.__class__.default_params)        
+        self.params.update(params)
+
         self.one_sigma_speed = self.Agent.speed_mean + self.Agent.speed_std
 
         super().__init__(Agent, self.params)
@@ -1596,19 +1624,22 @@ class SpeedCell(Neurons):
         }
     """
 
+    default_params = {
+        "min_fr": 0,
+        "max_fr": 1,
+        "name": "SpeedCell",
+    }
+
     def __init__(self, Agent, params={}):
         """Initialise SpeedCell(), takes as input a parameter dictionary, 'params'. Any values not provided by the params dictionary are taken from a default dictionary below.
         Args:
             params (dict, optional). Defaults to {}."""
-        default_params = {
-            "min_fr": 0,
-            "max_fr": 1,
-            "name": "SpeedCell",
-        }
+
         self.Agent = Agent
-        for key in params.keys():
-            default_params[key] = params[key]
-        self.params = default_params
+
+        self.params = copy.deepcopy(self.__class__.default_params)        
+        self.params.update(params)
+
         super().__init__(Agent, self.params)
         self.n = 1
         self.one_sigma_speed = self.Agent.speed_mean + self.Agent.speed_std
@@ -1673,17 +1704,21 @@ class FeedForwardLayer(Neurons):
         }
     """
 
+    default_params = {
+        "n": 10,
+        "input_layers": [],  # a list of input layers, or add one by one using self.add_inout
+        "activation_params": {"activation": "linear"},
+        "name": "FeedForwardLayer",
+        "biases": None,  # an array of biases, one for each neuron
+    }
+
     def __init__(self, Agent, params={}):
-        default_params = {
-            "n": 10,
-            "input_layers": [],  # a list of input layers, or add one by one using self.add_inout
-            "activation_params": {"activation": "linear"},
-            "name": "FeedForwardLayer",
-            "biases": None,  # an array of biases, one for each neuron
-        }
+
         self.Agent = Agent
-        default_params.update(params)
-        self.params = default_params
+
+        self.params = copy.deepcopy(self.__class__.default_params)        
+        self.params.update(params)
+
         super().__init__(Agent, self.params)
 
         self.inputs = {}

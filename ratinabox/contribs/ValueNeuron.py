@@ -3,6 +3,7 @@ from ratinabox.Agent import Agent
 from ratinabox.Neurons import *
 from ratinabox.utils import *
 
+import copy
 import numpy as np
 
 
@@ -31,19 +32,20 @@ class ValueNeuron(FeedForwardLayer):
     To see the weights try ValueNeuron.inputs['name_of_input_layer']['w']
     """
 
-    def __init__(self, Agent, params={}):
-        default_params = {
-            "input_layer": None,  # the features it is using as inputs
-            "tau": 2,  # discount time horizon (equivalent to gamma in discrete RL)
-            "tau_e": None,  # eligibility trace timescale, must be <= tau (defaults to tau/2)
-            "eta": 0.001,  # learning rate
-            "L2": 0.001,  # L2 regularisation
-            "activation_params": {"activation": "relu"},  # non-linearity for
-            "n": 1,  # how many rewards there will be and thus how many Values function (each represented by one ValueNeuron) there are
-        }
+    default_params = {
+        "input_layer": None,  # the features it is using as inputs
+        "tau": 2,  # discount time horizon (equivalent to gamma in discrete RL)
+        "tau_e": None,  # eligibility trace timescale, must be <= tau (defaults to tau/2)
+        "eta": 0.001,  # learning rate
+        "L2": 0.001,  # L2 regularisation
+        "activation_params": {"activation": "relu"},  # non-linearity for
+        "n": 1,  # how many rewards there will be and thus how many Values function (each represented by one ValueNeuron) there are
+    }
 
-        default_params.update(params)
-        self.params = default_params
+    def __init__(self, Agent, params={}):
+
+        self.params = copy.deepcopy(self.__class__.default_params)        
+        self.params.update(params)
 
         self.params["input_layers"] = [self.params["input_layer"]]
         super().__init__(Agent, self.params)  # initialise parent class
