@@ -113,7 +113,7 @@ class Agent:
             if self.Environment.boundary_conditions == "solid":
                 if self.speed_mean != 0:
                     print(
-                        "Warning you have solid 1D boundary conditions and non-zero speed mean. "
+                        "Warning: You have solid 1D boundary conditions and non-zero speed mean."
                     )
 
         if ratinabox.verbose is True:
