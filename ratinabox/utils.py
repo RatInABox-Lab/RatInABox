@@ -597,20 +597,13 @@ def save_figure(
         print(f"       (the current working directory is {os.getcwd()})")
         return
 
-    if figure_directory[-1] != "/":
-        figure_directory += "/"
-
-    if not os.path.isdir(figure_directory):
-        os.mkdir(figure_directory)
-
     # make today-specific directory inside figure directory
     today = datetime.strftime(datetime.now(), "%d_%m_%y")
-    if not os.path.isdir(figure_directory + f"{today}/"):
-        os.mkdir(figure_directory + f"{today}/")
+    figdir = os.path.join(figure_directory, f"{today}")
+    os.makedirs(figdir, exist_ok=True)
 
-    figdir = figure_directory + f"{today}/"
     now = datetime.strftime(datetime.now(), "%H%M")
-    path_ = f"{figdir}{save_title}_{now}"
+    path_ = os.path.join(figdir, f"{save_title}_{now}")
     path = path_
 
     if type(fig) == matplotlib.figure.Figure:
@@ -619,14 +612,14 @@ def save_figure(
         for filetype in fig_save_types:
             i = 1
             while True:  # checks there isn't an existing figure with this name
-                if os.path.isfile(path + "." + filetype):
-                    path = path_ + "_" + str(i)
+                if os.path.isfile(f"{path}.{filetype}"):
+                    path = f"{path_}_{i}"
                     i += 1
                 elif i >= 100:
                     break
                 else:
                     break
-            fig.savefig(path + "." + filetype, bbox_inches="tight")
+            fig.savefig(f"{path}.{filetype}", bbox_inches="tight")
 
     elif type(fig) == matplotlib.animation.FuncAnimation:
         file_type = "Animation"
@@ -634,14 +627,14 @@ def save_figure(
         for filetype in anim_save_types:
             i = 1
             while True:
-                if os.path.isfile(path + "." + filetype):
-                    path = path_ + "_" + str(i)
+                if os.path.isfile(f"{path}.{filetype}"):
+                    path = f"{path_}_{i}"
                     i += 1
                 elif i >= 100:
                     break
                 else:
                     break
-            fig.save(path + "." + filetype)
+            fig.save(f"{path}.{filetype}")
 
     print(f"{file_type} saved to {os.path.abspath(path)}.{save_types}")
 
