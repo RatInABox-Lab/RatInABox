@@ -187,9 +187,6 @@ class Neurons:
         chosen_neurons = self.return_list_of_neurons(chosen_neurons)
         n_neurons_to_plot = len(chosen_neurons)
         if ("shift" not in kwargs.keys()) and ("overlap" not in kwargs.keys()):
-            kwargs["shift"] = max(
-                1.5, min(4, 40 / n_neurons_to_plot)
-            )  # scaled to make plots look nice and be ~constant size
             kwargs["shift"] = 2
             kwargs["overlap"] = 2.2
         spike_data = spike_data[startid:endid, chosen_neurons]
@@ -458,12 +455,9 @@ class Neurons:
                 )
 
             if method != "neither":
-                kwargs = {}
-                kwargs["shift"] = max(
-                    1.5, min(4, 40 / len(chosen_neurons))
-                )  # scaled to make plots look nice and be ~constant size
-                kwargs["shift"] = 2
-                kwargs["overlap"] = 2.2
+                if ("shift" not in kwargs.keys()) and ("overlap" not in kwargs.keys()):
+                    kwargs["shift"] = 2
+                    kwargs["overlap"] = 2.2
                 fig, ax = utils.mountain_plot(
                     X=x, NbyX=rate_maps, color=self.color, fig=fig, ax=ax, **kwargs
                 )
