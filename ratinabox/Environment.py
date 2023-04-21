@@ -1,6 +1,7 @@
 import ratinabox
 
 import copy
+import pprint
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
@@ -64,7 +65,7 @@ class Environment:
             params (dict, optional). Defaults to {}.
         """
 
-        self.params = copy.deepcopy(self.__class__.default_params)        
+        self.params = copy.deepcopy(__class__.default_params)        
         self.params.update(params)
 
         utils.update_class_params(self, self.params, get_all_defaults=True)
@@ -163,6 +164,13 @@ class Environment:
 
         return
 
+    @classmethod
+    def get_all_default_params(cls, verbose=True):
+        all_default_params = utils.collect_all_default_params(cls)
+        if verbose:
+            pprint.pprint(all_default_params)
+        return all_default_params
+    
     def add_wall(self, wall):
         """Add a wall to the (2D) environment.
         Extends self.walls array to include one new wall.

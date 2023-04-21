@@ -42,7 +42,7 @@ class FieldOfViewNeurons(Neurons):
 
     def __init__(self, Agent, params={}):
 
-        self.params = copy.deepcopy(self.__class__.default_params)        
+        self.params = copy.deepcopy(__class__.default_params)        
         self.params.update(params)
 
         # tile FoV within angular and distance specifications given as params

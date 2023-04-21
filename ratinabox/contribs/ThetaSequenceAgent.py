@@ -40,7 +40,7 @@ class ThetaSequenceAgent(Agent):
 
         self.Environment = Environment
 
-        self.params = copy.deepcopy(self.__class__.default_params)        
+        self.params = copy.deepcopy(__class__.default_params)        
         self.params.update(params)
 
         super().__init__(Environment, self.params)
