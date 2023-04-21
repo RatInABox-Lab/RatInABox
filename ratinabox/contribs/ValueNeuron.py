@@ -44,7 +44,7 @@ class ValueNeuron(FeedForwardLayer):
 
     def __init__(self, Agent, params={}):
 
-        self.params = copy.deepcopy(self.__class__.default_params)        
+        self.params = copy.deepcopy(__class__.default_params)        
         self.params.update(params)
 
         self.params["input_layers"] = [self.params["input_layer"]]

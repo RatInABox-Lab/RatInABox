@@ -1,6 +1,7 @@
 import ratinabox
 
 import copy
+import pprint
 import numpy as np
 import os
 import matplotlib
@@ -76,7 +77,7 @@ class Agent:
         """
         self.Environment = Environment
 
-        self.params = copy.deepcopy(self.__class__.default_params)        
+        self.params = copy.deepcopy(__class__.default_params)        
         self.params.update(params)
 
         utils.update_class_params(self, self.params, get_all_defaults=True)
@@ -125,6 +126,13 @@ class Agent:
                 Other plotting functions are available."""
             )
         return
+
+    @classmethod
+    def get_all_default_params(cls, verbose=True):
+        all_default_params = utils.collect_all_default_params(cls)
+        if verbose:
+            pprint.pprint(all_default_params)
+        return all_default_params
 
     def update(self, dt=None, drift_velocity=None, drift_to_random_strength_ratio=1):
         """Movement policy update.

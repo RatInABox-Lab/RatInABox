@@ -38,7 +38,7 @@ class PlaneWaveNeurons(Neurons):
 
         self.Agent = Agent
 
-        self.params = copy.deepcopy(self.__class__.default_params)        
+        self.params = copy.deepcopy(__class__.default_params)        
         self.params.update(params)
 
         super().__init__(Agent, self.params)

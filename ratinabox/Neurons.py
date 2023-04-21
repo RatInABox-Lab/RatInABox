@@ -1,6 +1,7 @@
 import ratinabox
 
 import copy
+import pprint
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
@@ -43,7 +44,7 @@ class Neurons:
                      params={}): #<-- do not change these
 
 
-            self.params = copy.deepcopy(self.__class__.default_params) # it is best to retrieve the default param dictionary as self.__class__. Then, make sure to deepcopy it, as only making a shallow copy can have unintended consequences (i.e., any modifications to it would be propagated to ALL instances of this class!).
+            self.params = copy.deepcopy(__class__.default_params) # to get the default param dictionary of the current class, defined in the preamble, use __class__. Then, make sure to deepcopy it, as only making a shallow copy can have unintended consequences (i.e., any modifications to it would be propagated to ALL instances of this class!).
             self.params.update(params)
 
             super().__init__(Agent,self.params)
@@ -104,7 +105,7 @@ class Neurons:
 
         self.Agent = Agent
 
-        self.params = copy.deepcopy(self.__class__.default_params)
+        self.params = copy.deepcopy(__class__.default_params)
         self.params.update(params)
 
         utils.update_class_params(self, self.params, get_all_defaults=True)
@@ -122,6 +123,13 @@ class Neurons:
             print(
                 f"\nA Neurons() class has been initialised with parameters f{self.params}. Use Neurons.update() to update the firing rate of the Neurons to correspond with the Agent.Firing rates and spikes are saved into the Agent.history dictionary. Plot a timeseries of the rate using Neurons.plot_rate_timeseries(). Plot a rate map of the Neurons using Neurons.plot_rate_map()."
             )
+
+    @classmethod
+    def get_all_default_params(cls, verbose=True):
+        all_default_params = utils.collect_all_default_params(cls)
+        if verbose:
+            pprint.pprint(all_default_params)
+        return all_default_params
 
     def update(self):
         # update noise vector
@@ -670,7 +678,7 @@ class PlaceCells(Neurons):
 
         self.Agent = Agent
 
-        self.params = copy.deepcopy(self.__class__.default_params)
+        self.params = copy.deepcopy(__class__.default_params)        
         self.params.update(params)
 
         super().__init__(Agent, self.params)
@@ -848,7 +856,7 @@ class GridCells(Neurons):
 
         self.Agent = Agent
 
-        self.params = copy.deepcopy(self.__class__.default_params)
+        self.params = copy.deepcopy(__class__.default_params)      
         self.params.update(params)
 
         super().__init__(Agent, self.params)
@@ -987,7 +995,7 @@ class BoundaryVectorCells(Neurons):
 
         self.Agent = Agent
 
-        self.params = copy.deepcopy(self.__class__.default_params)
+        self.params = copy.deepcopy(__class__.default_params)        
         self.params.update(params)
 
         super().__init__(Agent, self.params)
@@ -1274,7 +1282,7 @@ class ObjectVectorCells(Neurons):
     def __init__(self, Agent, params={}):
         self.Agent = Agent
 
-        self.params = copy.deepcopy(self.__class__.default_params)
+        self.params = copy.deepcopy(__class__.default_params)        
         self.params.update(params)
 
         assert (
@@ -1459,7 +1467,7 @@ class HeadDirectionCells(Neurons):
 
         self.Agent = Agent
 
-        self.params = copy.deepcopy(self.__class__.default_params)
+        self.params = copy.deepcopy(__class__.default_params)        
         self.params.update(params)
 
         if self.Agent.Environment.dimensionality == "2D":
@@ -1582,7 +1590,7 @@ class VelocityCells(HeadDirectionCells):
             params (dict, optional). Defaults to {}."""
         self.Agent = Agent
 
-        self.params = copy.deepcopy(self.__class__.default_params)
+        self.params = copy.deepcopy(__class__.default_params)        
         self.params.update(params)
 
         self.one_sigma_speed = self.Agent.speed_mean + self.Agent.speed_std
@@ -1634,7 +1642,7 @@ class SpeedCell(Neurons):
 
         self.Agent = Agent
 
-        self.params = copy.deepcopy(self.__class__.default_params)
+        self.params = copy.deepcopy(__class__.default_params)        
         self.params.update(params)
 
         super().__init__(Agent, self.params)
@@ -1712,7 +1720,7 @@ class FeedForwardLayer(Neurons):
     def __init__(self, Agent, params={}):
         self.Agent = Agent
 
-        self.params = copy.deepcopy(self.__class__.default_params)
+        self.params = copy.deepcopy(__class__.default_params)        
         self.params.update(params)
 
         super().__init__(Agent, self.params)
