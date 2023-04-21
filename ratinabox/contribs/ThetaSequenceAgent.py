@@ -1,6 +1,7 @@
 import ratinabox
 from ratinabox.Agent import Agent
 from scipy.interpolate import interp1d
+import copy
 import numpy as np
 
 
@@ -28,18 +29,20 @@ class ThetaSequenceAgent(Agent):
         "theta_frac"  : 0.5, #fraction of theta cycle over which}
     """
 
+    default_params = {
+        "v_sequence": 5.0,  # sequence speed in reference frame of Agent, ms-1
+        "theta_freq": 10.0,  # theta frequency
+        "theta_frac": 0.5,  # fraction of theta cycle over which
+        "dt": 0.001,
+    }
+
     def __init__(self, Environment, params={}):
 
-        default_params = {
-            "v_sequence": 5.0,  # sequence speed in reference frame of Agent, ms-1
-            "theta_freq": 10.0,  # theta frequency
-            "theta_frac": 0.5,  # fraction of theta cycle over which
-            "dt": 0.001,
-        }
-
         self.Environment = Environment
-        default_params.update(params)
-        self.params = default_params
+
+        self.params = copy.deepcopy(self.__class__.default_params)        
+        self.params.update(params)
+
         super().__init__(Environment, self.params)
 
         # ground truth Agent

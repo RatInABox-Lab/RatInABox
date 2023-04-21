@@ -1,5 +1,6 @@
 import ratinabox
 
+import copy
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
@@ -46,25 +47,28 @@ class Environment:
         }
     """
 
+    default_params = {
+        "dimensionality": "2D",  # 1D or 2D environment
+        "boundary_conditions": "solid",  # solid vs periodic
+        "scale": 1,  # scale of environment (in metres)
+        "aspect": 1,  # x/y aspect ratio for the (rectangular) 2D environment (how wide this is relative to tall)
+        "dx": 0.01,  # discretises the environment (for plotting purposes only)
+        "boundary": None,  # coordinates [[x0,y0],[x1,y1],...] of the corners of a 2D polygon bounding the Env (if None, Env defaults to rectangular). Corners must be ordered clockwise or anticlockwise, and the polygon must be a 'simple polygon' (no holes, doesn't self-intersect).
+        "holes": [],  # coordinates [[[x0,y0],[x1,y1],...],...] of corners of any holes inside the Env. These must be entirely inside the environment and not intersect one another. Corners must be ordered clockwise or anticlockwise. holes has 1-dimension more than boundary since there can be multiple holes
+    }
+
     def __init__(self, params={}):
         """Initialise Environment, takes as input a parameter dictionary. Any values not provided by the params dictionary are taken from a default dictionary.
 
         Args:
             params (dict, optional). Defaults to {}.
         """
-        default_params = {
-            "dimensionality": "2D",  # 1D or 2D environment
-            "boundary_conditions": "solid",  # solid vs periodic
-            "scale": 1,  # scale of environment (in metres)
-            "aspect": 1,  # x/y aspect ratio for the (rectangular) 2D environment (how wide this is relative to tall)
-            "dx": 0.01,  # discretises the environment (for plotting purposes only)
-            "boundary": None,  # coordinates [[x0,y0],[x1,y1],...] of the corners of a 2D polygon bounding the Env (if None, Env defaults to rectangular). Corners must be ordered clockwise or anticlockwise, and the polygon must be a 'simple polygon' (no holes, doesn't self-intersect).
-            "holes": [],  # coordinates [[[x0,y0],[x1,y1],...],...] of corners of any holes inside the Env. These must be entirely inside the environment and not intersect one another. Corners must be ordered clockwise or anticlockwise. holes has 1-dimension more than boundary since there can be multiple holes
-        }
 
-        default_params.update(params)
-        self.params = default_params
-        utils.update_class_params(self, self.params)
+        self.params = copy.deepcopy(self.__class__.default_params)        
+        self.params.update(params)
+
+        utils.update_class_params(self, self.params, get_all_defaults=True)
+        utils.check_params(self, params.keys())
 
         if self.dimensionality == "1D":
             self.D = 1

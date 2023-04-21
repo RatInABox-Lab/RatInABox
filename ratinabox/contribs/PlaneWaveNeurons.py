@@ -3,6 +3,7 @@ from ratinabox.Agent import Agent
 from ratinabox.Neurons import *
 from ratinabox.utils import *
 
+import copy
 import numpy as np
 
 
@@ -21,22 +22,25 @@ class PlaneWaveNeurons(Neurons):
         • get_state()
     """
 
+    default_params = {
+        "n": 10,
+        "wavescale": 0.2,  # metres
+        "min_fr": 0,
+        "max_fr": 1,
+        "name": "PlaneWaveNeurons",
+    }
+
     def __init__(self, Agent, params={}):
         """Initialise PlaneWaveNeurons(), takes as input a parameter dictionary. Any values not provided by the params dictionary are taken from a default dictionary below.
 
         Args:
             params (dict, optional). Defaults to {}."""
 
-        default_params = {
-            "n": 10,
-            "wavescale": 0.2,  # metres
-            "min_fr": 0,
-            "max_fr": 1,
-            "name": "PlaneWaveNeurons",
-        }
         self.Agent = Agent
-        default_params.update(params)
-        self.params = default_params
+
+        self.params = copy.deepcopy(self.__class__.default_params)        
+        self.params.update(params)
+
         super().__init__(Agent, self.params)
 
         # Initialise  cells

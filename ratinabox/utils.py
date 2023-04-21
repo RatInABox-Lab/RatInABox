@@ -2,7 +2,9 @@ import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
 import scipy
+import inspect
 import os
+import warnings
 from datetime import datetime
 from scipy import stats as stats
 import ratinabox
@@ -595,20 +597,13 @@ def save_figure(
         print(f"       (the current working directory is {os.getcwd()})")
         return
 
-    if figure_directory[-1] != "/":
-        figure_directory += "/"
-
-    if not os.path.isdir(figure_directory):
-        os.mkdir(figure_directory)
-
     # make today-specific directory inside figure directory
     today = datetime.strftime(datetime.now(), "%d_%m_%y")
-    if not os.path.isdir(figure_directory + f"{today}/"):
-        os.mkdir(figure_directory + f"{today}/")
+    figdir = os.path.join(figure_directory, f"{today}")
+    os.makedirs(figdir, exist_ok=True)
 
-    figdir = figure_directory + f"{today}/"
     now = datetime.strftime(datetime.now(), "%H%M")
-    path_ = f"{figdir}{save_title}_{now}"
+    path_ = os.path.join(figdir, f"{save_title}_{now}")
     path = path_
 
     if type(fig) == matplotlib.figure.Figure:
@@ -617,14 +612,14 @@ def save_figure(
         for filetype in fig_save_types:
             i = 1
             while True:  # checks there isn't an existing figure with this name
-                if os.path.isfile(path + "." + filetype):
-                    path = path_ + "_" + str(i)
+                if os.path.isfile(f"{path}.{filetype}"):
+                    path = f"{path_}_{i}"
                     i += 1
                 elif i >= 100:
                     break
                 else:
                     break
-            fig.savefig(path + "." + filetype, bbox_inches="tight")
+            fig.savefig(f"{path}.{filetype}", bbox_inches="tight")
 
     elif type(fig) == matplotlib.animation.FuncAnimation:
         file_type = "Animation"
@@ -632,14 +627,14 @@ def save_figure(
         for filetype in anim_save_types:
             i = 1
             while True:
-                if os.path.isfile(path + "." + filetype):
-                    path = path_ + "_" + str(i)
+                if os.path.isfile(f"{path}.{filetype}"):
+                    path = f"{path_}_{i}"
                     i += 1
                 elif i >= 100:
                     break
                 else:
                     break
-            fig.save(path + "." + filetype)
+            fig.save(f"{path}.{filetype}")
 
     print(f"{file_type} saved to {os.path.abspath(path)}.{save_types}")
 
@@ -651,18 +646,121 @@ def save_animation(*args, **kwargs):
     return save_figure(*args, **kwargs)
 
 
-"""Other"""
+"""High-level functions"""
 
 
-def update_class_params(Class, params: dict):
+def update_class_params(Class, params: dict, get_all_defaults=False):
     """Updates parameters from a dictionary.
     All parameters found in params will be updated to new value
     Args:
         params (dict): dictionary of parameters to change
         initialise (bool, optional): [description]. Defaults to False.
     """
+
+    if get_all_defaults:
+        all_default_params = collect_all_default_params(Class.__class__)
+        all_default_params.update(params)
+        params = all_default_params
+
     for key, value in params.items():
         setattr(Class, key, value)
+
+
+def collect_all_default_params(obj_class, keys_only=False):
+    """Collects all the default_params dictionaries from the current class, including those inherited from its parent classes.
+
+    Args:
+        obj_class (class): object class for which to collect the default_params dictionaries
+        keys_only (bool, optional): If True, only returns the keys of the default_params dictionaries. Defaults to False.
+
+    Returns:
+        dict or list: 
+            If keys_only == False, returns a dictionary of all the default_params values from the current class, including those inherited from its parent classes.
+            If keys_only == True, returns a list of all the keys of the default_params dictionaries from  the current class and its parent classes.
+    """
+
+    if not inspect.isclass(obj_class):
+        raise ValueError("obj_class must be a class object.")
+
+    if not "default_params" in obj_class.__dict__:
+        warnings.warn(
+            f"Cannot collect the default params dictionaries, as {obj_class} does not "
+            "have a class attribute 'default_params' defined in its preamble. "
+            "(Can be just an empty dictionary, i.e.: default_params = dict().)"
+        )
+        return
+
+    if keys_only:
+        all_default_param_keys = list()
+    else:
+        all_default_params_dicts = list()
+        all_default_params = dict()
+    
+    while hasattr(obj_class, "default_params"):
+        if keys_only:
+            all_default_param_keys.extend(obj_class.default_params.keys())
+        else:
+            all_default_params_dicts.append(obj_class.default_params)
+        if len(obj_class.__bases__):
+            obj_class = obj_class.__bases__[0]
+        else:
+            break
+    
+    if keys_only:
+        all_default_param_keys = sorted(set(all_default_param_keys))
+        return all_default_param_keys
+    
+    for default_params_dict in all_default_params_dicts[::-1]: # update in reverse (from parents to child class)
+        all_default_params.update(default_params_dict)
+
+    return all_default_params
+
+
+def check_params(Obj, param_keys):
+    """Given an object and a list of keys, checks whether the keys are all in 
+    the object's default_params dictionary.
+
+    Args:
+        Obj (object): object to check
+        param_keys (list): list of keys to check
+    
+    Returns:
+        list: list of keys in param_keys that weren't expected based on the default parameters of Obj
+    """
+
+    if inspect.isclass(Obj):
+        raise ValueError("Obj must be an instance of a class, not a class object.")
+
+    obj_class = Obj.__class__
+    if not "default_params" in obj_class.__dict__:
+        warnings.warn(
+            f"Cannot check the keys in the params dictionary, as {obj_class} does not "
+            "have a class attribute 'default_params' defined in its preamble. "
+            "(Can be just an empty dictionary, i.e.: default_params = dict().)"
+        )
+        return
+
+    all_default_param_keys = collect_all_default_params(obj_class, keys_only=True)
+    
+    unexpected_keys = [
+        key for key in param_keys if key not in all_default_param_keys
+    ]
+    
+    if len(unexpected_keys):
+        num = len(unexpected_keys)
+        unexpected_keys = ", ".join(
+            [f"'{attr}'" for attr in unexpected_keys]
+            )
+        object_name = str(Obj)
+        if hasattr(Obj, "name"):
+            object_name = f"{object_name} ('{Obj.name}')"
+
+        warnings.warn(
+            f"Found {num} unexpected params key(s) while initializing "
+            f"{object_name}: {unexpected_keys}"
+            )
+    
+    return unexpected_keys
 
 
 def activate(x, activation="sigmoid", deriv=False, other_args={}):
