@@ -1693,6 +1693,10 @@ class FeedForwardLayer(Neurons):
         if self.biases is None:
             self.biases = np.zeros(self.n)
 
+        self.firingrate_prime = np.zeros_like(
+            self.firingrate
+        )  # this will hold the firingrate except passed through the derivative of the activation func
+
         if ratinabox.verbose is True:
             print(
                 f"FeedForwardLayer initialised with {len(self.inputs.keys())} layers. To add another layer use FeedForwardLayer.add_input_layer().\nTo set the weights manually edit them by changing self.inputs['layer_name']['w']"
@@ -1743,7 +1747,6 @@ class FeedForwardLayer(Neurons):
         Returns:
             firingrate: array of firing rates
         """
-
         if evaluate_at == "last":
             V = np.zeros(self.n)
         elif evaluate_at == "all":

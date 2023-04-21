@@ -59,7 +59,8 @@ class ValueNeuron(FeedForwardLayer):
         """Updates firing rate as weighted linear sum of feature inputs"""
         firingrate_last = self.firingrate
         # update the firing rate
-        super().update()  # FeedForwardLayer builtin function. this sums the inputs from the input features over the weight matrix and saves the firingrate.
+        super().update()  # FeedForwardLayer builtin function. This sums the inputs from the input features over the weight matrix and saves the firingrate.
+
         # calculate temporal derivative of the firing rate
         self.firingrate_deriv = (self.firingrate - firingrate_last) / self.Agent.dt
         # update eligibility trace
