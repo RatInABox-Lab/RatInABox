@@ -125,7 +125,8 @@ class Neurons:
             )
 
     @classmethod
-    def get_all_default_params(cls, verbose=True):
+    def get_all_default_params(cls, verbose=False):
+        """Returns a dictionary of all the default parameters of the class, including those inherited from its parents."""
         all_default_params = utils.collect_all_default_params(cls)
         if verbose:
             pprint.pprint(all_default_params)
@@ -678,7 +679,7 @@ class PlaceCells(Neurons):
 
         self.Agent = Agent
 
-        self.params = copy.deepcopy(__class__.default_params)        
+        self.params = copy.deepcopy(__class__.default_params)
         self.params.update(params)
 
         super().__init__(Agent, self.params)
@@ -856,7 +857,7 @@ class GridCells(Neurons):
 
         self.Agent = Agent
 
-        self.params = copy.deepcopy(__class__.default_params)      
+        self.params = copy.deepcopy(__class__.default_params)
         self.params.update(params)
 
         super().__init__(Agent, self.params)
@@ -995,7 +996,7 @@ class BoundaryVectorCells(Neurons):
 
         self.Agent = Agent
 
-        self.params = copy.deepcopy(__class__.default_params)        
+        self.params = copy.deepcopy(__class__.default_params)
         self.params.update(params)
 
         super().__init__(Agent, self.params)
@@ -1282,7 +1283,7 @@ class ObjectVectorCells(Neurons):
     def __init__(self, Agent, params={}):
         self.Agent = Agent
 
-        self.params = copy.deepcopy(__class__.default_params)        
+        self.params = copy.deepcopy(__class__.default_params)
         self.params.update(params)
 
         assert (
@@ -1467,7 +1468,7 @@ class HeadDirectionCells(Neurons):
 
         self.Agent = Agent
 
-        self.params = copy.deepcopy(__class__.default_params)        
+        self.params = copy.deepcopy(__class__.default_params)
         self.params.update(params)
 
         if self.Agent.Environment.dimensionality == "2D":
@@ -1590,7 +1591,7 @@ class VelocityCells(HeadDirectionCells):
             params (dict, optional). Defaults to {}."""
         self.Agent = Agent
 
-        self.params = copy.deepcopy(__class__.default_params)        
+        self.params = copy.deepcopy(__class__.default_params)
         self.params.update(params)
 
         self.one_sigma_speed = self.Agent.speed_mean + self.Agent.speed_std
@@ -1642,7 +1643,7 @@ class SpeedCell(Neurons):
 
         self.Agent = Agent
 
-        self.params = copy.deepcopy(__class__.default_params)        
+        self.params = copy.deepcopy(__class__.default_params)
         self.params.update(params)
 
         super().__init__(Agent, self.params)
@@ -1720,7 +1721,7 @@ class FeedForwardLayer(Neurons):
     def __init__(self, Agent, params={}):
         self.Agent = Agent
 
-        self.params = copy.deepcopy(__class__.default_params)        
+        self.params = copy.deepcopy(__class__.default_params)
         self.params.update(params)
 
         super().__init__(Agent, self.params)

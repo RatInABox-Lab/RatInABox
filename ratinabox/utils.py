@@ -667,14 +667,14 @@ def update_class_params(Class, params: dict, get_all_defaults=False):
 
 
 def collect_all_default_params(obj_class, keys_only=False):
-    """Collects all the default_params dictionaries from the current class, including those inherited from its parent classes.
+    """Collects all the default_params dictionaries from the current class, including those inherited from its parent classes and its parents parents etc.
 
     Args:
         obj_class (class): object class for which to collect the default_params dictionaries
         keys_only (bool, optional): If True, only returns the keys of the default_params dictionaries. Defaults to False.
 
     Returns:
-        dict or list: 
+        dict or list:
             If keys_only == False, returns a dictionary of all the default_params values from the current class, including those inherited from its parent classes.
             If keys_only == True, returns a list of all the keys of the default_params dictionaries from  the current class and its parent classes.
     """
@@ -695,7 +695,7 @@ def collect_all_default_params(obj_class, keys_only=False):
     else:
         all_default_params_dicts = list()
         all_default_params = dict()
-    
+
     while hasattr(obj_class, "default_params"):
         if keys_only:
             all_default_param_keys.extend(obj_class.default_params.keys())
@@ -705,25 +705,27 @@ def collect_all_default_params(obj_class, keys_only=False):
             obj_class = obj_class.__bases__[0]
         else:
             break
-    
+
     if keys_only:
         all_default_param_keys = sorted(set(all_default_param_keys))
         return all_default_param_keys
-    
-    for default_params_dict in all_default_params_dicts[::-1]: # update in reverse (from parents to child class)
+
+    for default_params_dict in all_default_params_dicts[
+        ::-1
+    ]:  # update in reverse (from parents to child class)
         all_default_params.update(default_params_dict)
 
     return all_default_params
 
 
 def check_params(Obj, param_keys):
-    """Given an object and a list of keys, checks whether the keys are all in 
+    """Given an object and a list of keys, checks whether the keys are all in
     the object's default_params dictionary.
 
     Args:
         Obj (object): object to check
         param_keys (list): list of keys to check
-    
+
     Returns:
         list: list of keys in param_keys that weren't expected based on the default parameters of Obj
     """
@@ -741,22 +743,18 @@ def check_params(Obj, param_keys):
         return
 
     all_default_param_keys = collect_all_default_params(obj_class, keys_only=True)
-    
-    unexpected_keys = [
-        key for key in param_keys if key not in all_default_param_keys
-    ]
-    
+
+    unexpected_keys = [key for key in param_keys if key not in all_default_param_keys]
+
     if len(unexpected_keys):
         num = len(unexpected_keys)
-        unexpected_keys = ", ".join(
-            [f"'{attr}'" for attr in unexpected_keys]
-            )
+        unexpected_keys = ", ".join([f"'{attr}'" for attr in unexpected_keys])
 
         warnings.warn(
-            f"Found {num} unexpected params key(s) while initializing "
-            f"{obj_class.__name__} object: {unexpected_keys}."
-            )
-    
+            f"Found {num} unexpected params key(s) while initializing"
+            f"{obj_class.__name__} object: {unexpected_keys}.\nIf you intended to set this parameter, ignore this message. To see all default parameters for this class call {obj_class.__name__}.get_all_default_params()."
+        )
+
     return unexpected_keys
 
 

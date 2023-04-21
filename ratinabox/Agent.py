@@ -128,7 +128,8 @@ class Agent:
         return
 
     @classmethod
-    def get_all_default_params(cls, verbose=True):
+    def get_all_default_params(cls, verbose=False):
+        """Returns a dictionary of all the default parameters of the class, including those inherited from its parents."""
         all_default_params = utils.collect_all_default_params(cls)
         if verbose:
             pprint.pprint(all_default_params)

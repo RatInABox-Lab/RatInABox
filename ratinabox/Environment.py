@@ -65,7 +65,7 @@ class Environment:
             params (dict, optional). Defaults to {}.
         """
 
-        self.params = copy.deepcopy(__class__.default_params)        
+        self.params = copy.deepcopy(__class__.default_params)
         self.params.update(params)
 
         utils.update_class_params(self, self.params, get_all_defaults=True)
@@ -165,12 +165,13 @@ class Environment:
         return
 
     @classmethod
-    def get_all_default_params(cls, verbose=True):
+    def get_all_default_params(cls, verbose=False):
+        """Returns a dictionary of all the default parameters of the class, including those inherited from its parents."""
         all_default_params = utils.collect_all_default_params(cls)
         if verbose:
             pprint.pprint(all_default_params)
         return all_default_params
-    
+
     def add_wall(self, wall):
         """Add a wall to the (2D) environment.
         Extends self.walls array to include one new wall.
@@ -307,7 +308,7 @@ class Environment:
             # plot objects
             if self.plot_objects == True:
                 object_cmap = matplotlib.colormaps[self.object_colormap]
-                for (i, object) in enumerate(self.objects["objects"]):
+                for i, object in enumerate(self.objects["objects"]):
                     object_color = object_cmap(
                         self.objects["object_types"][i]
                         / (self.n_object_types - 1 + 1e-8)
@@ -327,7 +328,7 @@ class Environment:
             ax.axis("off")
             ax.set_xlim(left=extent[0] - 0.03, right=extent[1] + 0.03)
             ax.set_ylim(bottom=extent[2] - 0.03, top=extent[3] + 0.03)
-        
+
         ratinabox.utils.save_figure(fig, "Environment", save=autosave)
 
         return fig, ax
@@ -357,7 +358,6 @@ class Environment:
             return positions
 
         elif self.dimensionality == "2D":
-
             if method == "random":
                 positions = np.zeros((n, 2))
                 positions[:, 0] = np.random.uniform(
@@ -387,7 +387,7 @@ class Environment:
 
             if (self.is_rectangular is False) or (self.has_holes is True):
                 # in this case, the positions you have sampled within the extent of the environment may not actually fall within it's legal area (i.e. they could be outside the polygon boundary or inside a hole). Brute force this by randomly resampling these points until all fall within the env.
-                for (i, pos) in enumerate(positions):
+                for i, pos in enumerate(positions):
                     if self.check_if_position_is_in_environment(pos) == False:
                         pos = self.sample_positions(n=1, method="random").reshape(
                             -1
