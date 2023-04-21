@@ -751,7 +751,7 @@ def check_params(Obj, param_keys):
         unexpected_keys = ", ".join([f"'{attr}'" for attr in unexpected_keys])
 
         warnings.warn(
-            f"Found {num} unexpected params key(s) while initializing"
+            f"Found {num} unexpected params key(s) while initializing "
             f"{obj_class.__name__} object: {unexpected_keys}.\nIf you intended to set this parameter, ignore this message. To see all default parameters for this class call {obj_class.__name__}.get_all_default_params()."
         )
 
