@@ -37,7 +37,7 @@ class Neurons:
     MyNeuronClass(Neurons):
 
         default_params = {'a_default_param":3.14159} # default params dictionary is defined in the preamble, as a class attribute. Note its values are passed upwards and used in all the parents classes of your class.
-    
+
         def __init__(self,
                      Agent,
                      params={}): #<-- do not change these
@@ -104,7 +104,7 @@ class Neurons:
 
         self.Agent = Agent
 
-        self.params = copy.deepcopy(self.__class__.default_params)        
+        self.params = copy.deepcopy(self.__class__.default_params)
         self.params.update(params)
 
         utils.update_class_params(self, self.params, get_all_defaults=True)
@@ -670,9 +670,9 @@ class PlaceCells(Neurons):
 
         self.Agent = Agent
 
-        self.params = copy.deepcopy(self.__class__.default_params)        
+        self.params = copy.deepcopy(self.__class__.default_params)
         self.params.update(params)
-        
+
         super().__init__(Agent, self.params)
 
         if self.place_cell_centres is None:
@@ -840,7 +840,6 @@ class GridCells(Neurons):
         "name": "GridCells",
     }
 
-
     def __init__(self, Agent, params={}):
         """Initialise GridCells(), takes as input a parameter dictionary. Any values not provided by the params dictionary are taken from a default dictionary below.
 
@@ -849,7 +848,7 @@ class GridCells(Neurons):
 
         self.Agent = Agent
 
-        self.params = copy.deepcopy(self.__class__.default_params)      
+        self.params = copy.deepcopy(self.__class__.default_params)
         self.params.update(params)
 
         super().__init__(Agent, self.params)
@@ -988,7 +987,7 @@ class BoundaryVectorCells(Neurons):
 
         self.Agent = Agent
 
-        self.params = copy.deepcopy(self.__class__.default_params)        
+        self.params = copy.deepcopy(self.__class__.default_params)
         self.params.update(params)
 
         super().__init__(Agent, self.params)
@@ -1272,12 +1271,10 @@ class ObjectVectorCells(Neurons):
         "min_fr": 0,
     }
 
-
     def __init__(self, Agent, params={}):
-
         self.Agent = Agent
 
-        self.params = copy.deepcopy(self.__class__.default_params)        
+        self.params = copy.deepcopy(self.__class__.default_params)
         self.params.update(params)
 
         assert (
@@ -1462,7 +1459,7 @@ class HeadDirectionCells(Neurons):
 
         self.Agent = Agent
 
-        self.params = copy.deepcopy(self.__class__.default_params)        
+        self.params = copy.deepcopy(self.__class__.default_params)
         self.params.update(params)
 
         if self.Agent.Environment.dimensionality == "2D":
@@ -1585,7 +1582,7 @@ class VelocityCells(HeadDirectionCells):
             params (dict, optional). Defaults to {}."""
         self.Agent = Agent
 
-        self.params = copy.deepcopy(self.__class__.default_params)        
+        self.params = copy.deepcopy(self.__class__.default_params)
         self.params.update(params)
 
         self.one_sigma_speed = self.Agent.speed_mean + self.Agent.speed_std
@@ -1637,7 +1634,7 @@ class SpeedCell(Neurons):
 
         self.Agent = Agent
 
-        self.params = copy.deepcopy(self.__class__.default_params)        
+        self.params = copy.deepcopy(self.__class__.default_params)
         self.params.update(params)
 
         super().__init__(Agent, self.params)
@@ -1713,10 +1710,9 @@ class FeedForwardLayer(Neurons):
     }
 
     def __init__(self, Agent, params={}):
-
         self.Agent = Agent
 
-        self.params = copy.deepcopy(self.__class__.default_params)        
+        self.params = copy.deepcopy(self.__class__.default_params)
         self.params.update(params)
 
         super().__init__(Agent, self.params)
