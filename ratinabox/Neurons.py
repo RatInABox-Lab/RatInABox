@@ -1,6 +1,7 @@
 import ratinabox
 
 import copy
+import warnings
 import pprint
 import numpy as np
 import matplotlib
@@ -359,7 +360,13 @@ class Neurons:
                     Nx, Ny = 1, len(chosen_neurons)
                 else:
                     Nx, Ny = shape[0], shape[1]
-                fig = plt.figure(figsize=(2 * Ny, 2 * Nx))
+                env_fig, env_ax = self.Agent.Environment.plot_environment(
+                    autosave=False
+                )
+                width, height = env_fig.get_size_inches()
+                plt.close(env_fig)
+                plt.show
+                fig = plt.figure(figsize=(height * Ny, width * Nx))
                 if colorbar == True and (method in ["groundtruth", "history"]):
                     cbar_mode = "single"
                 else:
@@ -814,6 +821,14 @@ class PlaceCells(Neurons):
         ratinabox.utils.save_figure(fig, "place_cell_locations", save=autosave)
 
         return fig, ax
+
+    def remap(self):
+        """Resets the place cell centres to a new random distribution. These will be uniformly randomly distributed in the environment (i.e. they will still approximately span the space)"""
+        self.place_cell_centres = self.Agent.Environment.sample_positions(
+            n=self.n, method="uniform_jitter"
+        )
+        np.random.shuffle(self.place_cell_centres)
+        return
 
 
 class GridCells(Neurons):
@@ -1726,6 +1741,14 @@ class FeedForwardLayer(Neurons):
 
         super().__init__(Agent, self.params)
 
+        assert isinstance(
+            self.input_layers, list
+        ), "param['input_layers'] must be a list."
+        if len(self.input_layers) == 0:
+            warnings.warn(
+                "No input layers have been provided. Either hand them in in the params dictionary params['input_layers']=[list,of,inputs] or use self.add_input_layer() to add them manually."
+            )
+
         self.inputs = {}
         for input_layer in self.input_layers:
             self.add_input(input_layer)
@@ -1764,13 +1787,14 @@ class FeedForwardLayer(Neurons):
         if name in self.inputs.keys():
             if ratinabox.verbose is True:
                 print(
-                    f"There already exists a layer called {name}. Overwriting it now."
+                    f"There already exists a layer called {name}. This may be because you have two input players with the same attribute `InputLayer.name`. Overwriting it now."
                 )
         self.inputs[name] = {}
         self.inputs[name]["layer"] = input_layer
         self.inputs[name]["w"] = w
         self.inputs[name]["w_init"] = w.copy()
         self.inputs[name]["I"] = I
+        self.inputs[name]["n"] = input_layer.n  # a copy for convenience
         for key, value in kwargs.items():
             self.inputs[name][key] = value
         if ratinabox.verbose is True:
