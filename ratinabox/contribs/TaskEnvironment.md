@@ -1,12 +1,12 @@
 # TaskEnvironment
 
-`TaskEnvironment` is a specialized `ratinabox.Environment` designed to simplify specification and management of tasks that agents carry out. `TaskEnvironment` also inherits from the popular `pettingzoo.env` multi-agent reinforcement learning environment. Which makes it easy to integrate with existing RL codes.
+`TaskEnvironment` is designed to simplify specification and management of tasks that agents carry out, blending the flexble `ratinabox.Environment` with a popular multi-agent reinforcement learning `pettingzoo.env` environment. 
 
-In this file, we offer a flexible and customizable environment structure that can handle various types of goals, rewards, and agent interactions. We achieve this through a set of interconnected classes, enabling users to create specialized task environments. One of the most common environments we implement here is the SpatialGoalEnvironment.
+`TaskEnvironment` offers customizable environment structure that can handle various types of goals, rewards, and agent interactions. 
 
 The main classes in TaskEnvironment.py are:
 
-* `Goal`: This abstract class represents a general goal that agents need to achieve. For new tasks, users may need to implement their own specialized goal classes derived from Goal by defining specific methods to determine goal satisfaction and any other specific behaviors.
+* `Goal`: This abstract class represents a goal that agents need to achieve. For new tasks, users may need to implement their own specialized goal classes derived from Goal by defining specific methods to determine goal satisfaction and any other specific behaviors.
 
 * `Reward`: This class represents a reward that agents can earn by satisfying goals. Rewards can have dynamics that evolve over time (e.g. decay rates or may be driven by an external ramping signal).
 
@@ -28,6 +28,16 @@ The following figures summarize and depict how the classes are related and a low
 <img src="./TE_Goals+Rewards.png" alt="Goals + Rewards" width="49%"/>
 
 ## `SpatialGoalEnvironment`, a specific instance of `TaskEnvironment`
+
+## Creating your own Task
+
+Easiest way to encode your task would be to 
+1. write your rule(s) into a `Goal` object(s): you can combine existing objects with custom objects. If the agent has to do three things in a sequence, one `Goal` per item.
+2. decide the `Reward` to attach to the goal
+3. overload reset() to push your Goal objects of interest into the env.goalcache when an episode begins.
+
+|:eyes: NOTE, If you would like something more light-weight, you can also side-step creating a `Goal` class entirely, and overload `step()` to check for whatever your task condition is, and push a `Reward` to appropriate agents.|
+---
 
 ## Example
 
