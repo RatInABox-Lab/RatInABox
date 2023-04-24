@@ -140,6 +140,7 @@ class Environment:
             self.n_object_types = 0
             self.object_colormap = "rainbow"
             self.plot_objects = True
+            self.Agents = [] #each new Agent will append itself to this list
 
             # make some other attributes
             left = min([c[0] for c in b])

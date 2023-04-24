@@ -26,6 +26,7 @@ With `RatInABox` you can:
     * `SpeedCells`
     * `HeadDirectionCells`
     * `FeedForwardLayer` (a generic class analagous to a feedforward layer in a deep neural network)
+    * `SuccessorFeatures` 
     * ...
 
 The top animation shows an example use case: an `Agent` randomly explores a 2D `Environment` with a wall. Three populations of `Neurons` (`PlaceCells`, `GridCells`, `BoundaryVectorCells`) fire according to the receptive fields shown. All data is saved into the history for downstream use. `RatInABox` is fully continuous is space; this means that position and neuronal firing rates are calculated rapidly online with float precision rather than pre-calculated over a discretised mesh. `RatInABox` is flexibly discretised in time; `dt` can be set by the user (defaulting to 10 ms) depending on requirements.
@@ -82,6 +83,7 @@ Here is a list of features loosely organised into those pertaining to
 * [Importing trajectories](#importing-trajectories)
 * [Policy control](#policy-control)
 * [Wall repelling](#wall-repelling)
+* [Multiple Agents](#multiple-agents)
 * [Advanced `Agent` classes](#advanced-agent-classes)
 
 (iii) the [`Neurons`](#iii-neurons-features).
@@ -92,6 +94,7 @@ Here is a list of features loosely organised into those pertaining to
 * [Place cell models](#place-cell-models) 
 * [Place cell geometry](#geometry-of-placecells)
 * [Egocentric encodings](#egocentric-encodings)
+* [Successor features and reinforcement learning](#successor-features-and-reinforcement-learning)
 * [Deep neural networks](#more-complex-neuron-types-and-networks-of-neurons)
 
 (iv) [Figures and animations plotting](#iv-figures-and-animations)
@@ -101,7 +104,7 @@ Specific details can be found in the [paper](https://www.biorxiv.org/content/10.
 
 
 ### (i) `Environment` features
-#### Walls 
+#### **Walls**
 Arbitrarily add walls to the environment to produce arbitrarily complex mazes:
 ```python 
 Environment.add_wall([[x0,y0],[x1,y1]])
@@ -111,7 +114,7 @@ Here are some easy to make examples.
 <img src=".images/readme/walls.png" width=1000>
 
 
-#### Complex `Environment`s: Polygons, curves, and holes
+#### **Complex `Environment`s: Polygons, curves, and holes**
 By default, `Environments` in RatInABox are square (or rectangular if `aspect != 1`). It is possible to create arbitrary environment shapes using the `"boundary"` parameter at initialisation. 
 
 One can all add holes to the `Environment` using the `"holes"` parameter at initialisation. Positions sampled from the Environment (e.g. at initialisation) won't be inside holes.
@@ -142,7 +145,7 @@ Env = Environment(params = {
 
 
 
-#### Boundary conditions 
+#### **Boundary conditions**
 Boundary conditions (for default square/rectangular environments) can be "periodic" or "solid". Place cells and the motion of the Agent will respect these boundaries accordingly. 
 ```python
 Env = Environment(
@@ -152,7 +155,7 @@ Env = Environment(
 
 <img src=".images/readme/boundary_conditions.png" width=500>
 
-#### 1- or 2-dimensions 
+#### **1- or 2-dimensions**
 `RatInABox` supports 1- or 2-dimensional `Environment`s. Almost all applicable features and plotting functions work in both. The following figure shows 1 minute of exploration of an `Agent` in a 1D environment with periodic boundary conditions spanned by 10 place cells. 
 ```python 
 Env = Environment(
@@ -166,7 +169,7 @@ Env = Environment(
 
 ### (ii) `Agent` features
 
-#### Random motion model
+#### **Random motion model**
 By defaut the `Agent` follows a random motion policy.  Random motion is stochastic but smooth. The speed (and rotational speed, if in 2D) of an Agent take constrained random walks governed by Ornstein-Uhlenbeck processes. You can change the means, variance and coherence times of these processes to control the shape of the trajectory. Default parameters are fit to real rat locomotion data from Sargolini et al. (2006): 
 
 <img src=".images/readme/riab_vs_sargolini.gif" width=500>
@@ -183,7 +186,7 @@ Agent.rotational_velocity_coherence_time = 0.08
 <img src=".images/readme/motion_model.png" width=800>
 
 
-#### Importing trajectories
+#### **Importing trajectories**
 `RatInABox` supports importing external trajectory data (rather than using the in built random motion policy). Imported data can be of low temporal resolution. It will be smoothly upsampled using a cubic splines interpolation technique. We provide a 10 minute trajectory from the open-source data set of Sargolini et al. (2006) ready to import. In the following figure blue shows (low resolution) trajectory data imported into an `Agent` and purple shows the smoothly upsampled trajectory taken by the `Agent` during exploration. 
 ```python
 Agent.import_trajectory(dataset='sargolini')
@@ -195,7 +198,7 @@ Agent.import_trajectory(times=array_of_times,
 
 <img src=".images/readme/imported_trajectory.png" width=200>
 
-#### Policy control 
+#### **Policy control**
 By default the movement policy is an random and uncontrolled (e.g. displayed above). It is possible, however, to manually pass a "drift_velocity" to the Agent on each `Agent.update()` step. This 'closes the loop' allowing, for example, Actor-Critic systems to control the Agent policy. As a demonstration that this method can be used to control the agent's movement we set a radial drift velocity to encourage circular motion. We also use RatInABox to perform a simple model-free RL task and find a reward hidden behind a wall (the full script is given as an example script [here](./demos/reinforcement_learning_example.ipynb))
 ```python
 Agent.update(drift_velocity=drift_velocity)
@@ -203,7 +206,7 @@ Agent.update(drift_velocity=drift_velocity)
 
 <img src=".images/readme/motion.gif" width=600>
 
-#### Wall repelling 
+#### **Wall repelling**
 Under the random motion policy, walls in the environment mildly "repel" the `Agent`. Coupled with the finite turning speed this replicates an effect (known as thigmotaxis, sometimes linked to anxiety) where the `Agent` is biased to over-explore near walls and corners (as shown in these heatmaps) matching real rodent behaviour. It can be turned up or down with the `thigmotaxis` parameter.
 ```python 
 Αgent.thigmotaxis = 0.8 #1 = high thigmotaxis (left plot), 0 = low (right)
@@ -211,8 +214,15 @@ Under the random motion policy, walls in the environment mildly "repel" the `Age
 
 <img src=".images/readme/wall_repel.png" width=900>
 
+#### **Multiple `Agent`s**
+There is nothing to stop multiple `Agent`s being added to the same `Environment`. When plotting/animating trajectories set the kwarg `plot_all_agents=True` to visualise all `Agent`s simultaneously. 
 
-#### Advanced `Agent` classes
+The following animation shows three `Agent`s in an `Environment`. Drift velocities are set so that `Agent`s weally locally attract one another creating "interactive" behaviour.
+
+<img src=".images/readme/multi_agents.gif" width=350>
+
+
+#### **Advanced `Agent` classes**
 One can make more advanced Agent classes, for example `ThetaSequenceAgent()` where the position "sweeps" (blue) over the position of an underlying true (regular) `Agent()` (purple), highly reminiscent of theta sequences observed when one decodes position from the hippocampal populaton code on sub-theta (10 Hz) timescales. This class can be found in the [`contribs`](./ratinabox/contribs/) directory. 
 
 <img src=".images/readme/theta_sequences.gif" width=350>
@@ -220,8 +230,8 @@ One can make more advanced Agent classes, for example `ThetaSequenceAgent()` whe
 
 ### (iii) `Neurons` features 
 
-#### Multiple cell types: 
-We provide a list of premade `Neurons` subclasses. These include: 
+#### **Multiple cell types:**
+We provide a list of premade `Neurons` subclasses. These include (but are not limited to): 
 
 * `PlaceCells` 
 * `GridCells`
@@ -232,11 +242,12 @@ We provide a list of premade `Neurons` subclasses. These include:
 * `SpeedCells`
 * `FeedForwardLayer` - calculates activated weighted sum of inputs from a provide list of input `Neurons` layers.
 * `FieldOfViewNeurons` - Egocentric encoding of what the `Agent` can see 
+* `SuccessorFeatures` - Learns the successor features for a set of features under teh current motion policy
 
-This last class, `FeedForwardLayer` deserves special mention. Instead of its firing rate being determined explicitly by the state of the `Agent` it summates synaptic inputs from a provided list of input layers (which can be any `Neurons` subclass). This layer is the building block for how more complex networks can be studied using `RatInABox`. 
+`FeedForwardLayer` deserves special mention. Instead of its firing rate being determined explicitly by the state of the `Agent` it summates synaptic inputs from a provided list of input layers (which can be any `Neurons` subclass). This layer is the building block for how more complex networks can be studied using `RatInABox`. 
 
 
-#### Noise 
+#### **Noise** 
 Use the `Neurons.noise_std` and `Neurons.noise_coherence_time` parameters to control the amount of noise (Hz) and autocorrelation timescale of the noise (seconds). For example (work with all `Neurons` classes, not just `PlaceCells`): 
 
 ```python
@@ -257,7 +268,7 @@ Neurons.plot_ratemap(spikes=True)
 <img src=".images/readme/spikes.png" width="1000">
 
 
-#### Rate maps 
+#### **Rate maps**
 `PlaceCells`, `GridCells` and allocentric `BoundaryVectorCells` (among others) have firing rates which depend exclusively on the position of the agent. These rate maps can be displayed by querying their firing rate at an array of positions spanning the environment, then plotting. This process is done for you using the function `Neurons.plot_rate_map()`. 
 
 More generally, however, cells firing is not only determined by position but potentially other factors (e.g. velocity, or historical effects if the layer is part of a recurrent network). In these cases the above method of plotting rate maps will necessarily fail. A more robust way to display the receptive field is to plot a heatmap of the positions of the Agent has visited where each positions contribution to a bin is weighted by the firing rate observed at that position. Over time, as coverage become complete, the firing fields become visible.
@@ -269,7 +280,7 @@ Neurons.plot_rate_map(method="history") #plots rate map by firing-rate-weighted 
 <img src=".images/readme/rate_map.png" width=600>
 
 
-#### Place cell models
+#### **Place cell models**
 
 Place cells come in multiple types (given by `params['description']`), or it would be easy to write your own:
 * `"gaussian"`: normal gaussian place cell 
@@ -287,13 +298,13 @@ These place cells (with the exception of `"one_hot"`s) can all be made to phase 
 <img src=".images/readme/phaseprecession.png" width=500>
 
 
-#### Geometry of `PlaceCells` 
+#### **Geometry of `PlaceCells`** 
 Choose how you want `PlaceCells` to interact with walls in the `Environment`. We provide three types of geometries.  
 
 <img src=".images/readme/wall_geometry.png" width=900>
 
 
-#### Egocentric encodings
+#### **Egocentric encodings**
 Most `RatInABox` cell classes are allocentric (e.g. `PlaceCells`, `GridCells` etc. do not depend on the agents point of view) not egocentric. `BoundaryVectorCells` (BVCs) and `ObjectVectorCells` (OVCs) can be either. `FieldOfViewNeurons` exploit this by arranging sets of egocentric BVC or OVCs to tile to agents local field of view creating a comprehensive egocentric encoding of what boundaries or objects the agent can 'see' from it's current point of view. A custom plotting function displays the tiling and the firing rates as shown below. With an adequately defined field of view these can make, for example, "whisker cells". 
 
 ```python
@@ -309,29 +320,35 @@ FoV_whiskers = FieldOfViewNeurons(Ag,params={
 
 <img src=".images/readme/field_of_view.gif" width=600>
 
+#### **Successor Features and Reinforcement Learning**
+A dedicated `Neurons` class called `SuccessorFeatures` learns the successor features for a given feature set under teh current policy. See [this demo](./demos/successor_features_example.ipynb) for more info. 
+<img src=".images/demos/SF_development.gif" width=600>
 
+`SuccessorFeatures` are a specific instance of a more general class of neurons called `ValueNeuron`s which learn value function for any reward density under the `Agent`s motion policy. This can be used to do reinforcement learning tasks such as finding rewards hidden behind walls etc as shown in [this demo](./demos/reinforcement_learning_example.ipynb). 
 
-#### More complex Neuron types and networks of Neurons
-We encourage users to create their own subclasses of `Neurons`. This is easy to do, see comments in the `Neurons` class within the [code](./ratinabox/Neurons.py) for explanation. By forming these classes from the parent `Neurons` class, the plotting and analysis features described above remain available to these bespoke Neuron types. Additionally we provide a `Neurons` subclass called `FeedForwardLayer`. This neuron sums inputs from any provied list of other `Neurons` classes and can be used as the building block for constructing complex multilayer networks of `Neurons`, as we do [here](./demos/path_integration_example.ipynb) and [here](./demos/reinforcement_learning_example.ipynb). 
+Finally, we are working on making an OpenAI `Gym` environment wrapper for `RatInABox`. This should be available soon, keep an eye on [this issue](https://github.com/TomGeorge1234/RatInABox/issues/30). 
+
+#### **More complex Neuron types and networks of Neurons**
+We encourage users to create their own subclasses of `Neurons`. This is easy to do, see comments in the `Neurons` class within the [code](./ratinabox/Neurons.py) for explanation. By forming these classes from the parent `Neurons` class, the plotting and analysis features described above remain available to these bespoke Neuron types. Additionally we provide a `Neurons` subclass called `FeedForwardLayer`. This neuron sums inputs from any provied list of other `Neurons` classes and can be used as the building block for constructing complex multilayer networks of `Neurons`, as we do [here (path integration)](./demos/path_integration_example.ipynb), [here (reinforcement learning)](./demos/reinforcement_learning_example.ipynb) and [here (successor features)](./demos/successor_features_example.ipynb). 
 
 
 
 ### (iv) Figures and animations 
 `RatInABox` is built to be highly visual. It is easy to plot or animate data and save these plots/animations. Here are some tips
 
-#### Saving
+#### **Saving**
 * `ratinabox.figure_directory` a global variable specifying the directory into which figures/animations will be saved 
 * `ratinabox.utils.save_figure(fig,fig_name)` saves a figure (or animation) into a dated folder within the figure directory  as both `".svg"` and `".png"` (`".mp4"` or `".gif"`). The current time will be appended to the `fig_name` so you won't ever overwrite. 
 
 
-#### Saving (but automatically)
+#### **Saving (but automatically)**
 * Setting `ratinabox.autosave_plots = True` means RatInABox figure will be automatically saved in the figure directory without having to indvidually call the `utils` function above. 
 
-#### Styling
+#### **Styling**
 * `ratinabox.stylize_plots()` this call sets some global matplotlib rcParams to make plots look pretty/exactly like they do in this repo
 
 
-#### Most important plotting functions
+#### **Most important plotting functions**
 The most important plotting functions are (see source code for the available arguments/kwargs):
 
 ```python
@@ -373,6 +390,7 @@ fig, ax = PCs.plot_rate_timeseries()
 * [paper_figures.ipynb](./demos/paper_figures.ipynb): (Almost) all plots/animations shown in the paper are produced from this script (plus some major formatting done afterwards in powerpoint).
 * [decoding_position_example.ipynb](./demos/decoding_position_example.ipynb): Postion is decoded from neural data generated with RatInABox. Place cells, grid cell and boundary vector cells are compared. 
 * [reinforcement_learning_example.ipynb](./demos/reinforcement_learning_example.ipynb): RatInABox is use to construct, train and visualise a small two-layer network capable of model free reinforcement learning in order to find a reward hidden behind a wall. 
+* [successor_features_example.ipynb](./successor_features_example.ipynb): RatInABox is use to learn and visualise successor features under random and biased motion policies.
 * [path_integration_example.ipynb](./demos/path_integration_example.ipynb): RatInABox is use to construct, train and visualise a large multi-layer network capable of learning a "ring attractor" capable of path integrating a position estimate using only velocity inputs.
 
 ## Contribute 

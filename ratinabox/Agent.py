@@ -76,8 +76,9 @@ class Agent:
             params (dict, optional). Defaults to {}.
         """
         self.Environment = Environment
+        self.Environment.Agents.append(self)
 
-        self.params = copy.deepcopy(__class__.default_params)        
+        self.params = copy.deepcopy(__class__.default_params)
         self.params.update(params)
 
         utils.update_class_params(self, self.params, get_all_defaults=True)
@@ -568,11 +569,12 @@ class Agent:
         framerate=10,
         fig=None,
         ax=None,
+        plot_all_agents=False,
         point_size=15,
         decay_point_size=False,
         decay_point_timescale=10,
         plot_agent=True,
-        color="#7b699a",
+        color=None,
         alpha=0.7,
         xlim=None,
         background_color=None,
@@ -587,6 +589,7 @@ class Agent:
             • framerate: how many scatter points / per second of motion to display
             • fig, ax: the fig, ax to plot on top of, optional, if not provided used self.Environment.plot_Environment().
               This can be used to plot trajectory on top of receptive fields etc.
+            • plot_all_agents: if True, this will plot the trajectory of all agents in the list Environment.Agents
             • point_size: size of scatter points
             • decay_point_size: decay trajectory point size over time (recent times = largest)
             • decay_point_timescale: if decay_point_size is True, this is the timescale over which sizes decay
@@ -601,83 +604,97 @@ class Agent:
         Returns:
             fig, ax
         """
-
-        dt = self.dt
-        t, pos = np.array(self.history["t"]), np.array(self.history["pos"])
-        if t_end == None:
-            t_end = t[-1]
-        startid = np.nanargmin(np.abs(t - (t_start)))
-        endid = np.nanargmin(np.abs(t - (t_end)))
-        if self.Environment.dimensionality == "2D":
-            skiprate = max(1, int((1 / framerate) / dt))
-            trajectory = pos[startid:endid, :][::skiprate]
-        if self.Environment.dimensionality == "1D":
-            skiprate = max(1, int((1 / framerate) / dt))
-            trajectory = pos[startid:endid][::skiprate]
-        time = t[startid:endid][::skiprate]
-        if color is None:
-            color = ["C0"] * len(time)
-        elif color == "changing":
-            trajectory_cmap = matplotlib.colormaps["viridis_r"]
-            color = [trajectory_cmap(t / len(time)) for t in range(len(time))]
-            decay_point_size = (
-                False  # if changing colour, may as well show WHOLE trajectory
-            )
+        # loop over all agents in the Environment if plot_all_agents is True
+        if plot_all_agents == False:
+            agent_list = [self]
+            if color is None:
+                color = "#7b699a"
         else:
-            color = [color] * len(time)
+            agent_list = self.Environment.Agents
+        replot_env = True
+        for i, self_ in enumerate(agent_list):
+            dt = self_.dt
+            t, pos = np.array(self_.history["t"]), np.array(self_.history["pos"])
+            if t_end == None:
+                t_end = t[-1]
+            startid = np.nanargmin(np.abs(t - (t_start)))
+            endid = np.nanargmin(np.abs(t - (t_end)))
+            if self_.Environment.dimensionality == "2D":
+                skiprate = max(1, int((1 / framerate) / dt))
+                trajectory = pos[startid:endid, :][::skiprate]
+            if self_.Environment.dimensionality == "1D":
+                skiprate = max(1, int((1 / framerate) / dt))
+                trajectory = pos[startid:endid][::skiprate]
+            time = t[startid:endid][::skiprate]
+            if color is None:
+                color_list = [f"C{i}"] * len(time)
+            elif color == "changing":
+                trajectory_cmap = matplotlib.colormaps["viridis_r"]
+                color_list = [trajectory_cmap(t / len(time)) for t in range(len(time))]
+                decay_point_size = (
+                    False  # if changing colour, may as well show WHOLE trajectory
+                )
+            else:
+                color_list = [color] * len(time)
 
-        if self.Environment.dimensionality == "2D":
-            fig, ax = self.Environment.plot_environment(fig=fig, ax=ax, autosave=False)
-            s = point_size * np.ones_like(time)
-            if decay_point_size == True:
-                s = point_size * np.exp((time - time[-1]) / decay_point_timescale)
-                s[(time[-1] - time) > (1.5 * decay_point_timescale)] *= 0
+            if self_.Environment.dimensionality == "2D":
+                if replot_env == True:
+                    fig, ax = self_.Environment.plot_environment(
+                        fig=fig, ax=ax, autosave=False
+                    )
+                replot_env = False
+                s = point_size * np.ones_like(time)
+                if decay_point_size == True:
+                    s = point_size * np.exp((time - time[-1]) / decay_point_timescale)
+                    s[(time[-1] - time) > (1.5 * decay_point_timescale)] *= 0
 
-            if plot_agent == True:
-                s[-1] = 40
-                color[-1] = "r"
+                if plot_agent == True:
+                    s[-1] = 40
+                    color_list[-1] = "r"
 
-            ax.scatter(
-                trajectory[:, 0],
-                trajectory[:, 1],
-                s=s,
-                alpha=alpha,
-                zorder=1.1,
-                c=color,
-                linewidth=0,
-            )
-            # #plot the rat? TODO haha probably never gonna do this
-            # ratpath = os.path.join(
-            #     os.path.abspath(os.path.join(ratinabox.__file__, os.pardir)),
-            #         "data/rat.png",
-            #     )
-            # rat = plt.imread(ratpath)
-            # rect = 0.5, 0.4, 0.4, 0.4 # What should these values be?
-            # newax = fig.add_axes(rect, anchor='NE', zorder=1)
-            # newax.axis('off')
-            # newax.imshow(rat)
+                ax.scatter(
+                    trajectory[:, 0],
+                    trajectory[:, 1],
+                    s=s,
+                    alpha=alpha,
+                    zorder=1.1,
+                    c=color_list,
+                    linewidth=0,
+                )
+                # #plot the rat? TODO haha probably never gonna do this
+                # ratpath = os.path.join(
+                #     os.path.abspath(os.path.join(ratinabox.__file__, os.pardir)),
+                #         "data/rat.png",
+                #     )
+                # rat = plt.imread(ratpath)
+                # rect = 0.5, 0.4, 0.4, 0.4 # What should these values be?
+                # newax = fig.add_axes(rect, anchor='NE', zorder=1)
+                # newax.axis('off')
+                # newax.imshow(rat)
 
-        if self.Environment.dimensionality == "1D":
-            if fig is None and ax is None:
-                fig, ax = plt.subplots(figsize=(3, 1.5))
-            ax.scatter(time / 60, trajectory, alpha=alpha, linewidth=0, c=color, s=5)
-            ax.spines["left"].set_position(("data", t_start / 60))
-            if axis_labels == True:
-                ax.set_xlabel("Time / min")
-                ax.set_ylabel("Position / m")
-            ax.set_xlim([t_start / 60, t_end / 60])
-            if xlim is not None:
-                ax.set_xlim(right=xlim)
+            if self_.Environment.dimensionality == "1D":
+                if fig is None and ax is None:
+                    fig, ax = plt.subplots(figsize=(3, 1.5))
+                ax.scatter(
+                    time / 60, trajectory, alpha=alpha, linewidth=0, c=color_list, s=5
+                )
+                ax.spines["left"].set_position(("data", t_start / 60))
+                if axis_labels == True:
+                    ax.set_xlabel("Time / min")
+                    ax.set_ylabel("Position / m")
+                ax.set_xlim([t_start / 60, t_end / 60])
+                if xlim is not None:
+                    ax.set_xlim(right=xlim)
 
-            ax.set_ylim(bottom=0, top=self.Environment.extent[1])
-            ax.spines["right"].set_color(None)
-            ax.spines["top"].set_color(None)
-            ax.set_xticks([t_start / 60, t_end / 60])
-            ex = self.Environment.extent
-            ax.set_yticks([ex[1]])
-            if background_color is not None:
-                ax.set_facecolor(background_color)
-                fig.patch.set_facecolor(background_color)
+                ax.set_ylim(bottom=0, top=self_.Environment.extent[1])
+                ax.spines["right"].set_color(None)
+                ax.spines["top"].set_color(None)
+                ax.set_xticks([t_start / 60, t_end / 60])
+                ex = self_.Environment.extent
+                ax.set_yticks([ex[1]])
+                if background_color is not None:
+                    ax.set_facecolor(background_color)
+                    fig.patch.set_facecolor(background_color)
 
         ratinabox.utils.save_figure(fig, "trajectory", save=autosave)
 
@@ -687,11 +704,6 @@ class Agent:
         self, t_start=None, t_end=None, fps=15, speed_up=1, autosave=None, **kwargs
     ):
         """Returns an animation (anim) of the trajectory, 25fps.
-        Should be saved using command like
-            >>> anim.save("./where_to_save/animations.gif",dpi=300)
-        To display in jupyter notebook, call it:
-            >>> anim
-
         Args:
             t_start: Agent time at which to start animation
             t_end (_type_, optional): _description_. Defaults to None.
