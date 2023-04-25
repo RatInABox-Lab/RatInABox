@@ -71,6 +71,8 @@ class Environment:
         utils.update_class_params(self, self.params, get_all_defaults=True)
         utils.check_params(self, params.keys())
 
+        self.Agents = []  # each new Agent will append itself to this list
+
         if self.dimensionality == "1D":
             self.D = 1
             self.extent = np.array([0, self.scale])
@@ -140,7 +142,6 @@ class Environment:
             self.n_object_types = 0
             self.object_colormap = "rainbow"
             self.plot_objects = True
-            self.Agents = [] #each new Agent will append itself to this list
 
             # make some other attributes
             left = min([c[0] for c in b])
