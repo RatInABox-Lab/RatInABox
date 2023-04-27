@@ -658,7 +658,7 @@ def update_class_params(Class, params: dict, get_all_defaults=False):
     """
 
     if get_all_defaults:
-        all_default_params = collect_all_default_params(Class.__class__)
+        all_default_params = collect_all_params(Class.__class__)
         all_default_params.update(params)
         params = all_default_params
 
@@ -666,56 +666,60 @@ def update_class_params(Class, params: dict, get_all_defaults=False):
         setattr(Class, key, value)
 
 
-def collect_all_default_params(obj_class, keys_only=False):
-    """Collects all the default_params dictionaries from the current class, including those inherited from its parent classes and its parents parents etc.
+def collect_all_params(obj_class, keys_only=False, dict_name="default_params"):
+    """Collects all the params dictionaries from the current class, including those inherited from its parent classes and its parents parents etc.
 
     Args:
-        obj_class (class): object class for which to collect the default_params dictionaries
-        keys_only (bool, optional): If True, only returns the keys of the default_params dictionaries. Defaults to False.
+        obj_class (class): object class for which to collect the params dictionaries
+        keys_only (bool, optional): If True, only returns the keys of the params dictionaries. Defaults to False.
+        dict_name (str, optional): The name of the class attribute that contains the params dictionary to be collected. Defaults to "default_params".
 
     Returns:
         dict or list:
-            If keys_only == False, returns a dictionary of all the default_params values from the current class, including those inherited from its parent classes.
-            If keys_only == True, returns a list of all the keys of the default_params dictionaries from  the current class and its parent classes.
+            If keys_only == False, returns a dictionary of all the params values from the current class, including those inherited from its parent classes.
+            If keys_only == True, returns a list of all the keys of the params dictionaries from  the current class and its parent classes.
     """
 
     if not inspect.isclass(obj_class):
         raise ValueError("obj_class must be a class object.")
 
-    if not "default_params" in obj_class.__dict__:
+    if not dict_name in obj_class.__dict__.keys():
         warnings.warn(
-            f"Cannot collect the default params dictionaries, as {obj_class} does not "
-            "have a class attribute 'default_params' defined in its preamble. "
-            "(Can be just an empty dictionary, i.e.: default_params = dict().)"
+            f"Cannot collect the {dict_name} dictionaries, as {obj_class.__name__} does not "
+            f"have the class attribute '{dict_name}' defined in its preamble. "
+            f"(Can be just an empty dictionary, i.e.: {dict_name} = dict().)"
         )
-        return
+        if keys_only:
+            return list()
+        else:
+            return dict()
 
     if keys_only:
-        all_default_param_keys = list()
+        all_param_keys = list()
     else:
-        all_default_params_dicts = list()
-        all_default_params = dict()
+        all_params_dicts = list()
+        all_params = dict()
 
-    while hasattr(obj_class, "default_params"):
+    while hasattr(obj_class, dict_name):
         if keys_only:
-            all_default_param_keys.extend(obj_class.default_params.keys())
+            all_param_keys.extend(getattr(obj_class, dict_name).keys())
         else:
-            all_default_params_dicts.append(obj_class.default_params)
+            all_params_dicts.append(getattr(obj_class, dict_name))
         if len(obj_class.__bases__):
             obj_class = obj_class.__bases__[0]
         else:
             break
 
     if keys_only:
-        all_default_param_keys = sorted(set(all_default_param_keys))
-        return all_default_param_keys
+        all_param_keys = sorted(set(all_param_keys))
+        return all_param_keys
 
-    for default_params_dict in all_default_params_dicts[
+    for params_dict in all_params_dicts[
         ::-1
     ]:  # update in reverse (from parents to child class)
-        all_default_params.update(default_params_dict)
+        all_params.update(params_dict)
 
-    return all_default_params
+    return all_params
 
 
 def check_params(Obj, param_keys):
@@ -742,7 +746,7 @@ def check_params(Obj, param_keys):
         )
         return
 
-    all_default_param_keys = collect_all_default_params(obj_class, keys_only=True)
+    all_default_param_keys = collect_all_params(obj_class, keys_only=True, dict_name="default_params")
 
     unexpected_keys = [key for key in param_keys if key not in all_default_param_keys]
 
