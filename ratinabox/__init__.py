@@ -10,6 +10,13 @@ _stylize_plot_warnings_on = (
     True  # whether to warn that rcParams haven't been set to make plots look good
 )
 _stylized_plots = False  # whether rcParams have been set to make plots look good
+
+MOUNTAIN_PLOT_WIDTH_MM = (
+    4 * 25
+)  # width of mountain plots (e.g rate timeseries plots and 1D ratemaps)
+MOUNTAIN_PLOT_SHIFT_MM = 2  # this is the shift between the nth mountain plot line and the (n+1)th mountain plot line
+MOUNTAIN_PLOT_OVERLAP = 2.2  # this is the max fraction the nth mountain plot line will over lap into the (n+1)th mountain plot line
+
 from .Environment import *
 from .Agent import *
 from .Neurons import *
@@ -95,8 +102,3 @@ def stylize_plots():
     )
 
     ratinabox._stylized_plots = True
-
-
-# print(
-#     "RatInABox successfully imported.\n    (optional) To automatically format and save RatInABox figures \n           • set  `ratinabox.autosave_plots = True`\n           • set  `ratinabox.figure_directory = 'path/to/figures/'`\n           • call `ratinabox.stylize_plots()`",end="\n\n"
-# )

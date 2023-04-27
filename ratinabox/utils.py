@@ -470,8 +470,9 @@ def mountain_plot(
     fig=None,
     ax=None,
     norm_by="max",
-    overlap=0.8,
-    shift=4,
+    width=ratinabox.MOUNTAIN_PLOT_WIDTH_MM,
+    overlap=ratinabox.MOUNTAIN_PLOT_OVERLAP,
+    shift=ratinabox.MOUNTAIN_PLOT_SHIFT_MM,
     **kwargs,
 ):
     """Make a mountain plot.
@@ -506,7 +507,7 @@ def mountain_plot(
         NbyX = overlap * NbyX / norm_by
     if fig is None and ax is None:
         fig, ax = plt.subplots()
-        fig.set_size_inches(4, len(NbyX) * shift / 25)
+        fig.set_size_inches(width / 25, len(NbyX) * shift / 25)
 
     zorder = 1
     for i in range(len(NbyX)):

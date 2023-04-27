@@ -230,7 +230,13 @@ class Environment:
 
         if self.dimensionality == "1D":
             extent = self.extent
-            fig, ax = plt.subplots(figsize=(2 * (extent[1] - extent[0]), (5.5 / 25)))
+            if fig is None and ax is None:
+                fig, ax = plt.subplots(
+                    figsize=(
+                        ratinabox.MOUNTAIN_PLOT_WIDTH_MM / 25 * (extent[1] - extent[0]),
+                        1,
+                    )
+                )
             ax.set_xlim(left=extent[0], right=extent[1])
             ax.spines["left"].set_color("none")
             ax.spines["right"].set_color("none")

@@ -114,7 +114,6 @@ class Neurons:
 
         self.firingrate = np.zeros(self.n)
         self.noise = np.zeros(self.n)
-
         self.history = {}
         self.history["t"] = []
         self.history["firingrate"] = []
@@ -205,9 +204,6 @@ class Neurons:
         # neurons to plot
         chosen_neurons = self.return_list_of_neurons(chosen_neurons)
         n_neurons_to_plot = len(chosen_neurons)
-        if ("shift" not in kwargs.keys()) and ("overlap" not in kwargs.keys()):
-            kwargs["shift"] = 2
-            kwargs["overlap"] = 2.2
         spike_data = spike_data[startid:endid, chosen_neurons]
         rate_timeseries = rate_timeseries[:, chosen_neurons]
         if color is None:
@@ -350,6 +346,7 @@ class Neurons:
             coloralpha[-1] = 0.5
 
         chosen_neurons = self.return_list_of_neurons(chosen_neurons=chosen_neurons)
+        N_neurons = len(chosen_neurons)
 
         # PLOT 2D
         if self.Agent.Environment.dimensionality == "2D":
@@ -475,14 +472,17 @@ class Neurons:
                 rate_maps = np.array(rate_maps)
 
             if fig is None and ax is None:
+                fig, ax = plt.subplots(
+                    figsize=(
+                        ratinabox.MOUNTAIN_PLOT_WIDTH_MM / 25,
+                        N_neurons * ratinabox.MOUNTAIN_PLOT_SHIFT_MM / 25,
+                    )
+                )
                 fig, ax = self.Agent.Environment.plot_environment(
-                    autosave=False,
+                    autosave=False, fig=fig, ax=ax
                 )
 
             if method != "neither":
-                if ("shift" not in kwargs.keys()) and ("overlap" not in kwargs.keys()):
-                    kwargs["shift"] = 2
-                    kwargs["overlap"] = 2.2
                 fig, ax = utils.mountain_plot(
                     X=x, NbyX=rate_maps, color=self.color, fig=fig, ax=ax, **kwargs
                 )
@@ -689,20 +689,30 @@ class PlaceCells(Neurons):
         self.params = copy.deepcopy(__class__.default_params)
         self.params.update(params)
 
-        super().__init__(Agent, self.params)
-
-        if self.place_cell_centres is None:
-            self.place_cell_centres = self.Agent.Environment.sample_positions(
-                n=self.n, method="uniform_jitter"
+        if self.params["place_cell_centres"] is None:
+            self.params["place_cell_centres"] = self.Agent.Environment.sample_positions(
+                n=self.params["n"], method="uniform_jitter"
             )
-        elif type(self.place_cell_centres) is str:
-            if self.place_cell_centres in ["random", "uniform", "uniform_jitter"]:
-                self.place_cell_centres = self.Agent.Environment.sample_positions(
-                    n=self.n, method=self.place_cell_centres
+        elif type(self.params["place_cell_centres"]) is str:
+            if self.params["place_cell_centres"] in [
+                "random",
+                "uniform",
+                "uniform_jitter",
+            ]:
+                self.params[
+                    "place_cell_centres"
+                ] = self.Agent.Environment.sample_positions(
+                    n=self.params["n"], method=self.params["place_cell_centres"]
+                )
+            else:
+                raise ValueError(
+                    "self.params['place_cell_centres'] must be None, an array of locations or one of the instructions ['random', 'uniform', 'uniform_jitter']"
                 )
         else:
-            self.n = self.place_cell_centres.shape[0]
-        self.place_cell_widths = self.widths * np.ones(self.n)
+            self.params["n"] = self.params["place_cell_centres"].shape[0]
+        self.place_cell_widths = self.params["widths"] * np.ones(self.params['n'])
+
+        super().__init__(Agent, self.params)
 
         # Assertions (some combinations of boundary condition and wall geometries aren't allowed)
         if self.Agent.Environment.dimensionality == "2D":
