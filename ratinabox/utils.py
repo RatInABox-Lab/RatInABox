@@ -12,6 +12,8 @@ import ratinabox
 """OTHER USEFUL FUNCTIONS"""
 """Geometry functions"""
 
+"testing..."
+
 
 def get_perpendicular(a=None):
     """Given 2-vector, a, returns its perpendicular
@@ -747,7 +749,9 @@ def check_params(Obj, param_keys):
         )
         return
 
-    all_default_param_keys = collect_all_params(obj_class, keys_only=True, dict_name="default_params")
+    all_default_param_keys = collect_all_params(
+        obj_class, keys_only=True, dict_name="default_params"
+    )
 
     unexpected_keys = [key for key in param_keys if key not in all_default_param_keys]
 
