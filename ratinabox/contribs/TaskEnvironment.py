@@ -57,11 +57,18 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
                  render_mode='matplotlib', 
                  render_every=None, render_every_framestep=2,
                  dt=0.01, teleport_on_reset=False, 
-                 save_expired_rewards=False, goalcachekws=dict(), **kws):
+                 save_expired_rewards=False, 
+                 goals=[], # one can pass in goal objects directly here
+                 goalcachekws=dict(), 
+                 **kws):
         super().__init__(*pos, **kws)
         self.dynamic_walls = []      # list of walls that can change/move
         self.dynamic_objects = []    # list of current objects that can move
         self.Agents:dict[str,Agent] = {} # dict of agents in the environment
+        # replenish from this list of goals on reset
+        self.goal_reservoir:List = goals if isinstance(goals, list) else \
+                                    [goals]
+        self.goal_reservoir_random = 0 # if >0, then randomly select from reservoir on .reset()
         self.goal_cache:GoalCache = GoalCache(self, **goalcachekws) # list of current goals to satisfy per agent
         self.t = 0                   # current time
         self.dt = dt                 # time step
@@ -83,8 +90,8 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         # Setup gym primatives
         # ----------------------------------------------
         # Setup observation space from the Environment space
-        self.observation_spaces:Dict[Space] = Dict({})
-        self.action_spaces:Dict[Space]      = Dict({})
+        self.observation_spaces:Dict[Space]       = Dict({})
+        self.action_spaces:Dict[Space]            = Dict({})
         self.reward_caches:dict[str, RewardCache] = {}
         self.agent_names:List[str]     = []
         self.agents:List[str] = [] # pettingzoo variable
@@ -276,7 +283,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         self.t += self.dt # base task class only has a clock
         self.history['t'].append(self.t)
 
-    def step(self, actions:Union[dict,np.array]=None, dt=None, 
+    def step(self, actions:Union[dict,np.array,None]=None, dt=None, 
              drift_to_random_strength_ratio=1, *pos, **kws):
         """
             step()
@@ -292,12 +299,16 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         """
 
         # If the user passed drift_velocity, update the agents
-        actions = actions if isinstance(actions, dict) else \
-                  self._dict(actions)
+        if actions is not None:
+            actions = actions if isinstance(actions, dict) else \
+                      self._dict(actions)
+        else:
+            # Move agents randomly on None
+            actions = self._dict([None for _ in range(len(self.Agents))])
         for (agent, action) in zip(self.agents, actions.values()):
             Ag = self.Agents[agent]
             dt = dt if dt is not None else Ag.dt
-            action = np.array(action).ravel()
+            action = np.array(action).ravel() if action is not None else None
             Ag.update(dt=dt, drift_velocity=action,
                          drift_to_random_strength_ratio= \
                                  drift_to_random_strength_ratio)
@@ -311,7 +322,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
 
         # If any terminal agents, remove from set of active agents
         for agent, term in self._dict(self._is_terminal_state()).items():
-            if term:
+            if term and agent in self.agents:
                 self.agents.remove(agent)
         
         # Return the next state, reward, whether the state is terminal,
@@ -322,7 +333,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
                 self._dict([self.info])
                 )
 
-    def step1(self, action, *pos, **kws):
+    def step1(self, action=None, *pos, **kws):
         """
         shortcut for stepping when only 1 agent exists...makes it behave
         like gymnasium instead of pettingzoo
@@ -340,6 +351,20 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         """ Get the current reward state of each agent """
         return {name:agent.reward.get_total()
                 for name, agent in self.Agents.items()}
+
+    def _is_terminal_state(self):
+        """ Whether the current state is a terminal state """
+        # Check our objectives
+        test_goal = 0
+        # Loop through objectives, checking if they are satisfied
+        rewards, agents = self.goal_cache.check(remove_finished=True)
+        for reward, agent in zip(rewards, agents):
+            self.reward_caches[agent].append(reward)
+        if self.verbose:
+            print("GOALS:",self.goal_cache.goals)
+        # Return if no objectives left
+        no_objectives_left = len(self.goal_cache) == 0
+        return no_objectives_left
 
     # ----------------------------------------------
     # Reading and writing episode data
@@ -378,9 +403,11 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         # if self.verbose:
         #     print("rendering environment with mode: {}".format(render_mode))
         if render_mode == 'matplotlib':
-            self._render_matplotlib(*pos, **kws)
+            out =  self._render_matplotlib(*pos, **kws)
+            assert out is not None
+            return out
         elif render_mode == 'pygame':
-            self._render_pygame(*pos, **kws)
+            return self._render_pygame(*pos, **kws)
         elif render_mode == 'none':
             pass
         else:
@@ -396,19 +423,20 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             keyword arguments to pass to the agent's render method
         """
 
+        R, fig, ax = self._get_mpl_render_cache()
+
         if np.mod(self.t, self.render_every) < self.dt:
             # Skip rendering unless this is redraw time
-            return False
-
-        R = self._get_mpl_render_cache()
+            return fig, ax
     
-        # Render the environment
-        self._render_mpl_env()
+        else:
+            # Render the environment
+            self._render_mpl_env()
 
-        # Render the agents
-        self._render_mpl_agents(**agentkws)
+            # Render the agents
+            self._render_mpl_agents(**agentkws)
 
-        return True
+            return fig, ax
 
     def _get_mpl_render_cache(self):
         if "matplotlib" not in self._stable_render_objects:
@@ -469,14 +497,14 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             c, s = self._agent_style(agent, t, color, startid=startid, 
                                      skiprate=skiprate, **kws)
             return trajectory, c, s
-        if initialize or \
-                len(R["agents"]) != len(self.Agents):
+        if initialize or len(R["agents"]) != len(self.Agents):
             R["agents"]        = []
             for (i, agent) in enumerate(self.Agents.values()):
-                trajectory, c, s = get_agent_props(agent, i)
-                ax.scatter(*trajectory.T,
-                    s=s, alpha=alpha, zorder=0, c=c, linewidth=0)
-                R["agents"].append(ax.collections[-1])
+                if len(agent.history['t']):
+                    trajectory, c, s = get_agent_props(agent, i)
+                    ax.scatter(*trajectory.T,
+                        s=s, alpha=alpha, zorder=0, c=c, linewidth=0)
+                    R["agents"].append(ax.collections[-1])
         else:
             for i, agent in enumerate(self.Agents.values()):
                 scat = R["agents"][i]
@@ -550,11 +578,13 @@ class Reward():
         "exponential": [2],
         "none":        []
     }
-    def __init__(self, init_state, dt,
+    def __init__(self, init_state, dt=0.01,
                  expire_clock=None, decay=None,
                  decay_knobs=[], 
                  external_drive:Union[FunctionType,None]=None,
-                 external_drive_strength=1):
+                 external_drive_strength=1,
+                 name="reward",
+                 ):
         """
         Parameters
         ----------
@@ -594,6 +624,7 @@ class Reward():
         self.external_drive = external_drive
         self.external_drive_strength = external_drive_strength
         self.history = {'state':[], 'expire_clock':[]}
+        self.name = name
 
     def update(self):
         """
@@ -625,12 +656,13 @@ class Reward():
             change = -(self.decay(state)) 
         return change
 
-    def plot_theoretical_reward(self, timerange=(0,1)):
+    def plot_theoretical_reward(self, timerange=(0,1), name=None):
         """
         plot the reward dynamics : shows the user how their parameters of
         interest setup reward dynamics, without updating the object
         """
         rewards = [self.state]
+        name = self.name if name is None else name
         timesteps = np.arange(timerange[0], timerange[1], self.dt)
         for t in timesteps[1:]:
             r = rewards[-1] + self.get_delta(state=rewards[-1]) * self.dt
@@ -638,15 +670,17 @@ class Reward():
         plt.plot(timesteps, rewards[:len(timesteps)],
                label=f"reward={self.preset}, " 
                f"knobs={self.decay_knobs}")
-        plt.axvspan(self.expire_clock, plt.gca().get_ylim()[-1], color='r', 
-                    alpha=0.2)
+        y1 = np.min((self.state, 0, np.min(plt.gca().get_ylim())))
+        y2 = np.max((self.state, 0, np.max(plt.gca().get_ylim())))
+        plt.axvspan(0, self.expire_clock, *np.sort(plt.gca().get_ylim()),
+                    color='r', alpha=0.2)
         plt.text(np.mean((plt.gca().get_xlim()[0], self.expire_clock)), 
-                 np.mean(plt.gca().get_ylim()), "reward\nactive",
+                 np.mean(plt.gca().get_ylim()), f"{name}\nactive",
                  backgroundcolor='black', color="white")
         plt.text(np.mean((self.expire_clock, plt.gca().get_xlim()[-1])), 
-                 np.mean(plt.gca().get_ylim()), "reward\nexpires",
+                 np.mean(plt.gca().get_ylim()), f"{name}\nexpires",
                  backgroundcolor='black', color="white")
-        plt.gca().set(xlabel="time (s)", ylabel="reward signal")
+        plt.gca().set(xlabel="time (s)", ylabel=f"{name} signal")
         return plt.gcf(), plt.gca()
 
 class RewardCache():
@@ -684,7 +718,6 @@ class RewardCache():
         """
         return sum([reward.state for reward in self.cache])
 
-
 reward_default=Reward(1, 0.01, expire_clock=1, decay="linear")
 
 class Goal():
@@ -692,7 +725,7 @@ class Goal():
     Abstract `Objective` class that can be used to define finishing coditions
     for a task
     """
-    def __init__(self, env:TaskEnvironment, 
+    def __init__(self, env:TaskEnvironment=None, 
                  reward=reward_default):
         self.env = env
         self.reward = reward
@@ -790,9 +823,9 @@ class GoalCache():
                 if len(self.goals[agent]) == 0:
                     continue
                 this:int = self._if_sequential__last_acheived[agent] + 1
-                reward, solution_agents = self.goals[agent][this].check(agent)
-                if agent in solution_agents:
-                    rewards.append(reward[0] if reward is not None
+                solution_agents = self.goals[agent][this].check(agent)
+                for agent, reward in solution_agents.items():
+                    rewards.append(reward if reward is not None
                                    else None)
                     agents.append(agent)
                     self._if_sequential__last_acheived[agent] = this
@@ -809,9 +842,11 @@ class GoalCache():
                     continue
                 g = 0 # goal index
                 while g < len(self.goals[agent]):
-                    reward, solution_agents = self.goals[agent][g].check(agent)
-                    if agent in solution_agents:
-                        rewards.append(reward[0] if reward is not None
+                    solution_agents = self.goals[agent][g].check(agent)
+                    for agent, reward in solution_agents.items():
+                        if not isinstance(reward, Reward):
+                            import pdb; pdb.set_trace()
+                        rewards.append(reward if reward is not None
                                        else None)
                         agents.append(agent)
                         if remove_finished:
@@ -916,11 +951,14 @@ class SpatialGoal(Goal):
     see also : Goal
     """
     def __init__(self, *positionals, reward=reward_default, 
-                 pos:Union[np.ndarray,None], goal_radius=None, **kws):
+                 pos:Union[np.ndarray,None]=None, goal_radius=None, **kws):
         super().__init__(*positionals, **kws)
-        if self.env.verbose:
+        if self.env is not None and self.env.verbose:
             print("new SpatialGoal: goal_pos = {}".format(pos))
-        self.pos = pos
+        if pos is not None:
+            self.pos = np.array(pos)
+        else:
+            self.pos = np.random.rand(int(len(self.env.extent)/2))
         self.radius = np.min((self.env.dx * 10, np.ptp(self.env.extent)/10)) \
                 if goal_radius is None else goal_radius
     
@@ -950,19 +988,17 @@ class SpatialGoal(Goal):
 
         Returns
         -------
-        rewards : List[float]
-            The rewards for each agent
-        which_agents : np.ndarray
-            The names of the agents that satisfied the goal
+        dict[str, Reward] dict of rule-triggering agents and 
+                          their "reward" objects
         """
         agents = self.env._agentnames(agents)
         agents_reached_goal = []
         for agent in agents:
-            agents_reached_goal.append(
-            self._in_goal_radius(self.env.Agents[agent].pos, self.pos).all().any())
-        rewarded_agents = np.array(agents)[agents_reached_goal]
-        rewards = [self.reward] * len(rewarded_agents)
-        return rewards, rewarded_agents
+            agent_pos = self.env.Agents[agent].pos
+            goal_pos = self.pos
+            if self._in_goal_radius(agent_pos, goal_pos).all().any():
+                agents_reached_goal.append(agent)
+        return {agent:self.reward for agent in agents_reached_goal}
 
     def __eq__(self, other:Union[Goal, np.ndarray, list]):
         if isinstance(other, SpatialGoal):
@@ -992,31 +1028,35 @@ class SpatialGoalEnvironment(TaskEnvironment):
         List of possible goal positions
     current_goal_state : np.ndarray | None
         The current goal position
-    n_goals : int
+    pick_n_goals : int
         The number of goals to set
     """
     # --------------------------------------
     # Some reasonable default render settings
     # --------------------------------------
     def __init__(self, *pos, 
-                 reward=reward_default, goalkws=dict(),
-                 possible_goal_pos:Union[List,np.ndarray,str]='random_5', 
+                 possible_goals:Union[None,List[SpatialGoal]]=None,
+                 possible_goal_positions:Union[List,np.ndarray,str]='random_5', 
                  current_goal_state:Union[None,np.ndarray,List[np.ndarray]]=None, 
-                 n_goals:int=1,
+                 pick_n_goals:int=1,
+                 goalkws=dict(),
                  **kws):
         super().__init__(*pos, **kws)
-        self.goalkws = dict()
-        self.goalkws.update({'reward':reward})
-        self.goalkws.update(goalkws)
-        self.possible_goals:List[SpatialGoal] = \
-                self._init_poss_goal_positions(possible_goal_pos)
-        self.n_goals = n_goals
+        if possible_goals is None:
+            self.goalkws = goalkws
+            self.goal_reservoir:List[SpatialGoal] = \
+                    self._init_poss_goal_positions(possible_goal_positions)
+        else:
+            self.goal_reservoir = possible_goals
+        self.pick_n_goals = pick_n_goals
 
     def _init_poss_goal_positions(self, 
-                         possible_goal_position:Union[List,np.ndarray,str]) ->list[SpatialGoal]:
+            possible_goal_position:Union[List,np.ndarray,str]) ->list[SpatialGoal]:
         """ 
-        Initialize the possible goal positions 
-
+        Shortcut function for intializing a set of goals from numpy
+        array or from a string saying how many goals to randomly create our
+        reservoir from. The reservoir is the pool used to replinish the
+        list of goals from on .reset()
 
         Parameters
         ----------
@@ -1050,7 +1090,8 @@ class SpatialGoalEnvironment(TaskEnvironment):
 
 
     def get_goal_positions(self)->np.ndarray:
-        """ Get the current goal positions
+        """ 
+        Shortcut for getting an numpy array of goal positions
         dimensions: (n_goals, n_dimensions)
         """
         return np.array([goal.pos for goal in self.goal_cache.get_goals()])
@@ -1065,23 +1106,22 @@ class SpatialGoalEnvironment(TaskEnvironment):
         """
         super().reset(**kws)
 
-
         # How many goals to set?
         if goal_locations is not None:
             ng = len(goal_locations)
         elif n_objectives is not None:
             ng = n_objectives
         else:
-            ng = self.n_goals
+            ng = self.pick_n_goals
 
         # Push new spatial objectives to the cache
         self.goal_cache.clear()
         # Set the number of required spatial spatial goals
         for g in range(ng):
             if goal_locations is None:
-                if len(self.possible_goals):
-                    g = np.random.choice(np.arange(len(self.possible_goals)), 1)
-                    goal_pos = np.array(self.possible_goals)[g]
+                if len(self.goal_reservoir):
+                    g = np.random.choice(np.arange(len(self.goal_reservoir)), 1)
+                    goal_pos = np.array(self.goal_reservoir)[g]
                 else:
                     warnings.warn("No possible goal positions specified yet")
                     goal_pos = None # No goal state (this could be, e.g., a lockout time)
@@ -1097,34 +1137,6 @@ class SpatialGoalEnvironment(TaskEnvironment):
 
         return self.get_observation()
 
-    def _is_terminal_state(self):
-        """ Whether the current state is a terminal state """
-        # Check our objectives
-        test_goal = 0
-        # Loop through objectives, checking if they are satisfied
-        rewards, agents = self.goal_cache.check(remove_finished=True)
-        for reward, agent in zip(rewards, agents):
-            self.reward_caches[agent].append(reward)
-        if self.verbose:
-            print("GOALS:",self.goal_cache.goals)
-        # Return if no objectives left
-        no_objectives_left = len(self.goal_cache) == 0
-        return no_objectives_left
-
-    def update(self, *pos, **kws):
-        """
-        Update the environment
-
-        if drift_velocity is passed, update the agents
-        """
-        # Update the environment
-        super().update(*pos, **kws)
-
-        # Check if we are done
-        if self._is_terminal_state():
-            self.reset()
-
-
     # --------------------------------------
     # Rendering
     # --------------------------------------
@@ -1138,9 +1150,10 @@ class SpatialGoalEnvironment(TaskEnvironment):
         goalkws : dict
             keyword arguments to pass to the spatial goal rendering
         """
-        if super()._render_matplotlib(**kws):
-            # Render the spatial goals
-            self._render_mpl_spat_goals(**goalkws)
+        out = super()._render_matplotlib(**kws)
+        # Render the spatial goals
+        self._render_mpl_spat_goals(**goalkws)
+        return out
 
     def _render_mpl_spat_goals(self, facecolor="red", alpha=0.1,
                                marker="x", c="red"):
@@ -1215,7 +1228,9 @@ if active and __name__ == "__main__":
     #################################################################
     # Create a reward that goals emit (this is optional, there is a default
     #                                   reward, but this could be set to None)
-    r1=Reward(1, dt=0.01, expire_clock=0.5, decay="linear", decay_knobs=[6])
+    r1=Reward(1, expire_clock=0.5, decay="linear", decay_knobs=[6])
+    pun=Reward(-1, expire_clock=0.5, decay="linear", decay_knobs=[6], 
+               name="punish")
     r1.plot_theoretical_reward()
     # Any options for the goal objects that track whether animals satisfy a
     # goal? These can be either reward, position and radius of the goal.
@@ -1234,7 +1249,7 @@ if active and __name__ == "__main__":
     #                   ENVIRONMENT
     #################################################################
     # Create a test environment
-    env = SpatialGoalEnvironment(n_goals=2, params={'dimensionality':'2D'},
+    env = SpatialGoalEnvironment(pick_n_goals=2, params={'dimensionality':'2D'},
                                  render_every=1, 
                                  teleport_on_reset=False,
                                  goalkws=goalkws, goalcachekws=goalcachekws,
