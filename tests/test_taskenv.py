@@ -31,7 +31,7 @@ def Agents(request, Ag):
     return [Ag] * request.param
 
 @pytest.fixture(params=[1,3])
-def n_goals(request):
+def pick_n_goals(request):
     """
     Returns a list of n goals
     """
@@ -42,7 +42,7 @@ def n_goals(request):
                         np.array([[0.00001,0.00001]]),
                         "random_2",       # string
                         ]) 
-def possible_goal_pos(request):
+def possible_goal_positions(request):
     return request.param
 
 @pytest.fixture(params=["interact","noninteract"])
@@ -51,12 +51,12 @@ def agentmode(request):
 
 @pytest.fixture(params=[
     {"dimensionality":"2D"}])
-def Env(request, n_goals, possible_goal_pos, agentmode):
+def Env(request, pick_n_goals, possible_goal_positions, agentmode):
     """
     Returns an Environment with a given dimensionality
     """
-    env = SpatialGoalEnvironment(possible_goal_pos=possible_goal_pos,
-                                 render_every=1, n_goals=n_goals,
+    env = SpatialGoalEnvironment(possible_goal_positions=possible_goal_positions,
+                                 render_every=1, pick_n_goals=pick_n_goals,
                                  goalcachekws=dict(agentmode=agentmode), 
                                  params=request.param)
     return env
