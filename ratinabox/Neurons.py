@@ -206,6 +206,10 @@ class Neurons:
         n_neurons_to_plot = len(chosen_neurons)
         spike_data = spike_data[startid:endid, chosen_neurons]
         rate_timeseries = rate_timeseries[:, chosen_neurons]
+
+        was_fig, was_ax = (fig is None), (
+            ax is None
+        )  # remember whether a fig or ax was provided as xlims depend on this
         if color is None:
             color = self.color
         if imshow == False:
@@ -235,8 +239,8 @@ class Neurons:
                         linewidth=0,
                     )
 
-            xmin = min(t_start / 60, ax.get_xlim()[0])
-            xmax = max(t_end / 60, ax.get_xlim()[1])
+            xmin = t_start / 60 if was_fig else min(t_start / 60, ax.get_xlim()[0])
+            xmax = t_end / 60 if was_fig else max(t_end / 60, ax.get_xlim()[1])
             ax.set_xlim(
                 left=xmin,
                 right=xmax,
@@ -710,7 +714,7 @@ class PlaceCells(Neurons):
                 )
         else:
             self.params["n"] = self.params["place_cell_centres"].shape[0]
-        self.place_cell_widths = self.params["widths"] * np.ones(self.params['n'])
+        self.place_cell_widths = self.params["widths"] * np.ones(self.params["n"])
 
         super().__init__(Agent, self.params)
 

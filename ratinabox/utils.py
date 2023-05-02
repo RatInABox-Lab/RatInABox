@@ -12,9 +12,6 @@ import ratinabox
 """OTHER USEFUL FUNCTIONS"""
 """Geometry functions"""
 
-"testing..."
-
-
 def get_perpendicular(a=None):
     """Given 2-vector, a, returns its perpendicular
     Args:
