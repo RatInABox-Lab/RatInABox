@@ -500,10 +500,7 @@ def mountain_plot(
     c = np.array(matplotlib.colors.to_rgb(c))
     fc = 0.3 * c + (1 - 0.3) * np.array([1, 1, 1])  # convert rgb+alpha to rgb
 
-    if norm_by == "max":
-        NbyX = overlap * NbyX / np.max(np.abs(NbyX))
-    else:
-        NbyX = overlap * NbyX / norm_by
+    NbyX = overlap * NbyX / (np.max(np.abs(NbyX)) if norm_by=="max" else norm_by)
     if fig is None and ax is None:
         fig, ax = plt.subplots()
         fig.set_size_inches(width / 25, len(NbyX) * shift / 25)
