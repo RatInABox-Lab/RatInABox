@@ -439,6 +439,7 @@ def bin_data_for_histogramming(data, extent, dx, weights=None, norm_by_bincount=
         heatmap, xedges = np.histogram(data, bins=bins, weights=weights)
         if norm_by_bincount:
             bincount = np.histogram(data, bins=bins)[0]
+            bincount[bincount == 0] = 1
             heatmap = heatmap / bincount
         centres = (xedges[1:] + xedges[:-1]) / 2
         return (heatmap, centres)
