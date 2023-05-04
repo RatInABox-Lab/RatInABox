@@ -562,6 +562,34 @@ class Agent:
 
         return
 
+    def get_history_slice(self, t_start=None, t_end=None, framerate=None):
+        """ "
+        Returns a python slice() object which can be used to get a slice of history lists between t_start and t_end with framerate. Use case:
+        >>> slice = get_history_slice(0,10*60,20)
+        >>> t = self.history['t'][slice]
+        >>> pos = self.history['pos'][slice]
+        t and pos are now lists of times and positions between t_start=0 and t_end=10*60 at 20 frames per second
+
+        Args:
+            • t_start: start time in seconds (default = self.history['t'][0])
+            • t_end: end time in seconds (default = self.history["t"][-1])
+            • framerate: frames per second (default = None --> step=0 so, just whatever the data frequency (1/Ag.dt) is)
+        """
+
+        t = np.array(self.history["t"])
+        if t_start is None:
+            t_start = t[0]
+        startid = np.nanargmin(np.abs(t - (t_start)))
+        if t_end is None:
+            t_end = t[-1]
+        endid = np.nanargmin(np.abs(t - (t_end)))
+        if framerate is None:
+            skiprate = 1
+        else:
+            skiprate = max(1, int((1 / framerate) / self.dt))
+
+        return slice(startid, endid, skiprate)
+
     def plot_trajectory(
         self,
         t_start=0,
@@ -589,7 +617,7 @@ class Agent:
             • framerate: how many scatter points / per second of motion to display
             • fig, ax: the fig, ax to plot on top of, optional, if not provided used self.Environment.plot_Environment().
               This can be used to plot trajectory on top of receptive fields etc.
-            • plot_all_agents: if True, this will plot the trajectory of all agents in the list Environment.Agents
+            • plot_all_agents: if True, this will plot the trajectory of all agents in the list self.Environment.Agents
             • point_size: size of scatter points
             • decay_point_size: decay trajectory point size over time (recent times = largest)
             • decay_point_timescale: if decay_point_size is True, this is the timescale over which sizes decay
@@ -613,19 +641,12 @@ class Agent:
             agent_list = self.Environment.Agents
         replot_env = True
         for i, self_ in enumerate(agent_list):
-            dt = self_.dt
-            t, pos = np.array(self_.history["t"]), np.array(self_.history["pos"])
-            if t_end == None:
-                t_end = t[-1]
-            startid = np.nanargmin(np.abs(t - (t_start)))
-            endid = np.nanargmin(np.abs(t - (t_end)))
-            if self_.Environment.dimensionality == "2D":
-                skiprate = max(1, int((1 / framerate) / dt))
-                trajectory = pos[startid:endid, :][::skiprate]
-            if self_.Environment.dimensionality == "1D":
-                skiprate = max(1, int((1 / framerate) / dt))
-                trajectory = pos[startid:endid][::skiprate]
-            time = t[startid:endid][::skiprate]
+            t_end is t_end or self_.history["t"][-1]
+            slice = self_.get_history_slice(
+                t_start=t_start, t_end=t_end, framerate=framerate
+            )
+            time = np.array(self_.history["t"])[slice]
+            trajectory = np.array(self_.history["pos"])[slice]
             if color is None:
                 color_list = [f"C{i}"] * len(time)
             elif color == "changing":

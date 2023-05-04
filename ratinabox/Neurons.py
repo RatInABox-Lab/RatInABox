@@ -156,7 +156,7 @@ class Neurons:
 
     def plot_rate_timeseries(
         self,
-        t_start=None,
+        t_start=0,
         t_end=None,
         chosen_neurons="all",
         spikes=False,
@@ -178,7 +178,7 @@ class Neurons:
             chosen_neurons (str, optional): Which neurons to plot. string "10" will plot 10 of them, "all" will plot all of them, a list like [1,4,5] will plot cells indexed 1, 4 and 5. Defaults to "10".
             • spikes (bool, optional): If True, scatters exact spike times underneath each curve of firing rate. Defaults to True.
             the below params I just added for help with animations
-            • imshow - if True will not dispaly as mountain plot but as an image (plt.imshow)
+            • imshow - if True will not dispaly as mountain plot but as an image (plt.imshow). Thee "extent" will be (t_start, t_end, 0, 1) in case you want to plot on top of this
             • fig, ax: the figure, axis to plot on (can be None)
             xlim: fix xlim of plot irrespective of how much time you're plotting
             • color: color of the line, if None, defaults to cell class default (probalby "C1")
@@ -190,21 +190,16 @@ class Neurons:
             fig, ax
         """
         t = np.array(self.history["t"])
-        # times to plot
-        if t_start is None:
-            t_start = t[0]
-        if t_end is None:
-            t_end = t[-1]
-        startid = np.argmin(np.abs(t - (t_start)))
-        endid = np.argmin(np.abs(t - (t_end)))
-        rate_timeseries = np.array(self.history["firingrate"][startid:endid])
-        spike_data = np.array(self.history["spikes"][startid:endid])
-        t = t[startid:endid]
+        t_end = t_end or t[-1]
+        slice = self.Agent.get_history_slice(t_start, t_end)
+        rate_timeseries = np.array(self.history["firingrate"][slice])
+        spike_data = np.array(self.history["spikes"][slice])
+        t = t[slice]
 
         # neurons to plot
         chosen_neurons = self.return_list_of_neurons(chosen_neurons)
         n_neurons_to_plot = len(chosen_neurons)
-        spike_data = spike_data[startid:endid, chosen_neurons]
+        spike_data = spike_data[slice, chosen_neurons]
         rate_timeseries = rate_timeseries[:, chosen_neurons]
 
         was_fig, was_ax = (fig is None), (
@@ -258,14 +253,24 @@ class Neurons:
 
         elif imshow == True:
             if fig is None and ax is None:
-                fig, ax = plt.subplots(figsize=(8, 4))
+                fig, ax = plt.subplots(
+                    figsize=(
+                        ratinabox.MOUNTAIN_PLOT_WIDTH_MM / 25,
+                        0.5 * ratinabox.MOUNTAIN_PLOT_WIDTH_MM / 25,
+                    )
+                )
             data = rate_timeseries.T
-            ax.imshow(data[::-1], aspect=0.3 * data.shape[1] / data.shape[0])
+            ax.imshow(
+                data[::-1],
+                aspect="auto",
+                # aspect=0.5 * data.shape[1] / data.shape[0],
+                extent=(t_start, t_end, 0, 1),
+            )
             ax.spines["top"].set_visible(False)
             ax.spines["right"].set_visible(False)
             ax.spines["left"].set_visible(False)
             ax.set_xlabel("Time / min")
-            ax.set_xticks([0 - 0.5, len(t) + 0.5])
+            ax.set_xticks([t_start, t_end])
             ax.set_xticklabels([round(t_start / 60, 2), round(t_end / 60, 2)])
             ax.set_yticks([])
             ax.set_ylabel("Neurons")
@@ -329,17 +334,16 @@ class Neurons:
                 )
                 return
             t_end = t_end or t[-1]
-            startid = np.argmin(np.abs(t - (t_start)))
-            endid = np.argmin(np.abs(t - (t_end)))
-            pos = np.array(self.Agent.history["pos"])[startid:endid]
-            t = t[startid:endid]
+            slice = self.Agent.get_history_slice(t_start, t_end)
+            pos = np.array(self.Agent.history["pos"])[slice]
+            t = t[slice]
 
             if method == "history":
-                rate_timeseries = np.array(self.history["firingrate"])[startid:endid].T
+                rate_timeseries = np.array(self.history["firingrate"])[slice].T
                 if len(rate_timeseries) == 0:
                     print("No historical data with which to calculate ratemap.")
             if spikes == True:
-                spike_data = np.array(self.history["spikes"])[startid:endid].T
+                spike_data = np.array(self.history["spikes"])[slice].T
                 if len(spike_data) == 0:
                     print("No historical data with which to plot spikes.")
 
