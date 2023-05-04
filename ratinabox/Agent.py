@@ -563,7 +563,7 @@ class Agent:
         return
 
     def get_history_slice(self, t_start=None, t_end=None, framerate=None):
-        """ "
+        """
         Returns a python slice() object which can be used to get a slice of history lists between t_start and t_end with framerate. Use case:
         >>> slice = get_history_slice(0,10*60,20)
         >>> t = self.history['t'][slice]
@@ -577,11 +577,9 @@ class Agent:
         """
 
         t = np.array(self.history["t"])
-        if t_start is None:
-            t_start = t[0]
+        t_start = (t_start or t[0])
         startid = np.nanargmin(np.abs(t - (t_start)))
-        if t_end is None:
-            t_end = t[-1]
+        t_end = (t_end or t[-1])
         endid = np.nanargmin(np.abs(t - (t_end)))
         if framerate is None:
             skiprate = 1
@@ -641,7 +639,8 @@ class Agent:
             agent_list = self.Environment.Agents
         replot_env = True
         for i, self_ in enumerate(agent_list):
-            t_end is t_end or self_.history["t"][-1]
+            t_end = t_end or self_.history["t"][-1]
+            print("t_end:", t_end)
             slice = self_.get_history_slice(
                 t_start=t_start, t_end=t_end, framerate=framerate
             )
