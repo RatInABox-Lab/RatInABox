@@ -504,8 +504,15 @@ def mountain_plot(
 
     NbyX = overlap * NbyX / (np.max(np.abs(NbyX)) if norm_by == "max" else norm_by)
     if fig is None and ax is None:
-        fig, ax = plt.subplots()
-        fig.set_size_inches(width / 25, len(NbyX) * shift / 25)
+        w, h = width / 25, len(NbyX) * shift / 25
+        # fig, ax = plt.subplots()
+        # fig.set_size_inches(w,h)
+
+        #new way: adds extra space for captions etc. within figure frame 
+        dw, dh = 1, 1 #extra space for captions
+        fig = plt.figure(figsize = (w+dw,h+dh)) 
+        ax = fig.add_axes([dw/(2*(w+dw)),dh/(2*(h+dh)),w/(w+dw),h/(h+dh)])
+
 
     zorder = 1
     for i in range(len(NbyX)):

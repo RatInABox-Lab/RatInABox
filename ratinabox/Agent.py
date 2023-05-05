@@ -489,7 +489,6 @@ class Agent:
                 ),
                 dataset + ".npz",
             )
-            print(dataset)
             try:
                 data = np.load(dataset)
             except FileNotFoundError:
@@ -577,9 +576,9 @@ class Agent:
         """
 
         t = np.array(self.history["t"])
-        t_start = (t_start or t[0])
+        t_start = t_start or t[0]
         startid = np.nanargmin(np.abs(t - (t_start)))
-        t_end = (t_end or t[-1])
+        t_end = t_end or t[-1]
         endid = np.nanargmin(np.abs(t - (t_end)))
         if framerate is None:
             skiprate = 1
@@ -640,7 +639,6 @@ class Agent:
         replot_env = True
         for i, self_ in enumerate(agent_list):
             t_end = t_end or self_.history["t"][-1]
-            print("t_end:", t_end)
             slice = self_.get_history_slice(
                 t_start=t_start, t_end=t_end, framerate=framerate
             )
@@ -694,7 +692,19 @@ class Agent:
 
             if self_.Environment.dimensionality == "1D":
                 if fig is None and ax is None:
-                    fig, ax = plt.subplots(figsize=(3, 1.5))
+                    w, h = ratinabox.MOUNTAIN_PLOT_WIDTH_MM / 25, 2
+                    dw, dh = 1, 1
+                    fig = plt.figure(figsize=(w + dw, h + dh))
+                    ax = fig.add_axes(
+                        [
+                            dw / (2 * (w + dw)),
+                            dh / (2 * (h + dh)),
+                            w / (w + dw),
+                            h / (h + dh),
+                        ]
+                    )
+                    # fig = plt.figure
+                    # fig, ax = plt.subplots(figsize=(3, 1.5))
                 ax.scatter(
                     time / 60, trajectory, alpha=alpha, linewidth=0, c=color_list, s=5
                 )
@@ -710,6 +720,7 @@ class Agent:
                 ax.spines["right"].set_visible(False)
                 ax.spines["top"].set_visible(False)
                 ax.set_xticks([t_start / 60, t_end / 60])
+                ax.set_xticklabels([round(t_start / 60, 2), round(t_end / 60, 2)])
                 ex = self_.Environment.extent
                 ax.set_yticks([ex[1]])
                 if background_color is not None:

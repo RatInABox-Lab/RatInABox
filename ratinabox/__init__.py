@@ -87,7 +87,6 @@ def stylize_plots():
     rcParams["boxplot.whiskerprops.linewidth"] = 1
     rcParams["boxplot.capprops.linewidth"] = 1
     # SAVEFIG
-    rcParams["savefig.dpi"] = 150
     rcParams["savefig.facecolor"] = [1, 1, 1, 0]
     rcParams["savefig.edgecolor"] = [1, 1, 1, 0]
     # COLORSCHEME
