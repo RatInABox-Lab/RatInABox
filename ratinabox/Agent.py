@@ -707,8 +707,8 @@ class Agent:
                     ax.set_xlim(right=xlim)
 
                 ax.set_ylim(bottom=0, top=self_.Environment.extent[1])
-                ax.spines["right"].set_color(None)
-                ax.spines["top"].set_color(None)
+                ax.spines["right"].set_visible(False)
+                ax.spines["top"].set_visible(False)
                 ax.set_xticks([t_start / 60, t_end / 60])
                 ex = self_.Environment.extent
                 ax.set_yticks([ex[1]])
@@ -872,9 +872,9 @@ class Agent:
         ax.set_xlabel(r"Speed  / $ms^{-1}$")
         ax.set_yticks([])
         ax.set_xlim(left=0, right=8 * std)
-        ax.spines["left"].set_color(None)
-        ax.spines["right"].set_color(None)
-        ax.spines["top"].set_color(None)
+        ax.spines["left"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        ax.spines["top"].set_visible(False)
 
         ratinabox.utils.save_figure(fig, "speed_histogram", save=autosave)
 
@@ -916,9 +916,9 @@ class Agent:
         )
         ax.set_yticks([])
         ax.set_xlim(-5 * std, 5 * std)
-        ax.spines["left"].set_color(None)
-        ax.spines["right"].set_color(None)
-        ax.spines["top"].set_color(None)
+        ax.spines["left"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        ax.spines["top"].set_visible(False)
         ax.set_xlabel(r"Rotational velocity / $^{\circ} s^{-1}$")
 
         ratinabox.utils.save_figure(fig, "rotational_velocity_histogram", save=autosave)

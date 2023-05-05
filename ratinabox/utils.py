@@ -12,6 +12,7 @@ import ratinabox
 """OTHER USEFUL FUNCTIONS"""
 """Geometry functions"""
 
+
 def get_perpendicular(a=None):
     """Given 2-vector, a, returns its perpendicular
     Args:
@@ -501,7 +502,7 @@ def mountain_plot(
     c = np.array(matplotlib.colors.to_rgb(c))
     fc = 0.3 * c + (1 - 0.3) * np.array([1, 1, 1])  # convert rgb+alpha to rgb
 
-    NbyX = overlap * NbyX / (np.max(np.abs(NbyX)) if norm_by=="max" else norm_by)
+    NbyX = overlap * NbyX / (np.max(np.abs(NbyX)) if norm_by == "max" else norm_by)
     if fig is None and ax is None:
         fig, ax = plt.subplots()
         fig.set_size_inches(width / 25, len(NbyX) * shift / 25)
@@ -520,9 +521,9 @@ def mountain_plot(
     ax.set_yticks([1, len(NbyX)])
     ax.set_ylim(1 - 0.5, len(NbyX) + 1.1 * overlap)
     ax.set_xticks(np.arange(max(X + 0.1)))
-    ax.spines["left"].set_color(None)
-    ax.spines["right"].set_color(None)
-    ax.spines["top"].set_color(None)
+    ax.spines["left"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["top"].set_visible(False)
     ax.set_yticks([])
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
