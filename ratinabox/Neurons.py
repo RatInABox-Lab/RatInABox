@@ -988,6 +988,8 @@ class BoundaryVectorCells(Neurons):
 
     BoundaryVectorCells defines a set of 'n' BVCs cells with random orientations preferences, distance preferences  (these can be set non-randomly of course). We use the model described firstly by Hartley et al. (2000) and more recently de Cothi and Barry (2000).
 
+    Distance preferences can also be drawn from chosen distributions, including "uniform" (default), rayleigh, noraml, and delta
+
     BVCs can have allocentric (mec,subiculum) OR egocentric (ppc, retrosplenial cortex) reference frames.
 
     List of functions:
@@ -998,6 +1000,7 @@ class BoundaryVectorCells(Neurons):
             "n": 10,
             "reference_frame": "allocentric",
             "pref_wall_dist": 0.15,
+            "pref_wall_dist_distribution": "uniform",
             "angle_spread_degrees": 11.25,
             "xi": 0.08,  # as in de cothi and barry 2020
             "beta": 12,
@@ -1012,6 +1015,7 @@ class BoundaryVectorCells(Neurons):
         "n": 10,
         "reference_frame": "allocentric",
         "pref_wall_dist": 0.15,
+        "pref_wall_dist_distribution": "uniform",
         "angle_spread_degrees": 11.25,
         "xi": 0.08,
         "beta": 12,
@@ -1059,10 +1063,22 @@ class BoundaryVectorCells(Neurons):
             [(self.angle_spread_degrees / 360) * 2 * np.pi] * self.n
         )
         self.tuning_angles = np.random.uniform(0, 2 * np.pi, size=self.n)
-        self.tuning_distances = np.random.rayleigh(
-            scale=self.pref_wall_dist,
-            size=self.n,
-        )
+
+        # define tuning distances from specific distribution in params dict
+        if self.pref_wall_dist_distribution == 'ralyeigh':
+            self.tuning_distances = np.random.rayleigh(scale=self.pref_wall_dist,
+                                                       size=self.n)
+        elif self.pref_wall_dist_distribution == 'uniform':
+            self.tuning_distances = np.random.uniform(low=0,
+                                                      high=self.Agent.Environment.scale,
+                                                      size=self.n)
+        elif self.pref_wall_dist_distribution == 'normal':
+            self.tuning_distances = np.random.normal(loc=self.pref_wall_dist,
+                                                     scale=self.pref_wall_dist,
+                                                     size=self.n)
+        elif self.pref_wall_dist_distribution == 'delta':
+            self.tuning_distances = self.pref_wall_dist * np.ones(self.n)
+
         self.sigma_distances = self.tuning_distances / beta + xi
 
         # calculate normalising constants for BVS firing rates in the current environment. Any extra walls you add from here onwards you add will likely push the firingrate up further.
