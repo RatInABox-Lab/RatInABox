@@ -508,11 +508,12 @@ def mountain_plot(
         # fig, ax = plt.subplots()
         # fig.set_size_inches(w,h)
 
-        #new way: adds extra space for captions etc. within figure frame 
-        dw, dh = 1, 1 #extra space for captions
-        fig = plt.figure(figsize = (w+dw,h+dh)) 
-        ax = fig.add_axes([dw/(2*(w+dw)),dh/(2*(h+dh)),w/(w+dw),h/(h+dh)])
-
+        # new way: adds extra space for captions etc. within figure frame
+        dw, dh = 1, 1  # extra space for captions
+        fig = plt.figure(figsize=(w + dw, h + dh))
+        ax = fig.add_axes(
+            [dw / (2 * (w + dw)), dh / (2 * (h + dh)), w / (w + dw), h / (h + dh)]
+        )
 
     zorder = 1
     for i in range(len(NbyX)):

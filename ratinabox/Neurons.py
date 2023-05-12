@@ -974,7 +974,7 @@ class GridCells(Neurons):
             (0 + dy / 2) : (self.gridscale - dy / 2) : (n_y * 1j),
         ]
         grid = grid.reshape(2, -1).T
-        remaining = np.random.unifuniorm(0, self.gridscale, size=(n_remaining, 2))
+        remaining = np.random.uniform(0, self.gridscale, size=(n_remaining, 2))
 
         all_offsets = np.vstack([grid, remaining])
 
@@ -988,7 +988,7 @@ class BoundaryVectorCells(Neurons):
 
     BoundaryVectorCells defines a set of 'n' BVCs cells with random orientations preferences, distance preferences  (these can be set non-randomly of course). We use the model described firstly by Hartley et al. (2000) and more recently de Cothi and Barry (2000).
 
-    Distance preferences can also be drawn from chosen distributions, including "uniform" (default), rayleigh, noraml, and delta
+    Distance preferences of each BVC are drawn fro ma random distribution which can be one of "uniform" (default), "rayleigh", "normal", and "delta" and parameterised by "wall_pref_dist".
 
     BVCs can have allocentric (mec,subiculum) OR egocentric (ppc, retrosplenial cortex) reference frames.
 
@@ -1014,7 +1014,7 @@ class BoundaryVectorCells(Neurons):
     default_params = {
         "n": 10,
         "reference_frame": "allocentric",
-        "pref_wall_dist": 0.15,
+        "pref_wall_dist": 0.25,
         "pref_wall_dist_distribution": "uniform",
         "angle_spread_degrees": 11.25,
         "xi": 0.08,
@@ -1065,22 +1065,25 @@ class BoundaryVectorCells(Neurons):
         self.tuning_angles = np.random.uniform(0, 2 * np.pi, size=self.n)
 
         # define tuning distances from specific distribution in params dict
-        if self.pref_wall_dist_distribution == 'ralyeigh':
-            self.tuning_distances = np.random.rayleigh(scale=self.pref_wall_dist,
-                                                       size=self.n)
-        elif self.pref_wall_dist_distribution == 'uniform':
-            self.tuning_distances = np.random.uniform(low=0,
-                                                      high=self.pref_wall_dist * 2,
-                                                      size=self.n)
-        elif self.pref_wall_dist_distribution == 'normal':
+        if self.pref_wall_dist_distribution == "rayleigh":
+            self.tuning_distances = np.random.rayleigh(
+                scale=self.pref_wall_dist, size=self.n
+            )
+        elif self.pref_wall_dist_distribution == "uniform":
+            self.tuning_distances = np.random.uniform(
+                low=0, high=self.pref_wall_dist * 2, size=self.n
+            )
+        elif self.pref_wall_dist_distribution == "normal":
             lower, upper = 0, self.Agent.Environment.scale
             mu, sigma = self.pref_wall_dist, self.pref_wall_dist / 2
-            self.tuning_distances = scipy.stats.truncnorm.rvs((lower - mu)/sigma,
-                                                              (upper-mu)/sigma,
-                                                              scale=sigma,
-                                                              size=self.n,
-                                                              loc=mu)
-        elif self.pref_wall_dist_distribution == 'delta':
+            self.tuning_distances = scipy.stats.truncnorm.rvs(
+                (lower - mu) / sigma,
+                (upper - mu) / sigma,
+                scale=sigma,
+                loc=mu,
+                size=self.n,
+            )
+        elif self.pref_wall_dist_distribution == "delta":
             self.tuning_distances = self.pref_wall_dist * np.ones(self.n)
 
         self.sigma_distances = self.tuning_distances / beta + xi
