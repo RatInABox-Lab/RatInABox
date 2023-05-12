@@ -974,7 +974,7 @@ class GridCells(Neurons):
             (0 + dy / 2) : (self.gridscale - dy / 2) : (n_y * 1j),
         ]
         grid = grid.reshape(2, -1).T
-        remaining = np.random.uniform(0, self.gridscale, size=(n_remaining, 2))
+        remaining = np.random.unifuniorm(0, self.gridscale, size=(n_remaining, 2))
 
         all_offsets = np.vstack([grid, remaining])
 
@@ -1070,12 +1070,16 @@ class BoundaryVectorCells(Neurons):
                                                        size=self.n)
         elif self.pref_wall_dist_distribution == 'uniform':
             self.tuning_distances = np.random.uniform(low=0,
-                                                      high=self.Agent.Environment.scale,
+                                                      high=self.pref_wall_dist * 2,
                                                       size=self.n)
         elif self.pref_wall_dist_distribution == 'normal':
-            self.tuning_distances = np.random.normal(loc=self.pref_wall_dist,
-                                                     scale=self.pref_wall_dist,
-                                                     size=self.n)
+            lower, upper = 0, self.Agent.Environment.scale
+            mu, sigma = self.pref_wall_dist, self.pref_wall_dist / 2
+            self.tuning_distances = scipy.stats.truncnorm.rvs((lower - mu)/sigma,
+                                                              (upper-mu)/sigma,
+                                                              scale=sigma,
+                                                              size=self.n,
+                                                              loc=mu)
         elif self.pref_wall_dist_distribution == 'delta':
             self.tuning_distances = self.pref_wall_dist * np.ones(self.n)
 
