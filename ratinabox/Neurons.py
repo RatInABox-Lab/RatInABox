@@ -431,7 +431,7 @@ class Neurons:
                             extent=ex,
                             cmap="inferno",
                             interpolation="bicubic",
-                            zorder=1,
+                            zorder=0,
                         )
                     ims.append(im)
                     vmin, vmax = (
