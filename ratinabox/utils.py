@@ -2,7 +2,9 @@ import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
 import scipy
+import inspect
 import os
+import warnings
 from datetime import datetime
 from scipy import stats as stats
 import ratinabox
@@ -438,6 +440,7 @@ def bin_data_for_histogramming(data, extent, dx, weights=None, norm_by_bincount=
         heatmap, xedges = np.histogram(data, bins=bins, weights=weights)
         if norm_by_bincount:
             bincount = np.histogram(data, bins=bins)[0]
+            bincount[bincount == 0] = 1
             heatmap = heatmap / bincount
         centres = (xedges[1:] + xedges[:-1]) / 2
         return (heatmap, centres)
@@ -468,8 +471,9 @@ def mountain_plot(
     fig=None,
     ax=None,
     norm_by="max",
-    overlap=0.8,
-    shift=4,
+    width=ratinabox.MOUNTAIN_PLOT_WIDTH_MM,
+    overlap=ratinabox.MOUNTAIN_PLOT_OVERLAP,
+    shift=ratinabox.MOUNTAIN_PLOT_SHIFT_MM,
     **kwargs,
 ):
     """Make a mountain plot.
@@ -498,13 +502,18 @@ def mountain_plot(
     c = np.array(matplotlib.colors.to_rgb(c))
     fc = 0.3 * c + (1 - 0.3) * np.array([1, 1, 1])  # convert rgb+alpha to rgb
 
-    if norm_by == "max":
-        NbyX = overlap * NbyX / np.max(np.abs(NbyX))
-    else:
-        NbyX = overlap * NbyX / norm_by
+    NbyX = overlap * NbyX / (np.max(np.abs(NbyX)) if norm_by == "max" else norm_by)
     if fig is None and ax is None:
-        fig, ax = plt.subplots()
-        fig.set_size_inches(4, len(NbyX) * shift / 25)
+        w, h = width / 25, len(NbyX) * shift / 25
+        # fig, ax = plt.subplots()
+        # fig.set_size_inches(w,h)
+
+        # new way: adds extra space for captions etc. within figure frame
+        dw, dh = 1, 1  # extra space for captions
+        fig = plt.figure(figsize=(w + dw, h + dh))
+        ax = fig.add_axes(
+            [dw / (2 * (w + dw)), dh / (2 * (h + dh)), w / (w + dw), h / (h + dh)]
+        )
 
     zorder = 1
     for i in range(len(NbyX)):
@@ -520,9 +529,9 @@ def mountain_plot(
     ax.set_yticks([1, len(NbyX)])
     ax.set_ylim(1 - 0.5, len(NbyX) + 1.1 * overlap)
     ax.set_xticks(np.arange(max(X + 0.1)))
-    ax.spines["left"].set_color(None)
-    ax.spines["right"].set_color(None)
-    ax.spines["top"].set_color(None)
+    ax.spines["left"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["top"].set_visible(False)
     ax.set_yticks([])
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
@@ -595,20 +604,13 @@ def save_figure(
         print(f"       (the current working directory is {os.getcwd()})")
         return
 
-    if figure_directory[-1] != "/":
-        figure_directory += "/"
-
-    if not os.path.isdir(figure_directory):
-        os.mkdir(figure_directory)
-
     # make today-specific directory inside figure directory
     today = datetime.strftime(datetime.now(), "%d_%m_%y")
-    if not os.path.isdir(figure_directory + f"{today}/"):
-        os.mkdir(figure_directory + f"{today}/")
+    figdir = os.path.join(figure_directory, f"{today}")
+    os.makedirs(figdir, exist_ok=True)
 
-    figdir = figure_directory + f"{today}/"
     now = datetime.strftime(datetime.now(), "%H%M")
-    path_ = f"{figdir}{save_title}_{now}"
+    path_ = os.path.join(figdir, f"{save_title}_{now}")
     path = path_
 
     if type(fig) == matplotlib.figure.Figure:
@@ -617,14 +619,14 @@ def save_figure(
         for filetype in fig_save_types:
             i = 1
             while True:  # checks there isn't an existing figure with this name
-                if os.path.isfile(path + "." + filetype):
-                    path = path_ + "_" + str(i)
+                if os.path.isfile(f"{path}.{filetype}"):
+                    path = f"{path_}_{i}"
                     i += 1
                 elif i >= 100:
                     break
                 else:
                     break
-            fig.savefig(path + "." + filetype, bbox_inches="tight")
+            fig.savefig(f"{path}.{filetype}", bbox_inches="tight")
 
     elif type(fig) == matplotlib.animation.FuncAnimation:
         file_type = "Animation"
@@ -632,14 +634,14 @@ def save_figure(
         for filetype in anim_save_types:
             i = 1
             while True:
-                if os.path.isfile(path + "." + filetype):
-                    path = path_ + "_" + str(i)
+                if os.path.isfile(f"{path}.{filetype}"):
+                    path = f"{path_}_{i}"
                     i += 1
                 elif i >= 100:
                     break
                 else:
                     break
-            fig.save(path + "." + filetype)
+            fig.save(f"{path}.{filetype}")
 
     print(f"{file_type} saved to {os.path.abspath(path)}.{save_types}")
 
@@ -651,18 +653,122 @@ def save_animation(*args, **kwargs):
     return save_figure(*args, **kwargs)
 
 
-"""Other"""
+"""High-level functions"""
 
 
-def update_class_params(Class, params: dict):
+def update_class_params(Class, params: dict, get_all_defaults=False):
     """Updates parameters from a dictionary.
     All parameters found in params will be updated to new value
     Args:
         params (dict): dictionary of parameters to change
         initialise (bool, optional): [description]. Defaults to False.
     """
+
+    if get_all_defaults:
+        all_default_params = collect_all_params(Class.__class__)
+        all_default_params.update(params)
+        params = all_default_params
+
     for key, value in params.items():
         setattr(Class, key, value)
+
+
+def collect_all_params(obj_class, keys_only=False, dict_name="default_params"):
+    """Collects all the params dictionaries from the current class, including those inherited from its parent classes and its parents parents etc.
+
+    Args:
+        obj_class (class): object class for which to collect the params dictionaries
+        keys_only (bool, optional): If True, only returns the keys of the params dictionaries. Defaults to False.
+        dict_name (str, optional): The name of the class attribute that contains the params dictionary to be collected. Defaults to "default_params".
+
+    Returns:
+        dict or list:
+            If keys_only == False, returns a dictionary of all the params values from the current class, including those inherited from its parent classes.
+            If keys_only == True, returns a list of all the keys of the params dictionaries from  the current class and its parent classes.
+    """
+
+    if not inspect.isclass(obj_class):
+        raise ValueError("obj_class must be a class object.")
+
+    if not dict_name in obj_class.__dict__.keys():
+        warnings.warn(
+            f"Cannot collect the {dict_name} dictionaries, as {obj_class.__name__} does not "
+            f"have the class attribute '{dict_name}' defined in its preamble. "
+            f"(Can be just an empty dictionary, i.e.: {dict_name} = dict().)"
+        )
+        if keys_only:
+            return list()
+        else:
+            return dict()
+
+    if keys_only:
+        all_param_keys = list()
+    else:
+        all_params_dicts = list()
+        all_params = dict()
+
+    while hasattr(obj_class, dict_name):
+        if keys_only:
+            all_param_keys.extend(getattr(obj_class, dict_name).keys())
+        else:
+            all_params_dicts.append(getattr(obj_class, dict_name))
+        if len(obj_class.__bases__):
+            obj_class = obj_class.__bases__[0]
+        else:
+            break
+
+    if keys_only:
+        all_param_keys = sorted(set(all_param_keys))
+        return all_param_keys
+
+    for params_dict in all_params_dicts[
+        ::-1
+    ]:  # update in reverse (from parents to child class)
+        all_params.update(params_dict)
+
+    return all_params
+
+
+def check_params(Obj, param_keys):
+    """Given an object and a list of keys, checks whether the keys are all in
+    the object's default_params dictionary.
+
+    Args:
+        Obj (object): object to check
+        param_keys (list): list of keys to check
+
+    Returns:
+        list: list of keys in param_keys that weren't expected based on the default parameters of Obj
+    """
+
+    if inspect.isclass(Obj):
+        raise ValueError("Obj must be an instance of a class, not a class object.")
+
+    obj_class = Obj.__class__
+    if not "default_params" in obj_class.__dict__:
+        warnings.warn(
+            f"Cannot check the keys in the params dictionary, as {obj_class} does not "
+            "have a class attribute 'default_params' defined in its preamble. "
+            "(Can be just an empty dictionary, i.e.: default_params = dict().)"
+        )
+        return
+
+    all_default_param_keys = collect_all_params(
+        obj_class, keys_only=True, dict_name="default_params"
+    )
+
+    unexpected_keys = [key for key in param_keys if key not in all_default_param_keys]
+
+    if len(unexpected_keys):
+        num = len(unexpected_keys)
+        unexpected_keys = ", ".join([f"'{attr}'" for attr in unexpected_keys])
+
+        warnings.warn(
+            f"Found {num} unexpected params key(s) while initializing "
+            f"{obj_class.__name__} object: {unexpected_keys}.\nIf you intended to set this parameter, ignore this message. To see all default parameters for this class call {obj_class.__name__}.get_all_default_params()."
+        )
+
+    return unexpected_keys
 
 
 def activate(x, activation="sigmoid", deriv=False, other_args={}):

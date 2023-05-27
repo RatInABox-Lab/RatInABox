@@ -5,6 +5,7 @@ from ratinabox.utils import *
 
 import matplotlib
 
+import copy
 import numpy as np
 import math
 
@@ -29,19 +30,20 @@ class FieldOfViewNeurons(Neurons):
         Neurons (_type_): _description_
     """
 
-    def __init__(self, Agent, params={}):
-        default_params = {
-            "FoV_distance": [0.0, 0.2],  # min and max distances the agent can "see"
-            "FoV_angles": [
-                0,
-                90,
-            ],  # angluar FoV in degrees (will be symmetric on both sides, so give range in 0 (forwards) to 180 (backwards)
-            "spatial_resolution": 0.04,  # resolution of each BVC tiling FoV
-            "cell_type": "BVC",  # FoV neurons can either respond to local boundaries ("BVC") or objects ("OVC")
-        }
+    default_params = {
+        "FoV_distance": [0.0, 0.2],  # min and max distances the agent can "see"
+        "FoV_angles": [
+            0,
+            90,
+        ],  # angluar FoV in degrees (will be symmetric on both sides, so give range in 0 (forwards) to 180 (backwards)
+        "spatial_resolution": 0.04,  # resolution of each BVC tiling FoV
+        "cell_type": "BVC",  # FoV neurons can either respond to local boundaries ("BVC") or objects ("OVC")
+    }
 
-        default_params.update(params)
-        self.params = default_params
+    def __init__(self, Agent, params={}):
+
+        self.params = copy.deepcopy(__class__.default_params)        
+        self.params.update(params)
 
         # tile FoV within angular and distance specifications given as params
         self.FoV_angles_radians = [a * np.pi / 180 for a in self.params["FoV_angles"]]

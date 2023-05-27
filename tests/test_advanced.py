@@ -1,5 +1,5 @@
 # TO DO: write more detailed tests 
-# For now, test_advanced will simply try to run versions of the "simple", "extensive" and "decoding_position" demo scripts. Assuming no error is raised the test has passed. It will also test whether exteranl data (sargolini) can be imported to test data availability. 
+# For now, test_advanced will simply try to run versions of the "simple", "extensive" and "decoding_position" demo scripts. Assuming no error is raised the test has passed. It will also test whether external data (Sargolini) can be imported to test data availability. 
 # This is an okay safety net for now but should be improved in future versions
 
 #this test requires scikitlearn 

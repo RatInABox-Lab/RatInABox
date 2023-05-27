@@ -1,5 +1,8 @@
 import ratinabox
 
+import copy
+import warnings
+import pprint
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
@@ -34,14 +37,17 @@ class Neurons:
 
     ============================================================================================
     MyNeuronClass(Neurons):
+
+        default_params = {'a_default_param":3.14159} # default params dictionary is defined in the preamble, as a class attribute. Note its values are passed upwards and used in all the parents classes of your class.
+
         def __init__(self,
                      Agent,
                      params={}): #<-- do not change these
 
-            default_params = {'a_default_param":3.14159} #note this params dictionary is passed upwards and used in all the parents classes of your class.
 
-            default_params.update(params)
-            self.params = default_params
+            self.params = copy.deepcopy(__class__.default_params) # to get the default param dictionary of the current class, defined in the preamble, use __class__. Then, make sure to deepcopy it, as only making a shallow copy can have unintended consequences (i.e., any modifications to it would be propagated to ALL instances of this class!).
+            self.params.update(params)
+
             super().__init__(Agent,self.params)
 
         def get_state(self,
@@ -80,6 +86,15 @@ class Neurons:
         }
     """
 
+    default_params = {
+        "n": 10,
+        "name": "Neurons",
+        "color": None,  # just for plotting
+        "noise_std": 0,  # 0 means no noise, std of the noise you want to add (Hz)
+        "noise_coherence_time": 0.5,
+        "save_history": True,  # whether to save history (set to False if you don't intend to access Neuron.history for data after, for better memory performance)
+    }
+
     def __init__(self, Agent, params={}):
         """Initialise Neurons(), takes as input a parameter dictionary. Any values not provided by the params dictionary are taken from a default dictionary below.
 
@@ -88,22 +103,17 @@ class Neurons:
 
         Typically you will not actually initialise a Neurons() class, instead you will initialised by one of it's subclasses.
         """
-        default_params = {
-            "n": 10,
-            "name": "Neurons",
-            "color": None,  # just for plotting
-            "noise_std": 0,  # 0 means no noise, std of the noise you want to add (Hz)
-            "noise_coherence_time": 0.5,
-            "save_history": True,  # whether to save history (set to Falsem if you don't intend to acess Neuron.history for data after, for better memory performance)
-        }
+
         self.Agent = Agent
-        default_params.update(params)
-        self.params = default_params
-        utils.update_class_params(self, self.params)
+
+        self.params = copy.deepcopy(__class__.default_params)
+        self.params.update(params)
+
+        utils.update_class_params(self, self.params, get_all_defaults=True)
+        utils.check_params(self, params.keys())
 
         self.firingrate = np.zeros(self.n)
         self.noise = np.zeros(self.n)
-
         self.history = {}
         self.history["t"] = []
         self.history["firingrate"] = []
@@ -113,6 +123,14 @@ class Neurons:
             print(
                 f"\nA Neurons() class has been initialised with parameters f{self.params}. Use Neurons.update() to update the firing rate of the Neurons to correspond with the Agent.Firing rates and spikes are saved into the Agent.history dictionary. Plot a timeseries of the rate using Neurons.plot_rate_timeseries(). Plot a rate map of the Neurons using Neurons.plot_rate_map()."
             )
+
+    @classmethod
+    def get_all_default_params(cls, verbose=False):
+        """Returns a dictionary of all the default parameters of the class, including those inherited from its parents."""
+        all_default_params = utils.collect_all_params(cls, dict_name="default_params")
+        if verbose:
+            pprint.pprint(all_default_params)
+        return all_default_params
 
     def update(self):
         # update noise vector
@@ -138,7 +156,7 @@ class Neurons:
 
     def plot_rate_timeseries(
         self,
-        t_start=None,
+        t_start=0,
         t_end=None,
         chosen_neurons="all",
         spikes=False,
@@ -160,7 +178,7 @@ class Neurons:
             chosen_neurons (str, optional): Which neurons to plot. string "10" will plot 10 of them, "all" will plot all of them, a list like [1,4,5] will plot cells indexed 1, 4 and 5. Defaults to "10".
             • spikes (bool, optional): If True, scatters exact spike times underneath each curve of firing rate. Defaults to True.
             the below params I just added for help with animations
-            • imshow - if True will not dispaly as mountain plot but as an image (plt.imshow)
+            • imshow - if True will not dispaly as mountain plot but as an image (plt.imshow). Thee "extent" will be (t_start, t_end, 0, 1) in case you want to plot on top of this
             • fig, ax: the figure, axis to plot on (can be None)
             xlim: fix xlim of plot irrespective of how much time you're plotting
             • color: color of the line, if None, defaults to cell class default (probalby "C1")
@@ -172,28 +190,21 @@ class Neurons:
             fig, ax
         """
         t = np.array(self.history["t"])
-        # times to plot
-        if t_start is None:
-            t_start = t[0]
-        if t_end is None:
-            t_end = t[-1]
-        startid = np.argmin(np.abs(t - (t_start)))
-        endid = np.argmin(np.abs(t - (t_end)))
-        rate_timeseries = np.array(self.history["firingrate"][startid:endid])
-        spike_data = np.array(self.history["spikes"][startid:endid])
-        t = t[startid:endid]
+        t_end = t_end or t[-1]
+        slice = self.Agent.get_history_slice(t_start, t_end)
+        rate_timeseries = np.array(self.history["firingrate"][slice])
+        spike_data = np.array(self.history["spikes"][slice])
+        t = t[slice]
 
         # neurons to plot
         chosen_neurons = self.return_list_of_neurons(chosen_neurons)
         n_neurons_to_plot = len(chosen_neurons)
-        if ("shift" not in kwargs.keys()) and ("overlap" not in kwargs.keys()):
-            kwargs["shift"] = max(
-                1.5, min(4, 40 / n_neurons_to_plot)
-            )  # scaled to make plots look nice and be ~constant size
-            kwargs["shift"] = 2
-            kwargs["overlap"] = 2.2
-        spike_data = spike_data[startid:endid, chosen_neurons]
+        spike_data = spike_data[slice, chosen_neurons]
         rate_timeseries = rate_timeseries[:, chosen_neurons]
+
+        was_fig, was_ax = (fig is None), (
+            ax is None
+        )  # remember whether a fig or ax was provided as xlims depend on this
         if color is None:
             color = self.color
         if imshow == False:
@@ -201,7 +212,7 @@ class Neurons:
             fig, ax = utils.mountain_plot(
                 X=t / 60,
                 NbyX=firingrates,
-                color=self.color,
+                color=color,
                 xlabel="Time / min",
                 ylabel="Neurons",
                 xlim=None,
@@ -222,9 +233,15 @@ class Neurons:
                         s=5,
                         linewidth=0,
                     )
-            ax.set_xlim(left=t_start / 60, right=t_end / 60)
-            ax.set_xticks([t_start / 60, t_end / 60])
-            ax.set_xticklabels([round(t_start / 60, 2), round(t_end / 60, 2)])
+
+            xmin = t_start / 60 if was_fig else min(t_start / 60, ax.get_xlim()[0])
+            xmax = t_end / 60 if was_fig else max(t_end / 60, ax.get_xlim()[1])
+            ax.set_xlim(
+                left=xmin,
+                right=xmax,
+            )
+            ax.set_xticks([xmin, xmax])
+            ax.set_xticklabels([round(xmin, 2), round(xmax, 2)])
             if xlim is not None:
                 ax.set_xlim(right=xlim / 60)
                 ax.set_xticks([round(t_start / 60, 2), round(xlim / 60, 2)])
@@ -236,14 +253,24 @@ class Neurons:
 
         elif imshow == True:
             if fig is None and ax is None:
-                fig, ax = plt.subplots(figsize=(8, 4))
+                fig, ax = plt.subplots(
+                    figsize=(
+                        ratinabox.MOUNTAIN_PLOT_WIDTH_MM / 25,
+                        0.5 * ratinabox.MOUNTAIN_PLOT_WIDTH_MM / 25,
+                    )
+                )
             data = rate_timeseries.T
-            ax.imshow(data[::-1], aspect=0.3 * data.shape[1] / data.shape[0])
+            ax.imshow(
+                data[::-1],
+                aspect="auto",
+                # aspect=0.5 * data.shape[1] / data.shape[0],
+                extent=(t_start, t_end, 0, 1),
+            )
             ax.spines["top"].set_visible(False)
             ax.spines["right"].set_visible(False)
             ax.spines["left"].set_visible(False)
             ax.set_xlabel("Time / min")
-            ax.set_xticks([0 - 0.5, len(t) + 0.5])
+            ax.set_xticks([t_start, t_end])
             ax.set_xticklabels([round(t_start / 60, 2), round(t_end / 60, 2)])
             ax.set_yticks([])
             ax.set_ylabel("Neurons")
@@ -307,17 +334,16 @@ class Neurons:
                 )
                 return
             t_end = t_end or t[-1]
-            startid = np.argmin(np.abs(t - (t_start)))
-            endid = np.argmin(np.abs(t - (t_end)))
-            pos = np.array(self.Agent.history["pos"])[startid:endid]
-            t = t[startid:endid]
+            slice = self.Agent.get_history_slice(t_start, t_end)
+            pos = np.array(self.Agent.history["pos"])[slice]
+            t = t[slice]
 
             if method == "history":
-                rate_timeseries = np.array(self.history["firingrate"])[startid:endid].T
+                rate_timeseries = np.array(self.history["firingrate"])[slice].T
                 if len(rate_timeseries) == 0:
                     print("No historical data with which to calculate ratemap.")
             if spikes == True:
-                spike_data = np.array(self.history["spikes"])[startid:endid].T
+                spike_data = np.array(self.history["spikes"])[slice].T
                 if len(spike_data) == 0:
                     print("No historical data with which to plot spikes.")
 
@@ -328,6 +354,7 @@ class Neurons:
             coloralpha[-1] = 0.5
 
         chosen_neurons = self.return_list_of_neurons(chosen_neurons=chosen_neurons)
+        N_neurons = len(chosen_neurons)
 
         # PLOT 2D
         if self.Agent.Environment.dimensionality == "2D":
@@ -338,7 +365,13 @@ class Neurons:
                     Nx, Ny = 1, len(chosen_neurons)
                 else:
                     Nx, Ny = shape[0], shape[1]
-                fig = plt.figure(figsize=(2 * Ny, 2 * Nx))
+                env_fig, env_ax = self.Agent.Environment.plot_environment(
+                    autosave=False
+                )
+                width, height = env_fig.get_size_inches()
+                plt.close(env_fig)
+                plt.show
+                fig = plt.figure(figsize=(height * Ny, width * Nx))
                 if colorbar == True and (method in ["groundtruth", "history"]):
                     cbar_mode = "single"
                 else:
@@ -398,7 +431,7 @@ class Neurons:
                             extent=ex,
                             cmap="inferno",
                             interpolation="bicubic",
-                            zorder=1,
+                            zorder=0,
                         )
                     ims.append(im)
                     vmin, vmax = (
@@ -447,17 +480,17 @@ class Neurons:
                 rate_maps = np.array(rate_maps)
 
             if fig is None and ax is None:
+                fig, ax = plt.subplots(
+                    figsize=(
+                        ratinabox.MOUNTAIN_PLOT_WIDTH_MM / 25,
+                        N_neurons * ratinabox.MOUNTAIN_PLOT_SHIFT_MM / 25,
+                    )
+                )
                 fig, ax = self.Agent.Environment.plot_environment(
-                    autosave=False,
+                    autosave=False, fig=fig, ax=ax
                 )
 
             if method != "neither":
-                kwargs = {}
-                kwargs["shift"] = max(
-                    1.5, min(4, 40 / len(chosen_neurons))
-                )  # scaled to make plots look nice and be ~constant size
-                kwargs["shift"] = 2
-                kwargs["overlap"] = 2.2
                 fig, ax = utils.mountain_plot(
                     X=x, NbyX=rate_maps, color=self.color, fig=fig, ax=ax, **kwargs
                 )
@@ -640,40 +673,54 @@ class PlaceCells(Neurons):
            }
     """
 
+    default_params = {
+        "n": 10,
+        "name": "PlaceCells",
+        "description": "gaussian",
+        "widths": 0.20,  # the radii
+        "place_cell_centres": None,  # if given this will overwrite 'n',
+        "wall_geometry": "geodesic",
+        "min_fr": 0,
+        "max_fr": 1,
+        "name": "PlaceCells",
+    }
+
     def __init__(self, Agent, params={}):
         """Initialise PlaceCells(), takes as input a parameter dictionary. Any values not provided by the params dictionary are taken from a default dictionary below.
 
         Args:
             params (dict, optional). Defaults to {}.
         """
-        default_params = {
-            "n": 10,
-            "name": "PlaceCells",
-            "description": "gaussian",
-            "widths": 0.20,  # the radii
-            "place_cell_centres": None,  # if given this will overwrite 'n',
-            "wall_geometry": "geodesic",
-            "min_fr": 0,
-            "max_fr": 1,
-            "name": "PlaceCells",
-        }
-        self.Agent = Agent
-        default_params.update(params)
-        self.params = default_params
-        super().__init__(Agent, self.params)
 
-        if self.place_cell_centres is None:
-            self.place_cell_centres = self.Agent.Environment.sample_positions(
-                n=self.n, method="uniform_jitter"
+        self.Agent = Agent
+
+        self.params = copy.deepcopy(__class__.default_params)
+        self.params.update(params)
+
+        if self.params["place_cell_centres"] is None:
+            self.params["place_cell_centres"] = self.Agent.Environment.sample_positions(
+                n=self.params["n"], method="uniform_jitter"
             )
-        elif type(self.place_cell_centres) is str:
-            if self.place_cell_centres in ["random", "uniform", "uniform_jitter"]:
-                self.place_cell_centres = self.Agent.Environment.sample_positions(
-                    n=self.n, method=self.place_cell_centres
+        elif type(self.params["place_cell_centres"]) is str:
+            if self.params["place_cell_centres"] in [
+                "random",
+                "uniform",
+                "uniform_jitter",
+            ]:
+                self.params[
+                    "place_cell_centres"
+                ] = self.Agent.Environment.sample_positions(
+                    n=self.params["n"], method=self.params["place_cell_centres"]
+                )
+            else:
+                raise ValueError(
+                    "self.params['place_cell_centres'] must be None, an array of locations or one of the instructions ['random', 'uniform', 'uniform_jitter']"
                 )
         else:
-            self.n = self.place_cell_centres.shape[0]
-        self.place_cell_widths = self.widths * np.ones(self.n)
+            self.params["n"] = self.params["place_cell_centres"].shape[0]
+        self.place_cell_widths = self.params["widths"] * np.ones(self.params["n"])
+
+        super().__init__(Agent, self.params)
 
         # Assertions (some combinations of boundary condition and wall geometries aren't allowed)
         if self.Agent.Environment.dimensionality == "2D":
@@ -774,9 +821,16 @@ class PlaceCells(Neurons):
                 fig=fig, ax=ax, autosave=False
             )
         place_cell_centres = self.place_cell_centres
+
+        x = place_cell_centres[:, 0]
+        if self.Agent.Environment.dimensionality == "1D":
+            y = np.zeros_like(x)
+        elif self.Agent.Environment.dimensionality == "2D":
+            y = place_cell_centres[:, 1]
+
         ax.scatter(
-            place_cell_centres[:, 0],
-            place_cell_centres[:, 1],
+            x,
+            y,
             c="C1",
             marker="x",
             s=15,
@@ -785,6 +839,14 @@ class PlaceCells(Neurons):
         ratinabox.utils.save_figure(fig, "place_cell_locations", save=autosave)
 
         return fig, ax
+
+    def remap(self):
+        """Resets the place cell centres to a new random distribution. These will be uniformly randomly distributed in the environment (i.e. they will still approximately span the space)"""
+        self.place_cell_centres = self.Agent.Environment.sample_positions(
+            n=self.n, method="uniform_jitter"
+        )
+        np.random.shuffle(self.place_cell_centres)
+        return
 
 
 class GridCells(Neurons):
@@ -809,25 +871,28 @@ class GridCells(Neurons):
         }
     """
 
+    default_params = {
+        "n": 10,
+        "gridscale": 0.45,
+        "random_orientations": True,
+        "random_gridscales": True,
+        "random_phase_offsets": True,
+        "min_fr": 0,
+        "max_fr": 1,
+        "name": "GridCells",
+    }
+
     def __init__(self, Agent, params={}):
         """Initialise GridCells(), takes as input a parameter dictionary. Any values not provided by the params dictionary are taken from a default dictionary below.
 
         Args:
             params (dict, optional). Defaults to {}."""
 
-        default_params = {
-            "n": 10,
-            "gridscale": 0.45,
-            "random_orientations": True,
-            "random_gridscales": True,
-            "random_phase_offsets": True,
-            "min_fr": 0,
-            "max_fr": 1,
-            "name": "GridCells",
-        }
         self.Agent = Agent
-        default_params.update(params)
-        self.params = default_params
+
+        self.params = copy.deepcopy(__class__.default_params)
+        self.params.update(params)
+
         super().__init__(Agent, self.params)
 
         # Initialise grid cells
@@ -923,6 +988,8 @@ class BoundaryVectorCells(Neurons):
 
     BoundaryVectorCells defines a set of 'n' BVCs cells with random orientations preferences, distance preferences  (these can be set non-randomly of course). We use the model described firstly by Hartley et al. (2000) and more recently de Cothi and Barry (2000).
 
+    Distance preferences of each BVC are drawn fro ma random distribution which can be one of "uniform" (default), "rayleigh", "normal", and "delta" and parameterised by "wall_pref_dist".
+
     BVCs can have allocentric (mec,subiculum) OR egocentric (ppc, retrosplenial cortex) reference frames.
 
     List of functions:
@@ -933,6 +1000,7 @@ class BoundaryVectorCells(Neurons):
             "n": 10,
             "reference_frame": "allocentric",
             "pref_wall_dist": 0.15,
+            "pref_wall_dist_distribution": "uniform",
             "angle_spread_degrees": 11.25,
             "xi": 0.08,  # as in de cothi and barry 2020
             "beta": 12,
@@ -943,27 +1011,31 @@ class BoundaryVectorCells(Neurons):
         }
     """
 
+    default_params = {
+        "n": 10,
+        "reference_frame": "allocentric",
+        "pref_wall_dist": 0.25,
+        "pref_wall_dist_distribution": "uniform",
+        "angle_spread_degrees": 11.25,
+        "xi": 0.08,
+        "beta": 12,
+        "dtheta": 2,
+        "min_fr": 0,
+        "max_fr": 1,
+        "name": "BoundaryVectorCells",
+    }
+
     def __init__(self, Agent, params={}):
         """Initialise BoundaryVectorCells(), takes as input a parameter dictionary. Any values not provided by the params dictionary are taken from a default dictionary below.
 
         Args:
             params (dict, optional). Defaults to {}."""
 
-        default_params = {
-            "n": 10,
-            "reference_frame": "allocentric",
-            "pref_wall_dist": 0.15,
-            "angle_spread_degrees": 11.25,
-            "xi": 0.08,
-            "beta": 12,
-            "dtheta": 2,
-            "min_fr": 0,
-            "max_fr": 1,
-            "name": "BoundaryVectorCells",
-        }
         self.Agent = Agent
-        default_params.update(params)
-        self.params = default_params
+
+        self.params = copy.deepcopy(__class__.default_params)
+        self.params.update(params)
+
         super().__init__(Agent, self.params)
 
         assert (
@@ -991,10 +1063,29 @@ class BoundaryVectorCells(Neurons):
             [(self.angle_spread_degrees / 360) * 2 * np.pi] * self.n
         )
         self.tuning_angles = np.random.uniform(0, 2 * np.pi, size=self.n)
-        self.tuning_distances = np.random.rayleigh(
-            scale=self.pref_wall_dist,
-            size=self.n,
-        )
+
+        # define tuning distances from specific distribution in params dict
+        if self.pref_wall_dist_distribution == "rayleigh":
+            self.tuning_distances = np.random.rayleigh(
+                scale=self.pref_wall_dist, size=self.n
+            )
+        elif self.pref_wall_dist_distribution == "uniform":
+            self.tuning_distances = np.random.uniform(
+                low=0, high=self.pref_wall_dist * 2, size=self.n
+            )
+        elif self.pref_wall_dist_distribution == "normal":
+            lower, upper = 0, self.Agent.Environment.scale
+            mu, sigma = self.pref_wall_dist, self.pref_wall_dist / 2
+            self.tuning_distances = scipy.stats.truncnorm.rvs(
+                (lower - mu) / sigma,
+                (upper - mu) / sigma,
+                scale=sigma,
+                loc=mu,
+                size=self.n,
+            )
+        elif self.pref_wall_dist_distribution == "delta":
+            self.tuning_distances = self.pref_wall_dist * np.ones(self.n)
+
         self.sigma_distances = self.tuning_distances / beta + xi
 
         # calculate normalising constants for BVS firing rates in the current environment. Any extra walls you add from here onwards you add will likely push the firingrate up further.
@@ -1017,11 +1108,11 @@ class BoundaryVectorCells(Neurons):
             2. These define an array of line segments stretching from [pos, pos+test vector]
             3. Where these line segments collide with all walls in the environment is established, this uses the function "utils.vector_intercepts()"
             4. This pays attention to only consider the first (closest) wall forawrd along a line segment. Walls behind other walls are "shaded" by closer walls. Its a little complex to do this and requires the function "boundary_vector_preference_function()"
-            5. Now that, for every test direction, the closest wall is established it is simple a process of finding the response of the neuron to that wall at that angle (multiple of two gaussians, see de Cothi (2020)) and then summing over all the test angles.
+            5. Now that, for every test direction, the closest wall is established it is simple a process of finding the response of the neuron to that wall segment at that angle (multiple of two gaussians, see de Cothi (2020)) and then summing over all wall segments for all test angles.
 
         We also apply a check in the middle to utils.rotate the reference frame into that of the head direction of the agent iff self.reference_frame='egocentric'.
 
-        By default position is taken from the Agent and used to calculate firing rates. This can also by passed directly (evaluate_at=None, pos=pass_array_of_positions) or ou can use all the positions in the environment (evaluate_at="all").
+        By default position is taken from the Agent and used to calculate firing rates. This can also by passed directly (evaluate_at=None, pos=pass_array_of_positions) or you can use all the positions in the environment (evaluate_at="all").
         """
         if evaluate_at == "agent":
             pos = self.Agent.pos
@@ -1232,23 +1323,24 @@ class ObjectVectorCells(Neurons):
     }
     """
 
-    def __init__(self, Agent, params={}):
-        default_params = {
-            "n": 10,
-            "name": "ObjectVectorCell",
-            "walls_occlude": True,
-            "reference_frame": "allocentric",
-            "angle_spread_degrees": 15,
-            "pref_object_dist": 0.25,
-            "xi": 0.08,
-            "beta": 12,
-            "max_fr": 1,
-            "min_fr": 0,
-        }
+    default_params = {
+        "n": 10,
+        "name": "ObjectVectorCell",
+        "walls_occlude": True,
+        "reference_frame": "allocentric",
+        "angle_spread_degrees": 15,
+        "pref_object_dist": 0.25,
+        "xi": 0.08,
+        "beta": 12,
+        "max_fr": 1,
+        "min_fr": 0,
+    }
 
+    def __init__(self, Agent, params={}):
         self.Agent = Agent
-        default_params.update(params)
-        self.params = default_params
+
+        self.params = copy.deepcopy(__class__.default_params)
+        self.params.update(params)
 
         assert (
             self.Agent.Environment.dimensionality == "2D"
@@ -1417,21 +1509,23 @@ class HeadDirectionCells(Neurons):
         }
     """
 
+    default_params = {
+        "min_fr": 0,
+        "max_fr": 1,
+        "n": 4,
+        "angular_spread_degrees": 45,  # width of HDC preference function (degrees)
+        "name": "HeadDirectionCells",
+    }
+
     def __init__(self, Agent, params={}):
         """Initialise HeadDirectionCells(), takes as input a parameter dictionary. Any values not provided by the params dictionary are taken from a default dictionary below.
         Args:
             params (dict, optional). Defaults to {}."""
-        default_params = {
-            "min_fr": 0,
-            "max_fr": 1,
-            "n": 4,
-            "angular_spread_degrees": 45,  # width of HDC preference function (degrees)
-            "name": "HeadDirectionCells",
-        }
+
         self.Agent = Agent
-        for key in params.keys():
-            default_params[key] = params[key]
-        self.params = default_params
+
+        self.params = copy.deepcopy(__class__.default_params)
+        self.params.update(params)
 
         if self.Agent.Environment.dimensionality == "2D":
             self.n = self.params["n"]
@@ -1541,18 +1635,21 @@ class VelocityCells(HeadDirectionCells):
         }
     """
 
+    default_params = {
+        "min_fr": 0,
+        "max_fr": 1,
+        "name": "VelocityCells",
+    }
+
     def __init__(self, Agent, params={}):
         """Initialise VelocityCells(), takes as input a parameter dictionary. Any values not provided by the params dictionary are taken from a default dictionary below.
         Args:
             params (dict, optional). Defaults to {}."""
-        default_params = {
-            "min_fr": 0,
-            "max_fr": 1,
-            "name": "VelocityCells",
-        }
         self.Agent = Agent
-        default_params.update(params)
-        self.params = default_params
+
+        self.params = copy.deepcopy(__class__.default_params)
+        self.params.update(params)
+
         self.one_sigma_speed = self.Agent.speed_mean + self.Agent.speed_std
 
         super().__init__(Agent, self.params)
@@ -1589,19 +1686,22 @@ class SpeedCell(Neurons):
         }
     """
 
+    default_params = {
+        "min_fr": 0,
+        "max_fr": 1,
+        "name": "SpeedCell",
+    }
+
     def __init__(self, Agent, params={}):
         """Initialise SpeedCell(), takes as input a parameter dictionary, 'params'. Any values not provided by the params dictionary are taken from a default dictionary below.
         Args:
             params (dict, optional). Defaults to {}."""
-        default_params = {
-            "min_fr": 0,
-            "max_fr": 1,
-            "name": "SpeedCell",
-        }
+
         self.Agent = Agent
-        for key in params.keys():
-            default_params[key] = params[key]
-        self.params = default_params
+
+        self.params = copy.deepcopy(__class__.default_params)
+        self.params.update(params)
+
         super().__init__(Agent, self.params)
         self.n = 1
         self.one_sigma_speed = self.Agent.speed_mean + self.Agent.speed_std
@@ -1666,18 +1766,29 @@ class FeedForwardLayer(Neurons):
         }
     """
 
+    default_params = {
+        "n": 10,
+        "input_layers": [],  # a list of input layers, or add one by one using self.add_inout
+        "activation_params": {"activation": "linear"},
+        "name": "FeedForwardLayer",
+        "biases": None,  # an array of biases, one for each neuron
+    }
+
     def __init__(self, Agent, params={}):
-        default_params = {
-            "n": 10,
-            "input_layers": [],  # a list of input layers, or add one by one using self.add_inout
-            "activation_params": {"activation": "linear"},
-            "name": "FeedForwardLayer",
-            "biases": None,  # an array of biases, one for each neuron
-        }
         self.Agent = Agent
-        default_params.update(params)
-        self.params = default_params
+
+        self.params = copy.deepcopy(__class__.default_params)
+        self.params.update(params)
+
         super().__init__(Agent, self.params)
+
+        assert isinstance(
+            self.input_layers, list
+        ), "param['input_layers'] must be a list."
+        if len(self.input_layers) == 0:
+            warnings.warn(
+                "No input layers have been provided. Either hand them in in the params dictionary params['input_layers']=[list,of,inputs] or use self.add_input_layer() to add them manually."
+            )
 
         self.inputs = {}
         for input_layer in self.input_layers:
@@ -1685,6 +1796,10 @@ class FeedForwardLayer(Neurons):
 
         if self.biases is None:
             self.biases = np.zeros(self.n)
+
+        self.firingrate_prime = np.zeros_like(
+            self.firingrate
+        )  # this will hold the firingrate except passed through the derivative of the activation func
 
         if ratinabox.verbose is True:
             print(
@@ -1713,13 +1828,14 @@ class FeedForwardLayer(Neurons):
         if name in self.inputs.keys():
             if ratinabox.verbose is True:
                 print(
-                    f"There already exists a layer called {name}. Overwriting it now."
+                    f"There already exists a layer called {name}. This may be because you have two input players with the same attribute `InputLayer.name`. Overwriting it now."
                 )
         self.inputs[name] = {}
         self.inputs[name]["layer"] = input_layer
         self.inputs[name]["w"] = w
         self.inputs[name]["w_init"] = w.copy()
         self.inputs[name]["I"] = I
+        self.inputs[name]["n"] = input_layer.n  # a copy for convenience
         for key, value in kwargs.items():
             self.inputs[name][key] = value
         if ratinabox.verbose is True:
@@ -1736,7 +1852,6 @@ class FeedForwardLayer(Neurons):
         Returns:
             firingrate: array of firing rates
         """
-
         if evaluate_at == "last":
             V = np.zeros(self.n)
         elif evaluate_at == "all":
@@ -1762,7 +1877,9 @@ class FeedForwardLayer(Neurons):
 
         firingrate = utils.activate(V, other_args=self.activation_params)
         # saves current copy of activation derivative at firing rate (useful for learning rules)
-        if evaluate_at == "last":
+        if (
+            evaluate_at == "last"
+        ):  # save copy of the firing rate through the dervative of the activation function
             self.firingrate_prime = utils.activate(
                 V, other_args=self.activation_params, deriv=True
             )

@@ -3,6 +3,7 @@ from ratinabox.Agent import Agent
 from ratinabox.Neurons import *
 from ratinabox.utils import *
 
+import copy
 import numpy as np
 
 
@@ -29,25 +30,28 @@ class PhasePrecessingPlaceCells(PlaceCells):
         • theta_modulation_factors()
     """
 
+    default_params = {
+        "n": 10,
+        "min_fr": 0,
+        "max_fr": 1,
+        "theta_freq": 10,
+        "kappa": 1,
+        "precess_fraction": 0.5,
+        "description": "gaussian_threshold",
+        "name": "PhasePrecessingPlaceCell",
+    }
+
     def __init__(self, Agent, params={}):
         """Initialise PhasePrecessingPlaceCell(), takes as input a parameter dictionary. Any values not provided by the params dictionary are taken from a default dictionary below.
 
         Args:
             params (dict, optional). Defaults to {}."""
 
-        default_params = {
-            "n": 10,
-            "min_fr": 0,
-            "max_fr": 1,
-            "theta_freq": 10,
-            "kappa": 1,
-            "precess_fraction": 0.5,
-            "description": "gaussian_threshold",
-            "name": "PhasePrecessingPlaceCell",
-        }
         self.Agent = Agent
-        default_params.update(params)
-        self.params = default_params
+
+        self.params = copy.deepcopy(__class__.default_params)        
+        self.params.update(params)
+
         super().__init__(Agent, self.params)
         self.sigma = np.sqrt(1 / self.kappa)
 

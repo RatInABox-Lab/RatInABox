@@ -1,5 +1,7 @@
 import ratinabox
 
+import copy
+import pprint
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
@@ -46,25 +48,30 @@ class Environment:
         }
     """
 
+    default_params = {
+        "dimensionality": "2D",  # 1D or 2D environment
+        "boundary_conditions": "solid",  # solid vs periodic
+        "scale": 1,  # scale of environment (in metres)
+        "aspect": 1,  # x/y aspect ratio for the (rectangular) 2D environment (how wide this is relative to tall)
+        "dx": 0.01,  # discretises the environment (for plotting purposes only)
+        "boundary": None,  # coordinates [[x0,y0],[x1,y1],...] of the corners of a 2D polygon bounding the Env (if None, Env defaults to rectangular). Corners must be ordered clockwise or anticlockwise, and the polygon must be a 'simple polygon' (no holes, doesn't self-intersect).
+        "holes": [],  # coordinates [[[x0,y0],[x1,y1],...],...] of corners of any holes inside the Env. These must be entirely inside the environment and not intersect one another. Corners must be ordered clockwise or anticlockwise. holes has 1-dimension more than boundary since there can be multiple holes
+    }
+
     def __init__(self, params={}):
         """Initialise Environment, takes as input a parameter dictionary. Any values not provided by the params dictionary are taken from a default dictionary.
 
         Args:
             params (dict, optional). Defaults to {}.
         """
-        default_params = {
-            "dimensionality": "2D",  # 1D or 2D environment
-            "boundary_conditions": "solid",  # solid vs periodic
-            "scale": 1,  # scale of environment (in metres)
-            "aspect": 1,  # x/y aspect ratio for the (rectangular) 2D environment (how wide this is relative to tall)
-            "dx": 0.01,  # discretises the environment (for plotting purposes only)
-            "boundary": None,  # coordinates [[x0,y0],[x1,y1],...] of the corners of a 2D polygon bounding the Env (if None, Env defaults to rectangular). Corners must be ordered clockwise or anticlockwise, and the polygon must be a 'simple polygon' (no holes, doesn't self-intersect).
-            "holes": [],  # coordinates [[[x0,y0],[x1,y1],...],...] of corners of any holes inside the Env. These must be entirely inside the environment and not intersect one another. Corners must be ordered clockwise or anticlockwise. holes has 1-dimension more than boundary since there can be multiple holes
-        }
 
-        default_params.update(params)
-        self.params = default_params
-        utils.update_class_params(self, self.params)
+        self.params = copy.deepcopy(__class__.default_params)
+        self.params.update(params)
+
+        utils.update_class_params(self, self.params, get_all_defaults=True)
+        utils.check_params(self, params.keys())
+
+        self.Agents = []  # each new Agent will append itself to this list
 
         if self.dimensionality == "1D":
             self.D = 1
@@ -159,6 +166,14 @@ class Environment:
 
         return
 
+    @classmethod
+    def get_all_default_params(cls, verbose=False):
+        """Returns a dictionary of all the default parameters of the class, including those inherited from its parents."""
+        all_default_params = utils.collect_all_params(cls, dict_name="default_params")
+        if verbose:
+            pprint.pprint(all_default_params)
+        return all_default_params
+
     def add_wall(self, wall):
         """Add a wall to the (2D) environment.
         Extends self.walls array to include one new wall.
@@ -215,7 +230,13 @@ class Environment:
 
         if self.dimensionality == "1D":
             extent = self.extent
-            fig, ax = plt.subplots(figsize=(2 * (extent[1] - extent[0]), (5.5 / 25)))
+            if fig is None and ax is None:
+                fig, ax = plt.subplots(
+                    figsize=(
+                        ratinabox.MOUNTAIN_PLOT_WIDTH_MM / 25 * (extent[1] - extent[0]),
+                        1,
+                    )
+                )
             ax.set_xlim(left=extent[0], right=extent[1])
             ax.spines["left"].set_color("none")
             ax.spines["right"].set_color("none")
@@ -295,7 +316,7 @@ class Environment:
             # plot objects
             if self.plot_objects == True:
                 object_cmap = matplotlib.colormaps[self.object_colormap]
-                for (i, object) in enumerate(self.objects["objects"]):
+                for i, object in enumerate(self.objects["objects"]):
                     object_color = object_cmap(
                         self.objects["object_types"][i]
                         / (self.n_object_types - 1 + 1e-8)
@@ -315,7 +336,7 @@ class Environment:
             ax.axis("off")
             ax.set_xlim(left=extent[0] - 0.03, right=extent[1] + 0.03)
             ax.set_ylim(bottom=extent[2] - 0.03, top=extent[3] + 0.03)
-        
+
         ratinabox.utils.save_figure(fig, "Environment", save=autosave)
 
         return fig, ax
@@ -345,7 +366,6 @@ class Environment:
             return positions
 
         elif self.dimensionality == "2D":
-
             if method == "random":
                 positions = np.zeros((n, 2))
                 positions[:, 0] = np.random.uniform(
@@ -375,7 +395,7 @@ class Environment:
 
             if (self.is_rectangular is False) or (self.has_holes is True):
                 # in this case, the positions you have sampled within the extent of the environment may not actually fall within it's legal area (i.e. they could be outside the polygon boundary or inside a hole). Brute force this by randomly resampling these points until all fall within the env.
-                for (i, pos) in enumerate(positions):
+                for i, pos in enumerate(positions):
                     if self.check_if_position_is_in_environment(pos) == False:
                         pos = self.sample_positions(n=1, method="random").reshape(
                             -1
