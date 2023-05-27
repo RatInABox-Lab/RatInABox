@@ -66,10 +66,14 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         self.dynamic_objects = []    # list of current objects that can move
         self.Agents:dict[str,Agent] = {} # dict of agents in the environment
         # replenish from this list of goals on reset
-        self.goal_reservoir:List = goals if isinstance(goals, list) else \
+        self.reset_goals:List = goals if isinstance(goals, list) else \
                                     [goals]
-        self.goal_reservoir_random = 0 # if >0, then randomly select from reservoir on .reset()
-        self.goal_cache:GoalCache = GoalCache(self, **goalcachekws) # list of current goals to satisfy per agent
+        self.reset_n_goals = 0 # if >0, then randomly select from reservoir on .reset()
+        self.reset_orders_goal  = False # if True, then keep the ordering of 
+                                           # goals chosen from the pool
+        # list of current goals to satisfy per agent, these are drawn
+        # from reset_goals list
+        self.goal_cache:GoalCache = GoalCache(self, **goalcachekws) 
         self.t = 0                   # current time
         self.dt = dt                 # time step
         self.history = {'t':[]}      # history of the environment
@@ -275,6 +279,12 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             self.episode += 1
         self.write_start_episode()
 
+        self.goal_cache.clear()
+        self._pick_new_goals()
+
+    def _pick_new_goals(self):
+        pass 
+
     def update(self, update_agents=False):
         """
         How to update the task over time --- update things
@@ -300,6 +310,9 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
 
         # If the user passed drift_velocity, update the agents
         if actions is not None:
+            if len(self.agents) == 0:
+                raise AttributeError("Action is given, but there are no " 
+                        "agents. Try adding an agent with .add_agents()")
             actions = actions if isinstance(actions, dict) else \
                       self._dict(actions)
         else:
@@ -726,8 +739,8 @@ class Goal():
     for a task
     """
     def __init__(self, env:TaskEnvironment=None, 
-                 reward=reward_default):
-        self.env = env
+                 reward=reward_default, **kws):
+        self.env    = env
         self.reward = reward
 
     def __hash__(self):
@@ -1044,11 +1057,10 @@ class SpatialGoalEnvironment(TaskEnvironment):
         super().__init__(*pos, **kws)
         if possible_goals is None:
             self.goalkws = goalkws
-            self.goal_reservoir:List[SpatialGoal] = \
+            self.goal_reservoir:List[Goal] = \
                     self._init_poss_goal_positions(possible_goal_positions)
         else:
             self.goal_reservoir = possible_goals
-        self.pick_n_goals = pick_n_goals
 
     def _init_poss_goal_positions(self, 
             possible_goal_position:Union[List,np.ndarray,str]) ->list[SpatialGoal]:
