@@ -12,6 +12,8 @@ from ratinabox.Agent import Agent
 from IPython import display
 from matplotlib.animation import FuncAnimation
 from IPython.display import HTML, Video
+import sys
+print(sys.executable)
 
 
 %matplotlib inline
@@ -20,6 +22,9 @@ pausetime = 0.000001 # pause time in plot
 plt.close('all')
 
 ```
+
+    /Users/ryoung/opt/anaconda3/envs/ratinabox11/bin/python
+
 
 # Setting up reward 💰 functions
 
@@ -98,6 +103,12 @@ env = SpatialGoalEnvironment(params={'dimensionality':'2D'},
                              verbose=False)
 ```
 
+    /Users/ryoung/opt/anaconda3/envs/ratinabox11/lib/python3.11/site-packages/ratinabox/utils.py:694: UserWarning: Cannot collect the default_params dictionaries, as SpatialGoalEnvironment does not have the class attribute 'default_params' defined in its preamble. (Can be just an empty dictionary, i.e.: default_params = dict().)
+      warnings.warn(
+    /Users/ryoung/opt/anaconda3/envs/ratinabox11/lib/python3.11/site-packages/ratinabox/utils.py:749: UserWarning: Cannot check the keys in the params dictionary, as <class 'ratinabox.contribs.TaskEnvironment.SpatialGoalEnvironment'> does not have a class attribute 'default_params' defined in its preamble. (Can be just an empty dictionary, i.e.: default_params = dict().)
+      warnings.warn(
+
+
 Now, let's bring some goals to life for our environment. We intialize goals by attaching them to an environment.  In the case of the spatial goals below, they have some default reward (unless you attach your own through `reward=reward`) and take on a random position (unless you provide it through `pos=pos`). 
 
 Here, we generates two spatial goals at random coordinates within the environment 🎲, and one goal that has a precise position (x=0.2, y=0.2) and a reward object `r_con` that's granted upon completion 🎯. The remaining goals will be equipped with the default reward object.
@@ -116,11 +127,88 @@ The render function will illustrate your environment, agents, and anything else 
 
 ```python
 Ag = Agent(env)
-env.goal_reservoir = goals
+env.goal_cache.reset_goals = goals # you can also pass these into goalcachekws of an environment
 env.add_agents(Ag)
-env.step1() # Take a single action randomly
-env.render()
+print("Here are the active agents who have yet to solve the episode goals:", env.agents)
+print(f"env.reset() will reset goals from pool of n={len(env.goal_cache.reset_goals)} possible goals")
 ```
+
+    Here are the active agents who have yet to solve the episode goals: ['agent_0']
+    env.reset() will reset goals from pool of n=3 possible goals
+
+
+### `.step()` the environment
+we now can make our agents take a step in environment given its state, and the step() will return a set of dictionaries patterned {agent_name:value}. It returns observations the agents make (their states), the rewards per agent, and whether each agent hits a stopping point (if all goals are satisfied this episode for). (See `pettingzoo.env` documentation for more info about the return objects.)
+
+
+```python
+observation, reward, terminate_epi, _ , info = env.step() # Take a single action randomly
+print("Observation: ", observation,
+      "Reward: ", reward,
+      "Terminate episode: ", terminate_epi)
+```
+
+    Observation:  {'agent_0': array([0.22710697, 0.57119362])} Reward:  {'agent_0': 0} Terminate episode:  {'agent_0': False}
+
+
+Since we have only _1 agent_, there is a shortcut function `.step1()`. With this call, an environment can behave more like single-agent `Gymnasium` instead of `pettingzoo`, only returning the observation, reward, and halting information for our one agent. Less cumbersome for one agent simulations.
+
+
+```python
+observation, reward, terminate_epi, _ , info = env.step1() # Take a single action randomly
+print("Observation: ", observation,
+      "Reward: ", reward,
+      "Terminate episode: ", terminate_epi)
+```
+
+    Observation:  [0.22628509 0.5709708 ] Reward:  0 Terminate episode:  False
+
+
+### Animating an episode
+Generally, we call step() repeatedly in a while-loop to carry out an epsiode. 
+
+Here, we plan to create a matplotlib animation; so let's instead create a function that draws a single step()! This function "plans" an action, takes the action via .step(), and then `render()` or draws the agents, environment, and goals. 
+
+
+```python
+def animate_update(*pos, **kws):
+    dir_to_reward = {name:get_goal_vector(Ag)
+                     for name, Ag in env.Ags.items()}
+    actions = {agent : speed * Ag.speed_mean * 
+            (dir_to_reward / np.linalg.norm(dir_to_reward))
+            for (agent, dir_to_reward) in dir_to_reward.items()}
+    
+    observation, reward, terminate_episode, _, info = \
+            env.step(actions)
+    
+    fig, ax = env.render()
+    if any(terminate_episode.values()):
+        print("done! reward:", reward)
+        env.reset()
+        print("starting episode:", env.episode)
+        
+    return fig
+```
+
+(If we were not using `FuncAnimation` and jupyter here, you could just blurt this function code into a while loop, and we would see a quick live-rendered plot.)
+
+
+```python
+%matplotlib notebook
+fig, ax = env.render(); # get the figure and axis
+anim = FuncAnimation(fig, animate_update, range(1000), blit=False) # animate 1000 of of the environment-action loop
+anim.save('TaskEnv_teaching_example_files/env_primary_interface.mp4', 
+          writer='ffmpeg', fps=180)
+Video("TaskEnv_teaching_example_files/env_primary_interface.mp4")
+```
+
+
+    <IPython.core.display.Javascript object>
+
+
+
+<div id='e8004ef8-e8c9-4937-b4fd-e8d1bddbcb95'></div>
+
 
     WARNING: This figure has not been saved.
         • To AUTOMATICALLY save all plots (recommended), set  `ratinabox.autosave_plots = True`
@@ -128,80 +216,24 @@ env.render()
           This warning will not be shown again
     HINT: You can stylize plots to make them look like repo/paper by calling `ratinabox.stylize_plots()`
           This hint will not be shown again
-
-
-
-
-
-    (<Figure size 640x480 with 1 Axes>, <AxesSubplot:>)
-
-
-
-
-    
-![png](TaskEnv_teaching_example_files/TaskEnv_teaching_example_11_2.png)
-    
-
-
-... our task is all set and ready for action. We're going to embed the core loop (sample an action, `.step()` the environment). You could choose to put this inside a while loop. But here, we're creating a matplotlib animation
-
-
-```python
-def animate_update(*pos, **kws):
-    dir_to_reward = {name:get_goal_vector(Ag)
-                     for name, Ag in env.Agents.items()}
-    drift_velocity = {agent : speed * Ag.speed_mean * 
-            (dir_to_reward / np.linalg.norm(dir_to_reward))
-            for (agent, dir_to_reward) in dir_to_reward.items()}
-    observation, reward, terminate_episode, _, info = \
-            env.step(drift_velocity)
-    fig, ax = env.render()
-    if any(terminate_episode.values()):
-        print("done! reward:", reward)
-        env.reset()
-        print("starting episode:", env.episode)
-    return fig
-```
-
-The function above carries out a single update, where our agent 🤖 is endowed with an action (a drift velocity indicating the direction towards the reward 💰). Following this, both the environment and the agents respond to this action. Subsequently, the `.render()` function is invoked, returning a visual representation of the current state of the environment.
-
-(If we were not using `FuncAnimation` and jupyter here, you could just blurt this into a while loop, and would see a quick live-rendered plot.)
-
-
-```python
-%matplotlib notebook
-fig, ax = env.render(); # get the figure and axis
-anim = FuncAnimation(fig, animate_update, range(1000), blit=False) # animate 1000 of of the environment-action loop
-anim.save('TaskEnv_teaching_example_files/env_primary_interface.mp4', writer='ffmpeg', fps=180)
-Video("TaskEnv_teaching_example_files/env_primary_interface.mp4")
-```
-
     done! reward: {'agent_0': 1}
     starting episode: 2
-
-
-
-    <IPython.core.display.Javascript object>
-
-
-
-<div id='01546006-698c-4615-a09f-6562b2fa2cdb'></div>
-
-
     done! reward: {'agent_0': 1}
     starting episode: 3
-    done! reward: {'agent_0': 1}
-    starting episode: 4
-    done! reward: {'agent_0': 1}
-    starting episode: 5
     done! reward: {'agent_0': 1.99}
+    starting episode: 4
+    done! reward: {'agent_0': 2.9701}
+    starting episode: 5
+    done! reward: {'agent_0': 3.940399}
     starting episode: 6
     done! reward: {'agent_0': 1}
     starting episode: 7
     done! reward: {'agent_0': 1}
     starting episode: 8
-    done! reward: {'agent_0': 1}
+    done! reward: {'agent_0': 1.7936142836436555}
     starting episode: 9
+    done! reward: {'agent_0': 1}
+    starting episode: 10
 
 
 
@@ -215,21 +247,20 @@ Video("TaskEnv_teaching_example_files/env_primary_interface.mp4")
 
 ![My Animation](TaskEnv_teaching_example_files/animation.mp4)
 
-#### 🚀 Shortcut to crafting SpatialGoals through a SpatialGoalEnvironment
+### 🚀 Shortcut to crafting SpatialGoals through a SpatialGoalEnvironment
 
 The derived class, SpatialGoalEnvironment, comes with its own set of convenience functions. These allow you to simply specify the number of goals and provide the construction arguments goalkws. You can also fine-tune features of the goalcache, as we discussed earlier, such as designating whether the goals are sequential or not, or if they're shared among agents 🤖.
 
 
 ```python
-pick_n_goals = 2
 goalkws      = dict(reward=r_exp) # Goal.__init__ kws called within Task, we could also just provide `Goal` objects
-goalcachekws = dict(agentmode="noninteract",
+goalcachekws = dict(reset_n_goals=2,
+                    agentmode="noninteract",
                     goalorder="nonsequential") # GoalCache.__init__ kws, these are covered elsewhere
                                                # and can also be used for the 🍎 section
                                                # ie for manually set goal collections
 
 env = SpatialGoalEnvironment(
-    pick_n_goals=pick_n_goals,
     teleport_on_reset=False,   # 
     goalkws=goalkws,           # Reward will be attached to the `Goal` object
     goalcachekws=goalcachekws, # Goals will be tracked by the cache
@@ -244,6 +275,12 @@ print("Agent names: ",env.agent_names)
 ```
 
     Agent names:  ['agent_0', 'agent_1']
+
+
+    /Users/ryoung/opt/anaconda3/envs/ratinabox11/lib/python3.11/site-packages/ratinabox/utils.py:694: UserWarning: Cannot collect the default_params dictionaries, as SpatialGoalEnvironment does not have the class attribute 'default_params' defined in its preamble. (Can be just an empty dictionary, i.e.: default_params = dict().)
+      warnings.warn(
+    /Users/ryoung/opt/anaconda3/envs/ratinabox11/lib/python3.11/site-packages/ratinabox/utils.py:749: UserWarning: Cannot check the keys in the params dictionary, as <class 'ratinabox.contribs.TaskEnvironment.SpatialGoalEnvironment'> does not have a class attribute 'default_params' defined in its preamble. (Can be just an empty dictionary, i.e.: default_params = dict().)
+      warnings.warn(
 
 
 And now let's run the environment :)
@@ -262,19 +299,15 @@ Video("TaskEnv_teaching_example_files/shortcut_env_spatial.mp4")
 
 
 
-<div id='613ce8f6-d81f-4d53-b249-5a9656102113'></div>
+<div id='f9da9f45-f8d8-4ccb-8095-2c271509b9ea'></div>
 
 
-    done! reward: {'agent_0': 1, 'agent_1': 1.3651091900207744}
+    done! reward: {'agent_0': 1, 'agent_1': 0.9509900499}
     starting episode: 2
-    done! reward: {'agent_0': 2.5197575238237055, 'agent_1': 1.3330440550210345}
+    done! reward: {'agent_0': 1, 'agent_1': 0.6050060671375367}
     starting episode: 3
-    done! reward: {'agent_0': 1, 'agent_1': 0}
+    done! reward: {'agent_0': 1, 'agent_1': 0.8261686238355868}
     starting episode: 4
-    done! reward: {'agent_0': 1, 'agent_1': 0.7034476949995694}
-    starting episode: 5
-    done! reward: {'agent_0': 1, 'agent_1': 0.9605960100000001}
-    starting episode: 6
 
 
 
@@ -304,7 +337,7 @@ class Stillness(Goal):
         super().__init__(*pos, **kws)
         self.how_long = how_long  # How long should 🐀 be still?
         self.velocity_thresh = velocity_thresh # What is stillness? How slow?
-        self.lastmove = {agent:0 for agent in self.env.Agents} # Store the last movement times
+        self.lastmove = {agent:0 for agent in self.env.Ags} # Store the last movement times
     
     def check(self, agents):
         """
@@ -313,7 +346,7 @@ class Stillness(Goal):
         if its been still for more than 2 seconds
         """
         successful_agents = []
-        for name, agent in selg.env.Agents.items():
+        for name, agent in selg.env.Ags.items():
             if agent.velocity > self.velocity_thresh:
                 self.last_move[name] = agent.t
             if agent.t - self.last_move[name] > self.how_long:

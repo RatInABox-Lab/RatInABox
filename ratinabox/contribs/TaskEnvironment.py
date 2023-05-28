@@ -62,18 +62,14 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
                  goalcachekws=dict(), 
                  **kws):
         super().__init__(*pos, **kws)
-        self.dynamic_walls = []      # list of walls that can change/move
-        self.dynamic_objects = []    # list of current objects that can move
-        self.Agents:dict[str,Agent] = {} # dict of agents in the environment
-        # replenish from this list of goals on reset
-        self.reset_goals:List = goals if isinstance(goals, list) else \
-                                    [goals]
-        self.reset_n_goals = 0 # if >0, then randomly select from reservoir on .reset()
-        self.reset_orders_goal  = False # if True, then keep the ordering of 
-                                           # goals chosen from the pool
-        # list of current goals to satisfy per agent, these are drawn
-        # from reset_goals list
+        self.dynamic = {'walls':[], 'objects':[]}
+        self.Ags:dict[str,Agent] = {} # dict of agents in the environment
+
         self.goal_cache:GoalCache = GoalCache(self, **goalcachekws) 
+        # replenish from this list of goals on reset
+        self.goal_cache.reset_goals = goals if isinstance(goals, list) else \
+                                    [goals]
+
         self.t = 0                   # current time
         self.dt = dt                 # time step
         self.history = {'t':[]}      # history of the environment
@@ -148,11 +144,11 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             names  = list(agents.keys())
             agents = list(agents.values())
         elif names is None:
-            start = len(self.Agents)
+            start = len(self.Ags)
             names = ["agent_" + str(start+i) for i in range(len(agents))]
         # Enlist agents
         for i, (name, agent) in enumerate(zip(names, agents)):
-            self.Agents[name] = agent
+            self.Ags[name] = agent
             self.agent_names.append(name)
             agent.name = name # attach name to agent
             # Add the agent's action space to the environment's action spaces
@@ -166,13 +162,18 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             lows, highs = np.array(list(zip(*ext)), dtype=np.float_)
             self.observation_spaces[name] = \
                     Box(low=lows, high=highs, dtype=np.float_)
+            # Attach a reward cache for the agent
             cache = RewardCache()
             self.reward_caches[name] = cache
             agent.reward = cache
+            # Ready the goal_cache for the agent
+            self.goal_cache.add_agent(agent)
+            # Set the agents time to the environment time
             agent.t = self.t # agent clock is aligned to environment,
                              # in case a new agent is placed in the env
                              # on a later episode
-        self.reset()   
+
+        self.reset() # reset the environment with new agent
 
     def remove_agents(self, agents):
         """
@@ -187,7 +188,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             self.reward_caches.pop(name)
             self.observation_spaces.spaces.pop(name)
             self.action_spaces.spaces.pop(name)
-            self.Agents.pop(name)
+            self.Ags.pop(name)
             self.agent_names.remove(name)
             if name in self.agents:
                 self.agents.remove(name)
@@ -232,10 +233,19 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
                 {name:V for name in self.agent_names}
 
     def _is_terminal_state(self):
-        """
-        Whether the current state is a terminal state
-        """
-        raise NotImplementedError("_is_terminated() must be implemented")
+        """ Whether the current state is a terminal state """
+        # Check our objectives
+        test_goal = 0
+        # Loop through objectives, checking if they are satisfied
+        rewards, agents = self.goal_cache.check(remove_finished=True)
+        for reward, agent in zip(rewards, agents):
+            self.reward_caches[agent].append(reward)
+        if self.verbose:
+            print("GOALS:",self.goal_cache.goals)
+        # Return if no objectives left
+        no_objectives_left = len(self.goal_cache) == 0
+        return no_objectives_left
+
     
     def _is_truncated_state(self):
         """ 
@@ -265,7 +275,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
 
         # If teleport on reset, randomly pick new location for agents
         if self.teleport_on_reset:
-            for agent in self.Agents.values():
+            for agent in self.Ags.values():
                 agent.update()
                 agent.pos = self.observation_spaces.sample()
                 agent.history['pos'][-1] = agent.pos
@@ -279,11 +289,13 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             self.episode += 1
         self.write_start_episode()
 
-        self.goal_cache.clear()
-        self._pick_new_goals()
+        # Restore agents to active state (pettingzoo variable)
+        self.agents = copy(self.agent_names)
+        # print("Active agents: ", self.agents)
 
-    def _pick_new_goals(self):
-        pass 
+        # Reset goals
+        self.goal_cache.reset()
+
 
     def update(self, update_agents=False):
         """
@@ -312,14 +324,17 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         if actions is not None:
             if len(self.agents) == 0:
                 raise AttributeError("Action is given, but there are no " 
-                        "agents. Try adding an agent with .add_agents()")
+                        "active agents. If there are no agents, try adding an "
+                        "agent with .add_agents(). If there are agents, "
+                        "try .reset() to restore inactive agents w/o goals to "
+                        "active.")
             actions = actions if isinstance(actions, dict) else \
                       self._dict(actions)
         else:
             # Move agents randomly on None
-            actions = self._dict([None for _ in range(len(self.Agents))])
+            actions = self._dict([None for _ in range(len(self.Ags))])
         for (agent, action) in zip(self.agents, actions.values()):
-            Ag = self.Agents[agent]
+            Ag = self.Ags[agent]
             dt = dt if dt is not None else Ag.dt
             action = np.array(action).ravel() if action is not None else None
             Ag.update(dt=dt, drift_velocity=action,
@@ -358,26 +373,12 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
     def get_observation(self):
         """ Get the current state of the environment """
         return {name:agent.pos 
-                for name, agent in self.Agents.items()}
+                for name, agent in self.Ags.items()}
 
     def get_reward(self):
         """ Get the current reward state of each agent """
         return {name:agent.reward.get_total()
-                for name, agent in self.Agents.items()}
-
-    def _is_terminal_state(self):
-        """ Whether the current state is a terminal state """
-        # Check our objectives
-        test_goal = 0
-        # Loop through objectives, checking if they are satisfied
-        rewards, agents = self.goal_cache.check(remove_finished=True)
-        for reward, agent in zip(rewards, agents):
-            self.reward_caches[agent].append(reward)
-        if self.verbose:
-            print("GOALS:",self.goal_cache.goals)
-        # Return if no objectives left
-        no_objectives_left = len(self.goal_cache) == 0
-        return no_objectives_left
+                for name, agent in self.Ags.items()}
 
     # ----------------------------------------------
     # Reading and writing episode data
@@ -510,16 +511,16 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             c, s = self._agent_style(agent, t, color, startid=startid, 
                                      skiprate=skiprate, **kws)
             return trajectory, c, s
-        if initialize or len(R["agents"]) != len(self.Agents):
+        if initialize or len(R["agents"]) != len(self.Ags):
             R["agents"]        = []
-            for (i, agent) in enumerate(self.Agents.values()):
+            for (i, agent) in enumerate(self.Ags.values()):
                 if len(agent.history['t']):
                     trajectory, c, s = get_agent_props(agent, i)
                     ax.scatter(*trajectory.T,
                         s=s, alpha=alpha, zorder=0, c=c, linewidth=0)
                     R["agents"].append(ax.collections[-1])
         else:
-            for i, agent in enumerate(self.Agents.values()):
+            for i, agent in enumerate(self.Ags.values()):
                 scat = R["agents"][i]
                 trajectory, c, s = get_agent_props(agent, i)
                 scat.set_offsets(trajectory)
@@ -791,22 +792,43 @@ class GoalCache():
         verbose : bool
             Print debug statements?
     """
-    def __init__(self, env, goalorder="nonsequential", agentmode="interact", 
+    def __init__(self, env, goalorder="nonsequential", agentmode="interact",
+                 reset_goals:List[Goal]=[], reset_n_goals:int=1, 
+                 reset_orders_goal:bool=False,
                  verbose=False, *pos, **kws):
         self.env       = env
         self.goals:dict[str,list[Goal]] = {name:[] 
-                                           for name in self.env.Agents.keys()}
-        self.goalorder = goalorder
-        self.agentmode = agentmode
+                                           for name in self.env.Ags.keys()}
+        self.goalorder = goalorder # sequential | nonsequential
+        self.agentmode = agentmode # interact | noninteract
+        self.reset_goals:List[Goal] = reset_goals # list of goals to reset from
+        self.reset_n_goals:int = reset_n_goals # if >0, then randomly select from reservoir on .reset()
+        self.reset_orders_goal:bool  = reset_orders_goal # if True, then keep the ordering of 
+                                           # goals chosen from the pool
+        if self.reset_n_goals <= 0:
+            raise ValueError("reset_n_goals must be > 0")
+        # list of current goals to satisfy per agent, these are drawn
+        # from reset_goals list
         # records the last goal that was achieved, if sequential
         self._if_sequential__last_acheived = {
-                agent:-1 for agent in self.env.Agents.keys()}
+                agent:-1 for agent in self.env.Ags.keys()}
         self.verbose = verbose
         if self.goalorder not in ["sequential", "nonsequential", "custom"]:
             raise ValueError("goalorder must be 'sequential', 'nonsequential'"
                              ", or 'custom'")
         if self.agentmode not in ["interact", "noninteract"]:
             raise ValueError("agentmode must be 'interact' or 'noninteract'")
+
+    def add_agent(self, agent):
+        """
+        Add a new agent to the goal cache
+        """
+        if isinstance(agent, str):
+            self.goals[agent] = []
+        elif isinstance(agent, Agent):
+            self.goals[agent.name] = []
+        else:
+            raise ValueError("agent must be a string or Agent object")
 
     def check(self, remove_finished:bool=True):
         """
@@ -823,6 +845,11 @@ class GoalCache():
         agents : list of agents that satisfied the goal
         """
         verbose = self.verbose
+
+        # If no goals, no rewards and no agents
+        if len(self.goals) == 0:
+            return [], []
+
         if verbose:
             print("entering check")
             pre = repr(self.goals)
@@ -833,6 +860,9 @@ class GoalCache():
         if self.goalorder  == "sequential":
             rewards, agents = [], []
             for agent in self.env.agent_names:
+                assert agent in self.goals.keys(), \
+                    f"agent {agent} not in goal cache ... " \
+                    "try adding it with GoalCache.add_agent"
                 if len(self.goals[agent]) == 0:
                     continue
                 this:int = self._if_sequential__last_acheived[agent] + 1
@@ -905,7 +935,8 @@ class GoalCache():
         """ Get all unique goals """
         from itertools import chain
         if self.agentmode == "noninteract":
-            return tuple(self.goals.values())[0]
+            goals = tuple(self.goals.values())
+            return goals[0] if not len(goals)==0 else goals
         elif self.agentmode == "interact":
             return tuple(set(chain(*self.goals.values())))
         else:
@@ -938,6 +969,40 @@ class GoalCache():
         if self.verbose:
             print("Clearing goals")
         self.goals.clear()
+
+    def reset(self):
+        """
+        Reset the goal cache for the next episode -- drawing from
+        self.reset_goals. It selects self.reset_n_goals from the pool
+        and adds them to the cache. If self.reset_orders_goal is True,
+        it maintains the ordering from the pool.
+        """
+        import random
+
+        # Clear existing goals
+        self.clear()
+
+        # Validate that we have enough goals to reset
+        if len(self.reset_goals) < self.reset_n_goals:
+            warnings.warn("Not enough goals to replenish "
+                          "n={self.reset_n_goals} "
+                          f"\nlen(goals)={len(self.reset_goals)}")
+            n_reset = len(self.reset_goals)
+        else:
+            n_reset = self.reset_n_goals
+
+        # Select goals
+        if self.reset_orders_goal:
+            # Maintain the ordering from the pool
+            selected_goals = self.reset_goals[:n_reset]
+        else:
+            # Pick goals randomly without replacement
+            selected_goals = random.sample(self.reset_goals, n_reset)
+
+        # Append selected goals to each agent in the environment
+        for agent_name in self.env.Ags.keys():
+            for goal in selected_goals:
+                self.append(goal, agent_name)
 
     def find(self, other_goal:Goal, agents=None) ->dict[str,Goal]:
         """ Find an goal in the cache """
@@ -1007,8 +1072,9 @@ class SpatialGoal(Goal):
         agents = self.env._agentnames(agents)
         agents_reached_goal = []
         for agent in agents:
-            agent_pos = self.env.Agents[agent].pos
+            agent_pos = self.env.Ags[agent].pos
             goal_pos = self.pos
+            
             if self._in_goal_radius(agent_pos, goal_pos).all().any():
                 agents_reached_goal.append(agent)
         return {agent:self.reward for agent in agents_reached_goal}
@@ -1041,8 +1107,8 @@ class SpatialGoalEnvironment(TaskEnvironment):
         List of possible goal positions
     current_goal_state : np.ndarray | None
         The current goal position
-    pick_n_goals : int
-        The number of goals to set
+    
+    See `TaskEnvronment` for more kws
     """
     # --------------------------------------
     # Some reasonable default render settings
@@ -1051,16 +1117,15 @@ class SpatialGoalEnvironment(TaskEnvironment):
                  possible_goals:Union[None,List[SpatialGoal]]=None,
                  possible_goal_positions:Union[List,np.ndarray,str]='random_5', 
                  current_goal_state:Union[None,np.ndarray,List[np.ndarray]]=None, 
-                 pick_n_goals:int=1,
                  goalkws=dict(),
                  **kws):
         super().__init__(*pos, **kws)
         if possible_goals is None:
             self.goalkws = goalkws
-            self.goal_reservoir:List[Goal] = \
+            self.goal_cache.reset_goals = \
                     self._init_poss_goal_positions(possible_goal_positions)
         else:
-            self.goal_reservoir = possible_goals
+            self.goal_cache.reset_goals = possible_goals
 
     def _init_poss_goal_positions(self, 
             possible_goal_position:Union[List,np.ndarray,str]) ->list[SpatialGoal]:
@@ -1116,36 +1181,19 @@ class SpatialGoalEnvironment(TaskEnvironment):
 
         resets the environement to a new episode
         """
-        super().reset(**kws)
 
         # How many goals to set?
         if goal_locations is not None:
-            ng = len(goal_locations)
+            self.goal_cache.reset_n_goals = len(goal_locations)
         elif n_objectives is not None:
-            ng = n_objectives
-        else:
-            ng = self.pick_n_goals
+            self.goal_cache.reset_n_goals = n_objectives
+        # Did user pass new goals?
+        if goal_locations is not None:
+            self.goal_caches.reset_goals = self._init_poss_goal_positions(
+                    goal_locations)
 
-        # Push new spatial objectives to the cache
-        self.goal_cache.clear()
-        # Set the number of required spatial spatial goals
-        for g in range(ng):
-            if goal_locations is None:
-                if len(self.goal_reservoir):
-                    g = np.random.choice(np.arange(len(self.goal_reservoir)), 1)
-                    goal_pos = np.array(self.goal_reservoir)[g]
-                else:
-                    warnings.warn("No possible goal positions specified yet")
-                    goal_pos = None # No goal state (this could be, e.g., a lockout time)
-                if self.verbose:
-                    print("Proposed goal: ", goal_pos)
-            else:
-                goal_pos = np.array(goal_locations[g])
-                if goal_pos is None:
-                    raise ValueError("goal_locations must be a subset "
-                      " of possible_goal_pos")
-            if goal_pos is not None:
-                [self.goal_cache.append(g) for g in goal_pos]
+        # Reset the TaskEnvironment parent class (which picks new goals etc)
+        super().reset(**kws)
 
         return self.get_observation()
 
@@ -1196,6 +1244,10 @@ class SpatialGoalEnvironment(TaskEnvironment):
                 # ci.set_radius(obj.radius)
 
 
+# ======================== #
+### HELPER FUNTIONS ########
+# ======================== #
+
 def get_goal_vector(Ag=None):
     """ 
     Direction vector to nearest goal
@@ -1227,12 +1279,16 @@ def get_goal_vector(Ag=None):
     else:
         raise TypeError("Unknown input type")
 
+# ======================== #
+### BASIC TESTING CODE #####
+# ======================== #
+# See ./tests/test_taskenv.py for more tests
 
 active = True
 if active and __name__ == "__main__":
 
     speed = 12 # dials how fast agent runs
-    pausetime = 0.000001 # pause time in plot
+    pausetime = 0.00000001 # pause time in plot
     plt.close('all')
 
     #################################################################
@@ -1255,24 +1311,23 @@ if active and __name__ == "__main__":
     #   goalorder = "nonsequential" means that goals can be completed in any order
     #                           "sequential" means that goals must be completed
     #                           in the order they are set
-    goalcachekws = dict(agentmode="noninteract", goalorder="nonsequential")
+    goalcachekws = dict(agentmode="noninteract", goalorder="nonsequential",
+                        reset_n_goals=2, verbose=False)
 
     #################################################################
     #                   ENVIRONMENT
     #################################################################
     # Create a test environment
-    env = SpatialGoalEnvironment(pick_n_goals=2, params={'dimensionality':'2D'},
-                                 render_every=1, 
-                                 teleport_on_reset=False,
+    env = SpatialGoalEnvironment(params={'dimensionality':'2D'},
+                                 render_every=1, teleport_on_reset=False,
                                  goalkws=goalkws, goalcachekws=goalcachekws,
                                  verbose=False)
-    env.goal_cache.verbose = False
     #################################################################
     #                   AGENT
     #################################################################
     # Create an agent
-    Ag = Agent(env)
-    env.add_agents(Ag) # add it to the environment
+    Ag = Agent(env);  env.add_agents(Ag) # add it to the environment
+    Ag2 = Agent(env); env.add_agents(Ag2)
     #################################################################
     #################################################################
 
@@ -1281,36 +1336,6 @@ if active and __name__ == "__main__":
     plt.pause(pausetime)
 
 
-    # -----------------------------------------------------------------------
-    # TEST 1 AGENT
-    # -----------------------------------------------------------------------
-    # Run the simulation, with the agent drifting towards the goal when
-    # it is close to the goal
-
-    # while env.episode < 4:
-    #     # Get the direction to the goal
-    #     dir_to_reward = get_goal_vector(Ag)
-    #     drift_velocity = speed * Ag.speed_mean * \
-    #             (dir_to_reward / np.linalg.norm(dir_to_reward))
-    #     # Step the environment with actions
-    #     observation, reward, terminate_episode, _, info = \
-    #             env.step1(drift_velocity)
-    #     # ------------------------------------
-    #     # Render environment
-    #     env.render()
-    #     plt.pause(pausetime)
-    #     # Check if we are done
-    #     if terminate_episode:
-    #         print("done! reward:", reward)
-    #         env.reset()
-
-    # -----------------------------------------------------------------------
-    # TEST Multi-agent (2 agents, does not show reward values in terminal,
-    #                   as in the above example)
-    # -----------------------------------------------------------------------
-    Ag2 = Agent(env)
-    env.add_agents(Ag2)
-    # s = input("Two agents. Press enter to start")
     print("Agent names: ",env.agent_names)
     while env.episode < 6:
         # Get the direction to the goal
@@ -1329,5 +1354,4 @@ if active and __name__ == "__main__":
         if any(terminate_episode.values()):
             print("done! reward:", reward)
             env.reset()
-
 
