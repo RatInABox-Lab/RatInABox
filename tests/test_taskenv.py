@@ -30,8 +30,8 @@ def Agents(request, Ag):
     """
     return [Ag] * request.param
 
-@pytest.fixture(params=[1,3])
-def pick_n_goals(request):
+@pytest.fixture(params=[1,2])
+def reset_n_goals(request):
     """
     Returns a list of n goals
     """
@@ -51,13 +51,14 @@ def agentmode(request):
 
 @pytest.fixture(params=[
     {"dimensionality":"2D"}])
-def Env(request, pick_n_goals, possible_goal_positions, agentmode):
+def Env(request, reset_n_goals, possible_goal_positions, agentmode):
     """
     Returns an Environment with a given dimensionality
     """
     env = SpatialGoalEnvironment(possible_goal_positions=possible_goal_positions,
-                                 render_every=1, pick_n_goals=pick_n_goals,
-                                 goalcachekws=dict(agentmode=agentmode), 
+                                 render_every=1, 
+                                 goalcachekws=dict(agentmode=agentmode,
+                                                   reset_n_goals=reset_n_goals), 
                                  params=request.param)
     return env
 
@@ -68,7 +69,7 @@ def EnvWithAgents(Agents, Env):
 
 @pytest.fixture
 def drift_velocity(EnvWithAgents):
-    agents = list(EnvWithAgents.Agents.values())
+    agents = list(EnvWithAgents.Ags.values())
     return {name:(val*agent.speed_mean*speed_const)
             for agent,(name,val) 
             in zip(agents, get_goal_vector(agents).items())}
@@ -85,7 +86,7 @@ def test_agent_can_reach_goal(EnvWithAgents: SpatialGoalEnvironment,
     """ Test that the agent can reach the goal """
     done = False
     steps = 0
-    Env, Agents = EnvWithAgents, list(EnvWithAgents.Agents.values())
+    Env, Agents = EnvWithAgents, list(EnvWithAgents.Ags.values())
     Env.reset()
     while not done:
         if np.any(np.isnan([A.pos for A in Agents])):
