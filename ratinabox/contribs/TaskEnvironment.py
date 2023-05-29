@@ -97,7 +97,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         self.agents:List[str] = [] # pettingzoo variable
                                    # that tracks all agents who are
                                    # still active in an episode
-        self.info:dict                 = {} # gymnasium returns info in step()
+        self.infos:dict       = {} # pettingzoo returns infos in step()
 
         # Episode history
         self.episodes:dict = {} # Written to upon completion of an episode
@@ -172,6 +172,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             agent.t = self.t # agent clock is aligned to environment,
                              # in case a new agent is placed in the env
                              # on a later episode
+            self.infos[name] = {} # pettingzoo requirement
 
         self.reset() # reset the environment with new agent
 
@@ -295,6 +296,8 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
 
         # Reset goals
         self.goal_cache.reset()
+        
+        return self.get_observation(), self.infos
 
 
     def update(self, update_agents=False):
@@ -358,7 +361,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
                 self.get_reward(), 
                 self._dict(self._is_terminal_state()),
                 self._dict(self._is_truncated_state()), 
-                self._dict([self.info])
+                self._dict([self.infos])
                 )
 
     def step1(self, action=None, *pos, **kws):
@@ -1193,9 +1196,8 @@ class SpatialGoalEnvironment(TaskEnvironment):
                     goal_locations)
 
         # Reset the TaskEnvironment parent class (which picks new goals etc)
-        super().reset(**kws)
-
-        return self.get_observation()
+        # and returns pettingzoo.reset() required objects
+        return super().reset(**kws)
 
     # --------------------------------------
     # Rendering
