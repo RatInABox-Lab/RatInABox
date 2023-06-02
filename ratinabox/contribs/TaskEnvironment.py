@@ -98,6 +98,10 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
                                    # that tracks all agents who are
                                    # still active in an episode
         self.infos:dict       = {} # pettingzoo returns infos in step()
+        self.observation_lambda = {} # lambda functions to attain an agents
+                                     # observation information -- a vector
+                                     # of whatever info in the agent defines
+                                     # its current observation -- DEFAULT: pos
 
         # Episode history
         self.episodes:dict = {} # Written to upon completion of an episode
@@ -118,7 +122,8 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         return self.action_spaces[agent_name]
 
     def add_agents(self, agents:Union[dict, List[Agent], Agent],
-                   names:Union[None,List]=None, maxvel:float=50.0, **kws):
+                   names:Union[None,List]=None, maxvel:float=50.0, 
+                   **kws):
         """
         Add agents to the environment
 
@@ -155,6 +160,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             # dict
             D = int(self.dimensionality[0])
             self.action_spaces[name] = Box(low=0, high=maxvel, shape=(D,))
+
             # Add the agent's observation space to the environment's 
             # observation spaces dict
             ext = [self.extent[i:i+2] 
@@ -162,6 +168,8 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             lows, highs = np.array(list(zip(*ext)), dtype=np.float_)
             self.observation_spaces[name] = \
                     Box(low=lows, high=highs, dtype=np.float_)
+            self.observation_lambda[name] = lambda agent: agent.pos
+
             # Attach a reward cache for the agent
             cache = RewardCache()
             self.reward_caches[name] = cache
@@ -179,7 +187,6 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
     def remove_agents(self, agents):
         """
         Remove agents from the environment
-
         Parameters
         ----------
         agents
@@ -375,13 +382,57 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         
     def get_observation(self):
         """ Get the current state of the environment """
-        return {name:agent.pos 
+        return {name:self.observation_lambda[name](agent)
                 for name, agent in self.Ags.items()}
 
     def get_reward(self):
         """ Get the current reward state of each agent """
         return {name:agent.reward.get_total()
                 for name, agent in self.Ags.items()}
+
+    def set_observation(self, agents:Union[List, str, Agent], 
+                        spaces:Union[List,Space], 
+                        observation_lambdass:Union[List,FunctionType]):
+        """
+        Set the observation space and observation function for an agent(s)
+
+        - The space is a gym.Space that describes the set of possible
+        values an agents observation can take
+        - The lambda takes an agent argument and returns a tuple/list of 
+        numbers regardings the agents position. users can set the lambda to
+        extract whatever attributes of the agent encode its state
+
+        The default for agents is there position. But if you would like to
+        change the observation to cell firing or velocity, you can do that
+        here.
+
+        Input
+        ----
+        agents: List, str, Agent
+            The agent(s) to change the observation space for
+        spaces: List, gym.Space
+            The observation space(s) to change to. If a list, then it
+            must be a list of gynasium spaces (these just describe the
+            full range of values an observation can take, and RL libraries
+            often use these to sample the space.)
+        observation_lambdass: List, Function
+            The observation function(s) to change to...these should take an
+            agent and output the vector of numbers describing what you 
+            consider your agents' state. you can set the function to grab
+            whatever you'd like about the agent: it's position, veloctiy, 
+        """
+        agents = self._agentnames(agents)
+        if not isinstance(spaces, list):
+            spaces = [spaces]
+        if not isinstance(observation_lambdass, list):
+            observation_lambdass = [observation_lambdass]
+        if len(spaces) != len(observation_lambdass):
+            raise ValueError("observation space and observation lambda "
+                             "must be the same length")
+        for ag, sp, obs in zip(agents, spaces, observation_lambdass):
+            print("Changing observation space for {ag}")
+            self.observation_spaces[ag] = sp
+            self.observation_lambda[ag] = obs
 
     # ----------------------------------------------
     # Reading and writing episode data
