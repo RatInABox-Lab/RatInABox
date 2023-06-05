@@ -81,6 +81,10 @@ def test_drift_velocity_not_nan(drift_velocity):
     assert not any((np.isnan(driftvec).any() 
                     for driftvec in drift_velocity.values()))
 
+def test_reward_is_not_nan(EnvWithAgents, drift_velocity):
+    _, reward, _, _, _ = EnvWithAgents.step(drift_velocity)
+    assert not np.isnan(list(reward.values())).any()
+
 def test_agent_can_reach_goal(EnvWithAgents: SpatialGoalEnvironment,
                               less_than_steps=10_000):
     """ Test that the agent can reach the goal """

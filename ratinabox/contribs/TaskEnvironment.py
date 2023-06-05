@@ -266,10 +266,16 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         """
         return False
 
+    def seed(self, seed=None):
+        """ Seed the random number generator """
+        np.random.seed(seed)
+
     def reset(self, seed=None, return_info=False, options=None):
         """
         How to reset the task when finisedh
         """
+        if seed is not None:
+            self.seed(seed)
         if self.verbose:
             print("Resetting")
         if len(self.episodes['start']) > 0:
@@ -646,7 +652,7 @@ class Reward():
         "exponential": [2],
         "none":        []
     }
-    def __init__(self, init_state, dt=0.01,
+    def __init__(self, init_state=1, dt=0.01,
                  expire_clock=None, decay=None,
                  decay_knobs=[], 
                  external_drive:Union[FunctionType,None]=None,
@@ -1024,7 +1030,7 @@ class GoalCache():
             print("Clearing goals")
         self.goals.clear()
 
-    def reset(self):
+    def reset(self, seed=None):
         """
         Reset the goal cache for the next episode -- drawing from
         self.reset_goals. It selects self.reset_n_goals from the pool
