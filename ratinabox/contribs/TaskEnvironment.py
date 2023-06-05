@@ -159,7 +159,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             # Add the agent's action space to the environment's action spaces
             # dict
             D = int(self.dimensionality[0])
-            self.action_spaces[name] = Box(low=0, high=maxvel, shape=(D,))
+            self.action_spaces[name] = Box(low=-maxvel, high=maxvel, shape=(D,))
 
             # Add the agent's observation space to the environment's 
             # observation spaces dict
