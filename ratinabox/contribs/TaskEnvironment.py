@@ -365,8 +365,9 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         self.update(*pos, **kws)
 
         # If any terminal agents, remove from set of active agents
+        truncations = self._dict(self._is_truncated_state())
         for agent, term in self._dict(self._is_terminal_state()).items():
-            if term and agent in self.agents:
+            if term and agent in self.agents or truncations[agent]:
                 self.agents.remove(agent)
         
         # Return the next state, reward, whether the state is terminal,
