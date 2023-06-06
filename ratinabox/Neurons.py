@@ -453,9 +453,11 @@ class Neurons:
                     ax_.scatter(
                         pos_where_spiked[:, 0],
                         pos_where_spiked[:, 1],
-                        s=2,
+                        s=3,
                         linewidth=0,
                         alpha=0.7,
+                        zorder=1.2,
+                        color=(self.color or "C1"),
                     )
 
         # PLOT 1D
@@ -602,7 +604,7 @@ class Neurons:
             fargs=(fig, ax, chosen_neurons, t_start, t_end, dt, speed_up),
         )
 
-        ratinabox.utils.save_animation(anim, "rat_timeseries", save=autosave)
+        ratinabox.utils.save_animation(anim, "rate_timeseries", save=autosave)
 
         return anim
 
@@ -854,17 +856,23 @@ class GridCells(Neurons):
 
     Must be initialised with an Agent and a 'params' dictionary.
 
-    GridCells defines a set of 'n' grid cells with random orientations, grid scales and offsets (these can be set non-randomly of coursse). Grids are modelled as the rectified sum of three cosine waves at 60 degrees to each other.
+    GridCells defines a set of 'n' grid cells with random orientations, grid scales and offsets (these can be set non-randomly of course). Grids are modelled as the rectified sum of three cosine waves at 60 degrees to each other.
+
+    To initialise grid cells you specify three things: (i) params['gridscale'], (ii) params['orientation'] and (iii) params['phase_offset']. These are all sampled from a distribution (specified as, e.g. params['phase_offset_distribution']) and then used to calculate the firing rate of each grid cell. For each of these there quantities the value you specify parameterises the distribution from which it is sampled. For example params['gridscale':0.45,'gridscale_distribution':'uniform'] will pull gridscales from a uniform distribution between 0 and 0.45m. The 'delta' distribution means a constant will be taken. For all three of these you can optionally just pass an array of length GridCells.n (in which case the corresponding distribution parameter is ignored). This array is set a the value for each grid cell.
 
     List of functions:
         • get_state()
+        • set_phase_offsets()
+
 
     default_params = {
             "n": 10,
-            "gridscale": 0.45,
-            "random_orientations": True,
-            "random_gridscales": True,
-            "random_phase_offsets": True,
+            "gridscale": 0.45, 
+            "gridscale_distribution": "uniform",
+            "orientation": None, 
+            "orientation_distribution": "uniform",
+            "phase_offset": True,
+            "phase_offset_distribution": "uniform",
             "min_fr": 0,
             "max_fr": 1,
             "name": "GridCells",
@@ -873,10 +881,12 @@ class GridCells(Neurons):
 
     default_params = {
         "n": 10,
-        "gridscale": 0.45,
-        "random_orientations": True,
-        "random_gridscales": True,
-        "random_phase_offsets": True,
+        "gridscale": 0.50, 
+        "gridscale_distribution": "rayleigh",
+        "orientation": None, 
+        "orientation_distribution": "uniform",
+        "phase_offset": True,
+        "phase_offset_distribution": "uniform",
         "min_fr": 0,
         "max_fr": 1,
         "name": "GridCells",
@@ -893,32 +903,74 @@ class GridCells(Neurons):
         self.params = copy.deepcopy(__class__.default_params)
         self.params.update(params)
 
+        # deprecation warnings
+        if ("random_gridscales" in self.params) or ("random_orientations" in self.params) or ("random_phase_offsets" in self.params):
+            warnings.warn("the GridCell API has changed slightly, 'random_gridscales', 'random_orientations' and 'random_phase_offsets' are no longer accepted as parameters. Please use 'gridscale','gridscale_distribution','orientation','orientation_distribution','phase_offset' and 'phase_offset_distribution' instead. See docstring or 1.7.0 release notes for instructions.")
+
+        # Initialise the gridscales
+        if hasattr(self.params["gridscale"],"__len__"):
+            self.gridscales = np.array(self.params["gridscale"])
+            self.params['n'] = len(self.gridscales)
+        else: 
+            if self.params['gridscale_distribution'] == "uniform":
+                self.gridscales = np.random.uniform(0, self.params["gridscale"], self.params["n"])
+            elif self.params['gridscale_distribution'] == "rayleigh":
+                self.gridscales = np.random.rayleigh(scale=self.params["gridscale"], size=self.params["n"])
+            elif self.params['gridscale_distribution'] == "delta":
+                self.gridscales = np.ones(self.params["n"]) * self.params["gridscale"]
+            else:
+                raise ValueError("gridscale distribution not recognised")
+        
+        # Initialise Neurons parent class
         super().__init__(Agent, self.params)
+
+
+        #Initialise phase offsets for each grid cell
+        if hasattr(self.params["phase_offset"],"__len__") and len(np.array(self.params['phase_offset']).shape) == 2:
+            self.phase_offsets = np.array(self.params["phase_offset"])
+            assert len(self.phase_offsets) == self.params["n"], "number of phase offsets supplied incompatible with number of neurons"
+        else:
+            if self.params['phase_offset_distribution'] == "uniform":
+                self.phase_offsets = np.random.uniform(0, 2*np.pi, size=(self.params["n"],2))
+            elif self.params['phase_offset_distribution'] == "delta":
+                phase_offset = self.params["phase_offset"] or np.array([0,0])
+                self.phase_offsets = np.ones((self.params["n"],2)) * np.array(phase_offset)
+            elif self.params['phase_offset_distribution'] == "grid":
+                self.phase_offsets = self.set_phase_offsets_on_grid()
+            else:
+                raise ValueError("phase offset distribution not recognised")
+        
+        #Initialise orientations for each grid cell
+        if hasattr(self.params["orientation"],"__len__"):
+            self.orientations = np.array(self.params["orientation"])
+            assert len(self.orientations) == self.params["n"], "number of orientations supplied incompatible with number of neurons"
+        else:
+            if self.params['orientation_distribution'] == "uniform":
+                self.orientations = np.random.uniform(0, 2*np.pi, size=(self.params["n"],))
+            elif self.params['orientation_distribution'] == "delta":
+                orientation = self.params["orientation"] or 0
+                self.orientations = np.ones(self.params["n"]) * orientation
+            else:
+                raise ValueError("orientation distribution not recognised")
+        
 
         # Initialise grid cells
         assert (
             self.Agent.Environment.dimensionality == "2D"
         ), "grid cells only available in 2D"
-        if self.random_phase_offsets == True:
-            self.phase_offsets = np.random.uniform(0, self.gridscale, size=(self.n, 2))
-        else:
-            self.phase_offsets = self.set_phase_offsets()
+
         w = []
         for i in range(self.n):
             w1 = np.array([1, 0])
-            if self.random_orientations == True:
-                w1 = utils.rotate(w1, np.random.uniform(0, 2 * np.pi))
+            w1 = utils.rotate(w1, self.orientations[i])
             w2 = utils.rotate(w1, np.pi / 3)
             w3 = utils.rotate(w1, 2 * np.pi / 3)
             w.append(np.array([w1, w2, w3]))
         self.w = np.array(w)
-        if self.random_gridscales == True:
-            self.gridscales = np.random.rayleigh(scale=self.gridscale, size=self.n)
-        else:
-            self.gridscales = np.full(self.n, fill_value=self.gridscale)
+
         if ratinabox.verbose is True:
             print(
-                "GridCells successfully initialised. You can also manually set their gridscale (GridCells.gridscales), offsets (GridCells.phase_offset) and orientations (GridCells.w1, GridCells.w2,GridCells.w3 give the cosine vectors)"
+                "GridCells successfully initialised. You can also manually set their gridscale (GridCells.gridscales), offsets (GridCells.phase_offsets) and orientations (GridCells.w1, GridCells.w2,GridCells.w3 give the cosine vectors)"
             )
         return
 
@@ -940,8 +992,9 @@ class GridCells(Neurons):
 
         # grid cells are modelled as the thresholded sum of three cosines all at 60 degree offsets
         # vectors to grids cells "centred" at their (random) phase offsets
+        origin = self.gridscales.reshape(-1,1)*self.phase_offsets/(2*np.pi)
         vecs = utils.get_vectors_between(
-            self.phase_offsets, pos
+            origin, pos
         )  # shape = (N_cells,N_pos,2)
         w1 = np.tile(np.expand_dims(self.w[:, 0, :], axis=1), reps=(1, pos.shape[0], 1))
         w2 = np.tile(np.expand_dims(self.w[:, 1, :], axis=1), reps=(1, pos.shape[0], 1))
@@ -960,21 +1013,21 @@ class GridCells(Neurons):
         )  # scales from being between [0,1] to [min_fr, max_fr]
         return firingrate
 
-    def set_phase_offsets(self):
-        """Set non-random phase_offsets. Most offsets (cell number: x*y) are grid-like, while the remainings (cell number: n - x*y) are random."""
+    def set_phase_offsets_on_grid(self):
+        """Set non-random phase_offsets. Most offsets (n_on_grid, the largest square numer before self.n) will tile a grid of 0 to 2pi in x and 0 to 2pi in y, while the remainings (cell number: n - n_on_grid) are random."""
         n_x = int(np.sqrt(self.n))
         n_y = self.n // n_x
         n_remaining = self.n - n_x * n_y
 
-        dx = self.gridscale / n_x
-        dy = self.gridscale / n_y
+        dx = 2*np.pi / n_x
+        dy = 2*np.pi / n_y
 
         grid = np.mgrid[
-            (0 + dx / 2) : (self.gridscale - dx / 2) : (n_x * 1j),
-            (0 + dy / 2) : (self.gridscale - dy / 2) : (n_y * 1j),
+            (0 + dx / 2) : (2*np.pi - dx / 2) : (n_x * 1j),
+            (0 + dy / 2) : (2*np.pi - dy / 2) : (n_y * 1j),
         ]
         grid = grid.reshape(2, -1).T
-        remaining = np.random.uniform(0, self.gridscale, size=(n_remaining, 2))
+        remaining = np.random.uniform(0, 2*np.pi, size=(n_remaining, 2))
 
         all_offsets = np.vstack([grid, remaining])
 
@@ -1503,7 +1556,7 @@ class HeadDirectionCells(Neurons):
     default_params = {
             "min_fr": 0,
             "max_fr": 1,
-            "n":1,
+            "n":10,
             "angle_spread_degrees":30,
             "name": "HeadDirectionCells",
         }
@@ -1512,7 +1565,7 @@ class HeadDirectionCells(Neurons):
     default_params = {
         "min_fr": 0,
         "max_fr": 1,
-        "n": 4,
+        "n": 10,
         "angular_spread_degrees": 45,  # width of HDC preference function (degrees)
         "name": "HeadDirectionCells",
     }
@@ -1865,7 +1918,7 @@ class FeedForwardLayer(Neurons):
             w = inputlayer["w"]
             if evaluate_at == "last":
                 I = inputlayer["layer"].firingrate
-            else:  # kick can down the road let input layer decide how to evaluate the firingrate
+            else:  # kick can down the road let input layer decide how to evaluate the firingrate. this is core to feedforward layer as this recursive call will backprop through the upstraem layers until it reaches a "core" (e.g. place cells) layer which will then evaluate the firingrate. 
                 I = inputlayer["layer"].get_state(evaluate_at, **kwargs)
             inputlayer["I_temp"] = I
             V += np.matmul(w, I)

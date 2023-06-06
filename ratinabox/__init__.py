@@ -43,7 +43,7 @@ def stylize_plots():
     rcParams["xtick.color"] = darkgrey
     rcParams["ytick.color"] = darkgrey
     # FIGURE
-    rcParams["figure.dpi"] = 150
+    rcParams["figure.dpi"] = 200
     rcParams["figure.figsize"] = [1, 1]  # 2 x 2 inches
     rcParams["figure.titlesize"] = "medium"
     # AXES

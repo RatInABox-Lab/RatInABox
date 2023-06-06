@@ -1,6 +1,6 @@
 # TaskEnvironment
 
-The TaskEnvironment is a utility designed to streamline the creation and management of environments that host various tasks. It is an amalgamation of the flexible ratinabox.Environment and the widely-used pettingzoo.env, a multi-agent reinforcement learning environment.
+The TaskEnvironment is a utility designed to streamline the creation and management of environments that host various tasks. It is an combination of the flexible ratinabox.Environment and the widely-used pettingzoo.env, a multi-agent reinforcement learning environment.
 
 This system includes tools to manage Goals and Rewards, but these are not mandatory. If desired, a TaskEnvironment can be written or inherited in a similar fashion to a pure pettingzoo-compatible RIB Environment.
 
@@ -8,7 +8,7 @@ In this section, we will explore some of the offerings of TaskEnvironment.py. He
 
 The primary classes in TaskEnvironment.py include:
 
-* Goal: An abstract class representing a goal that agents aim to accomplish. For new tasks, users may need to create their own unique goal classes derived from Goal. These custom classes would define specific methods to verify goal satisfaction and manage any other specialized behaviors.
+* Goal: An abstract class representing a goal that agents must acheive in a task. For new tasks, users may need to create their own unique goal classes derived from Goal. These custom classes would define specific methods to verify goal satisfaction and manage any other specialized behaviors.
 
 * Reward: This class represents a reward that agents can obtain by accomplishing goals. Rewards can possess dynamics that change over time, such as decay rates, or they may be influenced by an external ramping signal.
 
