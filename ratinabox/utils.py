@@ -641,7 +641,7 @@ def save_figure(
                     break
                 else:
                     break
-            fig.save(f"{path}.{filetype}")
+            fig.save(f"{path}.{filetype}", dpi=300)
 
     print(f"{file_type} saved to {os.path.abspath(path)}.{save_types}")
 
