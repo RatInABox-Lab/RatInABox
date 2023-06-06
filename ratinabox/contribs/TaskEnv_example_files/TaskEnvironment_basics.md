@@ -1,47 +1,41 @@
 # TaskEnvironment
 
-`TaskEnvironment` is designed to simplify creating and managing environments that contain tasks! This blends the flexble `ratinabox.Environment` with a popular multi-agent reinforcement learning `pettingzoo.env` environment. Included are some tools to manage `Goal`s and `Reward`s, but they are optional. You could write/inherit a `TaskEnvironment` like a purely `pettingzoo` enabled RIB `Environment`.
+The TaskEnvironment is a utility designed to streamline the creation and management of environments that host various tasks. It is a combination of the flexible ratinabox.Environment and the widely-used pettingzoo.env, a multi-agent reinforcement learning environment.
 
-Let's exame some things `TaskEnvironment.py` offers. These are some basic descriptions of customizable structures to handle an environment with various types of goals and rewards.
+This system includes tools to manage Goals and Rewards, but these are not mandatory. If desired, a TaskEnvironment can be written or inherited in a similar fashion to a pure pettingzoo-compatible RIB Environment.
 
-The main classes in TaskEnvironment.py are:
+In this section, we will explore some of the offerings of TaskEnvironment.py. Here, you'll find descriptions of customizable structures that can handle an environment filled with diverse types of goals and rewards.
 
-* `Goal`: This abstract class represents a goal that agents need to achieve. For new tasks, users may need to implement their own specialized goal classes derived from Goal by defining specific methods to determine goal satisfaction and any other specific behaviors.
+The primary classes in TaskEnvironment.py include:
 
-* `Reward`: This class represents a reward that agents can earn by satisfying goals. Rewards can have dynamics that evolve over time (e.g. decay rates or may be driven by an external ramping signal).
+* Goal: An abstract class representing a goal that agents must acheive in a task. For new tasks, users may need to create their own unique goal classes derived from Goal. These custom classes would define specific methods to verify goal satisfaction and manage any other specialized behaviors.
 
-* `RewardCache`: This class acts as a cache for all active rewards attached to an agent. It keeps track of the rewards and provides methods to update and retrieve the total value of active rewards.
+* Reward: This class represents a reward that agents can obtain by accomplishing goals. Rewards can possess dynamics that change over time, such as decay rates, or they may be influenced by an external ramping signal.
 
-* `GoalCache`: This class manages all active goals across all agents. It is responsible for tracking goal completion and coordinating agent interactions with the goals.
+* RewardCache: This class serves as a cache for all active rewards associated with an agent. It maintains a record of the rewards and offers methods to update and fetch the total value of active rewards.
 
-* `TaskEnvironment`: This serves as the base class for task environments. It defines the core structure, methods, and functionalities for managing agents, rewards, and goals.
+* GoalCache: This class oversees all active goals across all agents. It is in charge of monitoring goal achievement and coordinating agent interactions with the goals.
 
+* TaskEnvironment: This acts as the foundational class for task environments. It establishes the core structure, methods, and functionalities for handling agents, rewards, and goals.
 
 ## Overview
 
-The following figures offer a birds-eye summary of how the above classes interact to carry out your task of interest.  We're mainly showing the most important objects and methods. See the class docfiles for more info.
+This section provides a high-level summary of how the classes mentioned above interact to fulfill your task requirements. Primarily, we focus on the most critical objects and methods. For more detailed information, refer to the documentation associated with each class.
 
-![TaskEnvironment](./TaskEnv_teaching_example_files/TE_TaskEnvironment.png)
+![TaskEnvironment Diagram](./TaskEnv_teaching_example_files/TE_TaskEnvironment.png)
 
-Task Environment contains an `Agents` dictionary `agent_name -> agent`, names indexing the agents. You can add agents with `add_agents()` method. `step(actions)` moves the agents through your environment, sending `actions` to each agent, and the environment can change with agent actions, emitting rewards if a goal is reached.
+The `TaskEnvironment` includes an `Agents` dictionary that maps `agent_name` to `agent`, effectively indexing the agents. New agents can be added with the `add_agents()` method. The `step(actions)` method steps the agents through your environment, transmitting `actions` to each agent. Depending on the agent actions, the environment can adapt and dispense rewards if a goal is met.
 
-To track goals, we optionally have a `GoalCache` object that stores the set of goals (or goal sequences) for the agents. 
+For goal tracking, we optionally utilize a `GoalCache` object that stores the set of goals (or sequences of goals) for the agents. The `RewardCache` contains the active rewards for each agent. When a `Goal` is fulfilled by an agent (for example, when an animal reaches a specific location), it adds a goal to that animal's cache. These objects can dispense rewards over time to the agent after the initiation of a particular event.
 
-The `RewardCache` holds the active rewards for each agent. When a `Goal` is satisfied by one of the agents, say an animal reaches a special location, it releases a goal to that animal's cache. These are objects that can release reward over time to the agent after triggering the event.
-
-`Goals` inside the `GoalCache` encode the rules --- what conditions should your agent get a reward. `Reward` objects in the `RewardCache` encode the dynamics of your reward.
-
+The `Goals` within the `GoalCache` specify the rules – the conditions under which your agent receives a reward. The `Reward` objects in the `RewardCache` detail the dynamics of your reward.
 
 <p style="width=49%">
 </p>
 <img src="./TaskEnv_teaching_example_files/TE_Goals+Rewards.png" alt="Goals + Rewards" width="49%"/>
 
 
-
-### :angel: 👉 `Goal`/`GoalCache` and `Reward`/`RewardCache` are ❗️OPTIONAL  ❗️
-The goal and reward interfaces are optional helpers to keep organize goals and sequence them, and rewards interfaces help track non-sparse rewards. You can skip/leap-frog these! 
-
-Feel free to simply inherit the `TaskEnvironment` if you merely want a `gynasium`/`pettingzoo` RIB `Environment` without the helpful but extra fluff. You can manually encode your rules and reward logic pythonically into the `.step()` function. See the function and its attached doc file to understand what you should output.
+**Note:** The `Goal`/`GoalCache` and `Reward`/`RewardCache` systems are optional. These interfaces serve as helper tools to organize and sequence goals, and to monitor non-sparse rewards. If you prefer, you can bypass these interfaces. You're welcome to inherit the `TaskEnvironment` directly if you only want a `gym`/`pettingzoo` RIB `Environment` without these additional features. You can manually incorporate your rules and reward logic into the `.step()` function. Please refer to the function and its documentation to understand the expected output.
 
 ## Creating your own task, examples
 
