@@ -1,6 +1,6 @@
 # TaskEnvironment
 
-The TaskEnvironment is a utility designed to streamline the creation and management of environments that host various tasks. It is an combination of the flexible ratinabox.Environment and the widely-used pettingzoo.env, a multi-agent reinforcement learning environment.
+The TaskEnvironment is a utility designed to streamline the creation and management of environments that host various tasks. It is a combination of the flexible ratinabox.Environment and the widely-used pettingzoo.env, a multi-agent reinforcement learning environment.
 
 This system includes tools to manage Goals and Rewards, but these are not mandatory. If desired, a TaskEnvironment can be written or inherited in a similar fashion to a pure pettingzoo-compatible RIB Environment.
 
@@ -24,7 +24,7 @@ This section provides a high-level summary of how the classes mentioned above in
 
 ![TaskEnvironment Diagram](./TaskEnv_teaching_example_files/TE_TaskEnvironment.png)
 
-The `TaskEnvironment` includes an `Agents` dictionary that maps `agent_name` to `agent`, effectively indexing the agents. New agents can be added with the `add_agents()` method. The `step(actions)` method propels the agents through your environment, transmitting `actions` to each agent. Depending on the agent actions, the environment can adapt and dispense rewards if a goal is met.
+The `TaskEnvironment` includes an `Agents` dictionary that maps `agent_name` to `agent`, effectively indexing the agents. New agents can be added with the `add_agents()` method. The `step(actions)` method steps the agents through your environment, transmitting `actions` to each agent. Depending on the agent actions, the environment can adapt and dispense rewards if a goal is met.
 
 For goal tracking, we optionally utilize a `GoalCache` object that stores the set of goals (or sequences of goals) for the agents. The `RewardCache` contains the active rewards for each agent. When a `Goal` is fulfilled by an agent (for example, when an animal reaches a specific location), it adds a goal to that animal's cache. These objects can dispense rewards over time to the agent after the initiation of a particular event.
 
