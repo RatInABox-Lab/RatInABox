@@ -105,6 +105,7 @@ class Neurons:
         """
 
         self.Agent = Agent
+        self.Agent.Neurons.append(self)
 
         self.params = copy.deepcopy(__class__.default_params)
         self.params.update(params)
@@ -453,7 +454,7 @@ class Neurons:
                     ax_.scatter(
                         pos_where_spiked[:, 0],
                         pos_where_spiked[:, 1],
-                        s=3,
+                        s=5,
                         linewidth=0,
                         alpha=0.7,
                         zorder=1.2,
