@@ -859,7 +859,7 @@ class GridCells(Neurons):
 
     GridCells defines a set of 'n' grid cells with random orientations, grid scales and offsets (these can be set non-randomly of course). Grids are modelled as the rectified sum of three cosine waves at 60 degrees to each other.
 
-    To initialise grid cells you specify three things: (i) params['gridscale'], (ii) params['orientation'] and (iii) params['phase_offset']. These are all sampled from a distribution (specified as, e.g. params['phase_offset_distribution']) and then used to calculate the firing rate of each grid cell. For each of these there quantities the value you specify parameterises the distribution from which it is sampled. For example params['gridscale':0.45,'gridscale_distribution':'uniform'] will pull gridscales from a uniform distribution between 0 and 0.45m. The 'delta' distribution means a constant will be taken. For all three of these you can optionally just pass an array of length GridCells.n (in which case the corresponding distribution parameter is ignored). This array is set a the value for each grid cell.
+    To initialise grid cells you specify three things: (i) params['gridscale'], (ii) params['orientation'] and (iii) params['phase_offset']. These are all sampled from a distribution (specified as, e.g. params['phase_offset_distribution']) and then used to calculate the firing rate of each grid cell. For each of these there quantities the value you specify parameterises the distribution from which it is sampled. For example params['gridscale':0.5,'gridscale_distribution':'uniform'] will pull gridscales from a uniform distribution between 0.5*gridscale (=0.25m) and 1.5*gridscale (=0.75m) The 'delta' distribution means a constant will be taken. For all three of these you can optionally just pass an array of length GridCells.n (in which case the corresponding distribution parameter is ignored). This array is set a the value for each grid cell.
 
     params['description'] gives the place cells model being used. Currently either rectified sum of three cosines "three_rectified_cosines" or a shifted sum of three cosines "three_shifted_cosines" (which is similar, just a little softer at the edges, see Solstad et al. 2006)
 
@@ -870,7 +870,7 @@ class GridCells(Neurons):
 
     default_params = {
             "n": 10,
-            "gridscale": 0.45,
+            "gridscale": 0.5,
             "gridscale_distribution": "uniform",
             "orientation": None,
             "orientation_distribution": "uniform",
@@ -925,7 +925,9 @@ class GridCells(Neurons):
         else:
             if self.params["gridscale_distribution"] == "uniform":
                 self.gridscales = np.random.uniform(
-                    0, self.params["gridscale"], self.params["n"]
+                    0.5 * self.params["gridscale"],
+                    1.5 * self.params["gridscale"],
+                    self.params["n"],
                 )
             elif self.params["gridscale_distribution"] == "rayleigh":
                 self.gridscales = np.random.rayleigh(
