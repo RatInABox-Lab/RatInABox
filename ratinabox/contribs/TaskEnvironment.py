@@ -53,13 +53,14 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         "name": "TaskEnvironment-RiAB"
     }
 
-    def __init__(self, *pos, verbose=False,
+    def __init__(self, *pos, dt=0.01, 
                  render_mode='matplotlib', 
                  render_every=None, render_every_framestep=2,
-                 dt=0.01, teleport_on_reset=False, 
+                 teleport_on_reset=False, 
                  save_expired_rewards=False, 
                  goals=[], # one can pass in goal objects directly here
                  goalcachekws=dict(), 
+                 verbose=False,
                  **kws):
         super().__init__(*pos, **kws)
         self.dynamic = {'walls':[], 'objects':[]}
@@ -248,7 +249,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         rewards, agents = self.goal_cache.check(remove_finished=True)
         for reward, agent in zip(rewards, agents):
             self.reward_caches[agent].append(reward)
-        if self.verbose:
+        if self.verbose >= 2:
             print("GOALS:",self.goal_cache.goals)
         # Return if no objectives left
         no_objectives_left = len(self.goal_cache) == 0
@@ -354,7 +355,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             dt = dt if dt is not None else Ag.dt
             action = np.array(action).ravel() if action is not None else None
             Ag.update(dt=dt, drift_velocity=action,
-                         drift_to_random_strength_ratio= \
+                      drift_to_random_strength_ratio= \
                                  drift_to_random_strength_ratio)
 
         # Update the reward caches for time decay of existing rewards
@@ -371,12 +372,16 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
                 self.agents.remove(agent)
         
         # Return the next state, reward, whether the state is terminal,
-        return (self.get_observation(), 
+        outs = (self.get_observation(), 
                 self.get_reward(), 
                 self._dict(self._is_terminal_state()),
                 self._dict(self._is_truncated_state()), 
                 self._dict([self.infos])
                 )
+        if self.verbose:
+            print(f"action @ {self.t}:", actions)
+            print(f"step @ {self.t}:",outs)
+        return outs
 
     def step1(self, action=None, *pos, **kws):
         """
@@ -791,7 +796,9 @@ class RewardCache():
         """
         If there are any active rewards, return the sum of their values.
         """
-        return sum([reward.state for reward in self.cache])
+        r = sum([reward.state for reward in self.cache])
+        assert not np.isnan(r), "reward is nan"
+        return r
 
 reward_default=Reward(1, 0.01, expire_clock=1, decay="linear")
 
@@ -856,7 +863,7 @@ class GoalCache():
     def __init__(self, env, goalorder="nonsequential", agentmode="interact",
                  reset_goals:List[Goal]=[], reset_n_goals:int=1, 
                  reset_orders_goal:bool=False,
-                 verbose=False, *pos, **kws):
+                 verbose=False, **kws):
         self.env       = env
         self.goals:dict[str,list[Goal]] = {name:[] 
                                            for name in self.env.Ags.keys()}
@@ -1187,6 +1194,7 @@ class SpatialGoalEnvironment(TaskEnvironment):
                     self._init_poss_goal_positions(possible_goal_positions)
         else:
             self.goal_cache.reset_goals = possible_goals
+        import pdb;pdb.set_trace()
 
     def _init_poss_goal_positions(self, 
             possible_goal_position:Union[List,np.ndarray,str]) ->list[SpatialGoal]:
@@ -1381,7 +1389,7 @@ if active and __name__ == "__main__":
     env = SpatialGoalEnvironment(params={'dimensionality':'2D'},
                                  render_every=1, teleport_on_reset=False,
                                  goalkws=goalkws, goalcachekws=goalcachekws,
-                                 verbose=False)
+                                 verbose=True)
     #################################################################
     #                   AGENT
     #################################################################
