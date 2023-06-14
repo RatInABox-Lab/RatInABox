@@ -23,10 +23,12 @@ def create_env():
     """
     goalcachekws = dict(agentmode="interact", goalorder="nonsequential",
                         reset_n_goals=5, verbose=False)
+    rewardcachekws = dict(default_reward_level=-0.1)
     # Create a test environment
     env = SpatialGoalEnvironment(params={'dimensionality':'2D'},
                                  render_every=1, teleport_on_reset=False,
                                  goalcachekws=goalcachekws,
+                                 rewardcachekws=rewardcachekws,
                                  verbose=False)
     goals = [SpatialGoal(env, pos=np.array([x, y]))
              for (x,y) in product((0.05, 0.5, 0.95), (0.05, 0.5, 0.95))]
@@ -61,19 +63,25 @@ if __name__ == "__main__":
     config={ # Configuration dictionary
         "env": env_name, # Name of the environment
         "framework": "torch", # Use PyTorch
-        "horizon": 7000, # Max timesteps per episode
+        "horizon": 9000, # Max timesteps per episode
         "batch_mode": "truncate_episodes",
         "rollout_fragment_length": 500,  # number of steps after which the partial trajectory will be used for an update
         "exploration_config": {
-            "type": "EpsilonGreedy",
-            "initial_epsilon": 0.5,
-            "final_epsilon": 0.05,
-            "epsilon_timesteps": 50000,  # Number of timesteps over which epsilon will decrease
+            # "type": "EpsilonGreedy",
+            # "initial_epsilon": 0.8,
+            # "final_epsilon": 0.25,
+            # "epsilon_timesteps": 50000,  # Number of timesteps over which epsilon will decrease
+            "type": "GaussianNoise",
+            "stddev": 2.5,  # standard deviation of the Gaussian noise
+            },
+        "multiagent": {
+            "policy_states_are_swappable":True,
             },
         "num_workers": 4,
         "num_envs_per_worker": 2,
         "num_cpus_per_worker": 1,
         "num_gpus": n_gpu,
+        "monitor": True, # monitor gym environment
     }
     algo = "PPO" # Proximal Policy Optimization
     save_dir = "~/ray_rib_results/" + env_name
