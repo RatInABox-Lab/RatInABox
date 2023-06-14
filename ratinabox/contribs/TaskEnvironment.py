@@ -1364,8 +1364,6 @@ def get_goal_vector(Ag=None):
 active = True
 if active and __name__ == "__main__":
 
-    speed = 12 # dials how fast agent runs
-    pausetime = 0.00000001 # pause time in plot
     plt.close('all')
 
     #################################################################
@@ -1411,16 +1409,15 @@ if active and __name__ == "__main__":
     #################################################################
 
     # Prep the rendering figure
-    plt.ion(); env.render(); plt.show()
-    plt.pause(pausetime)
-
-
+    speed = 12             # dials how fast agent runs
+    pausetime = 0.00000001 # pause time in plot
+    plt.ion(); env.render(); plt.show(); plt.pause(pausetime)
     print("Agent names: ",env.agent_names)
     while env.episode < 6:
         # Get the direction to the goal
-        dir_to_reward = {"agent_0":get_goal_vector(Ag),
-                         "agent_1":get_goal_vector(Ag2)}
-        drift_velocity = {agent : speed * Ag.speed_mean * 
+        dir_to_reward = {name:get_goal_vector(Ag) for name,Ag 
+                         in env.Ags.items()} 
+        drift_velocity = {agent : speed * env.Ags[agent].speed_mean * 
                 (dir_to_reward / np.linalg.norm(dir_to_reward))
                 for (agent, dir_to_reward) in dir_to_reward.items()}
         # Step the environment with actions
