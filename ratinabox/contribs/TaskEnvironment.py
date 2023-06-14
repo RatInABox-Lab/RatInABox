@@ -60,6 +60,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
                  save_expired_rewards=False, 
                  goals=[], # one can pass in goal objects directly here
                  goalcachekws=dict(), 
+                 rewardcachekws=dict(),
                  verbose=False,
                  **kws):
         super().__init__(*pos, **kws)
@@ -93,7 +94,6 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         # Setup observation space from the Environment space
         self.observation_spaces:Dict[Space]       = Dict({})
         self.action_spaces:Dict[Space]            = Dict({})
-        self.reward_caches:dict[str, RewardCache] = {}
         self.agent_names:List[str]     = []
         self.agents:List[str] = [] # pettingzoo variable
                                    # that tracks all agents who are
@@ -113,8 +113,10 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         self.episode = 0
 
         # Reward cache specifics
+        self.reward_caches:dict[str, RewardCache] = {}
         self.save_expired_rewards = save_expired_rewards
         self.expired_rewards:List[RewardCache] = []
+        self.rewardcachekws = rewardcachekws
 
     def observation_space(self, agent_name:str):
         return self.observation_spaces[agent_name]
@@ -172,7 +174,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             self.observation_lambda[name] = lambda agent: agent.pos
 
             # Attach a reward cache for the agent
-            cache = RewardCache()
+            cache = RewardCache(**self.rewardcachekws)
             self.reward_caches[name] = cache
             agent.reward = cache
             # Ready the goal_cache for the agent
@@ -379,8 +381,8 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
                 self._dict([self.infos])
                 )
         if self.verbose:
-            print(f"action @ {self.t}:", actions)
-            print(f"step @ {self.t}:",outs)
+            print(f"🐀 action @ {self.t}:", actions)
+            print(f"🌍 step @ {self.t}:",outs)
         return outs
 
     def step1(self, action=None, *pos, **kws):
@@ -768,8 +770,15 @@ class RewardCache():
     RewardCache
 
     A cache of all `active` rewards attached to an agent
+
+    # Parameters
+    default_reward_level : float
+        default reward level for all rewards in the cache
+    verbose : bool, int
+        print reward cache related details
     """
-    def __init__(self, verbose=False):
+    def __init__(self, default_reward_level=0, verbose=False):
+        self.default_reward_level = default_reward_level
         self.cache:List[Reward] = []
         self.verbose = verbose
 
@@ -796,7 +805,8 @@ class RewardCache():
         """
         If there are any active rewards, return the sum of their values.
         """
-        r = sum([reward.state for reward in self.cache])
+        r = sum([reward.state for reward in self.cache]) + \
+                self.default_reward_level
         assert not np.isnan(r), "reward is nan"
         return r
 
@@ -1194,7 +1204,6 @@ class SpatialGoalEnvironment(TaskEnvironment):
                     self._init_poss_goal_positions(possible_goal_positions)
         else:
             self.goal_cache.reset_goals = possible_goals
-        import pdb;pdb.set_trace()
 
     def _init_poss_goal_positions(self, 
             possible_goal_position:Union[List,np.ndarray,str]) ->list[SpatialGoal]:
