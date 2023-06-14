@@ -1390,6 +1390,7 @@ if active and __name__ == "__main__":
     #                           in the order they are set
     goalcachekws = dict(agentmode="noninteract", goalorder="nonsequential",
                         reset_n_goals=2, verbose=False)
+    rewardcachekws = dict(default_reward_level=-0.01)
 
     #################################################################
     #                   ENVIRONMENT
@@ -1398,6 +1399,7 @@ if active and __name__ == "__main__":
     env = SpatialGoalEnvironment(params={'dimensionality':'2D'},
                                  render_every=1, teleport_on_reset=False,
                                  goalkws=goalkws, goalcachekws=goalcachekws,
+                                 rewardcachekws=rewardcachekws,
                                  verbose=True)
     #################################################################
     #                   AGENT
