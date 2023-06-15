@@ -546,7 +546,7 @@ def save_figure(
     fig,
     save_title="",
     fig_save_types=["png", "svg"],
-    anim_save_types=["mp4", "gif"],
+    anim_save_types=["mp4",],
     save=True,
 ):
     """

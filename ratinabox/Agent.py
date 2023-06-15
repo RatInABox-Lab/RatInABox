@@ -91,6 +91,9 @@ class Agent:
         self.history["vel"] = []
         self.history["rot_vel"] = []
 
+        self.Neurons = []  # each new Neurons class belonging to this Agent will append itself to this list
+
+
         # time and runID
         self.t = 0
         self.distance_travelled = 0
