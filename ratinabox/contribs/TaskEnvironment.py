@@ -53,13 +53,15 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         "name": "TaskEnvironment-RiAB"
     }
 
-    def __init__(self, *pos, verbose=False,
+    def __init__(self, *pos, dt=0.01, 
                  render_mode='matplotlib', 
                  render_every=None, render_every_framestep=2,
-                 dt=0.01, teleport_on_reset=False, 
+                 teleport_on_reset=False, 
                  save_expired_rewards=False, 
                  goals=[], # one can pass in goal objects directly here
                  goalcachekws=dict(), 
+                 rewardcachekws=dict(),
+                 verbose=False,
                  **kws):
         super().__init__(*pos, **kws)
         self.dynamic = {'walls':[], 'objects':[]}
@@ -92,7 +94,6 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         # Setup observation space from the Environment space
         self.observation_spaces:Dict[Space]       = Dict({})
         self.action_spaces:Dict[Space]            = Dict({})
-        self.reward_caches:dict[str, RewardCache] = {}
         self.agent_names:List[str]     = []
         self.agents:List[str] = [] # pettingzoo variable
                                    # that tracks all agents who are
@@ -112,8 +113,10 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         self.episode = 0
 
         # Reward cache specifics
+        self.reward_caches:dict[str, RewardCache] = {}
         self.save_expired_rewards = save_expired_rewards
         self.expired_rewards:List[RewardCache] = []
+        self.rewardcachekws = rewardcachekws
 
     def observation_space(self, agent_name:str):
         return self.observation_spaces[agent_name]
@@ -171,7 +174,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             self.observation_lambda[name] = lambda agent: agent.pos
 
             # Attach a reward cache for the agent
-            cache = RewardCache()
+            cache = RewardCache(**self.rewardcachekws)
             self.reward_caches[name] = cache
             agent.reward = cache
             # Ready the goal_cache for the agent
@@ -248,7 +251,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         rewards, agents = self.goal_cache.check(remove_finished=True)
         for reward, agent in zip(rewards, agents):
             self.reward_caches[agent].append(reward)
-        if self.verbose:
+        if self.verbose >= 2:
             print("GOALS:",self.goal_cache.goals)
         # Return if no objectives left
         no_objectives_left = len(self.goal_cache) == 0
@@ -354,7 +357,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             dt = dt if dt is not None else Ag.dt
             action = np.array(action).ravel() if action is not None else None
             Ag.update(dt=dt, drift_velocity=action,
-                         drift_to_random_strength_ratio= \
+                      drift_to_random_strength_ratio= \
                                  drift_to_random_strength_ratio)
 
         # Update the reward caches for time decay of existing rewards
@@ -371,12 +374,16 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
                 self.agents.remove(agent)
         
         # Return the next state, reward, whether the state is terminal,
-        return (self.get_observation(), 
+        outs = (self.get_observation(), 
                 self.get_reward(), 
                 self._dict(self._is_terminal_state()),
                 self._dict(self._is_truncated_state()), 
                 self._dict([self.infos])
                 )
+        if self.verbose:
+            print(f"🐀 action @ {self.t}:", actions)
+            print(f"🌍 step @ {self.t}:",outs)
+        return outs
 
     def step1(self, action=None, *pos, **kws):
         """
@@ -763,8 +770,15 @@ class RewardCache():
     RewardCache
 
     A cache of all `active` rewards attached to an agent
+
+    # Parameters
+    default_reward_level : float
+        default reward level for all rewards in the cache
+    verbose : bool, int
+        print reward cache related details
     """
-    def __init__(self, verbose=False):
+    def __init__(self, default_reward_level=0, verbose=False):
+        self.default_reward_level = default_reward_level
         self.cache:List[Reward] = []
         self.verbose = verbose
 
@@ -791,7 +805,10 @@ class RewardCache():
         """
         If there are any active rewards, return the sum of their values.
         """
-        return sum([reward.state for reward in self.cache])
+        r = sum([reward.state for reward in self.cache]) + \
+                self.default_reward_level
+        assert not np.isnan(r), "reward is nan"
+        return r
 
 reward_default=Reward(1, 0.01, expire_clock=1, decay="linear")
 
@@ -856,7 +873,7 @@ class GoalCache():
     def __init__(self, env, goalorder="nonsequential", agentmode="interact",
                  reset_goals:List[Goal]=[], reset_n_goals:int=1, 
                  reset_orders_goal:bool=False,
-                 verbose=False, *pos, **kws):
+                 verbose=False, **kws):
         self.env       = env
         self.goals:dict[str,list[Goal]] = {name:[] 
                                            for name in self.env.Ags.keys()}
@@ -1339,6 +1356,36 @@ def get_goal_vector(Ag=None):
     else:
         raise TypeError("Unknown input type")
 
+def test_environment_loop(env, episodes=6, 
+                          pausetime = 0.00000001, # pause time in plot
+                          speed=11.0):
+
+    # Prep the rendering figure
+    plt.ion(); fig, ax = env.render(); plt.show()
+    plt.pause(pausetime)
+
+    print("Agent names: ",env.agent_names)
+    while env.episode < episodes:
+        # Get the direction to the goal
+        dir_to_reward = {name:get_goal_vector(Ag)
+                         for name, Ag in env.Ags.items()}
+        drift_velocity = {agent : speed * env.Ags[agent].speed_mean * 
+                (dir_to_reward / np.linalg.norm(dir_to_reward))
+                for (agent, dir_to_reward) in dir_to_reward.items()}
+        # Step the environment with actions
+        observation, reward, terminate_episode, _, info = \
+                env.step(drift_velocity)
+        # Render environment
+        env.render()
+        plt.pause(pausetime)
+        # Check if we are done
+        if any(terminate_episode.values()):
+            print("done! reward:", reward)
+            env.reset()
+
+    return fig, ax
+
+
 # ======================== #
 ### BASIC TESTING CODE #####
 # ======================== #
@@ -1347,8 +1394,7 @@ def get_goal_vector(Ag=None):
 active = True
 if active and __name__ == "__main__":
 
-    speed = 12 # dials how fast agent runs
-    pausetime = 0.00000001 # pause time in plot
+    
     plt.close('all')
 
     #################################################################
@@ -1381,7 +1427,7 @@ if active and __name__ == "__main__":
     env = SpatialGoalEnvironment(params={'dimensionality':'2D'},
                                  render_every=1, teleport_on_reset=False,
                                  goalkws=goalkws, goalcachekws=goalcachekws,
-                                 verbose=False)
+                                 verbose=True)
     #################################################################
     #                   AGENT
     #################################################################
@@ -1391,27 +1437,5 @@ if active and __name__ == "__main__":
     #################################################################
     #################################################################
 
-    # Prep the rendering figure
-    plt.ion(); env.render(); plt.show()
-    plt.pause(pausetime)
-
-
-    print("Agent names: ",env.agent_names)
-    while env.episode < 6:
-        # Get the direction to the goal
-        dir_to_reward = {"agent_0":get_goal_vector(Ag),
-                         "agent_1":get_goal_vector(Ag2)}
-        drift_velocity = {agent : speed * Ag.speed_mean * 
-                (dir_to_reward / np.linalg.norm(dir_to_reward))
-                for (agent, dir_to_reward) in dir_to_reward.items()}
-        # Step the environment with actions
-        observation, reward, terminate_episode, _, info = \
-                env.step(drift_velocity)
-        # Render environment
-        env.render()
-        plt.pause(pausetime)
-        # Check if we are done
-        if any(terminate_episode.values()):
-            print("done! reward:", reward)
-            env.reset()
+    test_environment_loop(env, episodes=6, speed=8.0)
 

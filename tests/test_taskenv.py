@@ -125,12 +125,9 @@ def test_agent_can_reach_goal(
     records.append(dict(steps=steps, reward=reward))
     assert all(terminate_episode.values())
 
-
-#TODO fix this as it bugs (see github issue #52)
 # def test_parallel_api(EnvWithAgents):
 #     """
 #     Test that the environment fits the parallel pettingzoo API. This
 #     runs the official pettingzoo test suite.
 #     """
 #     parallel_api_test(EnvWithAgents, num_cycles=10)
-#     return True
