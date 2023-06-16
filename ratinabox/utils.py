@@ -416,6 +416,83 @@ def von_mises(theta, mu, sigma, norm=None):
     return v
 
 
+def distribution_sampler(
+    distribution_name="uniform", distribution_parameters=(1,), shape=(10,)
+):
+    """Given a distribution name and distribution parameters, and a shape, returns an array of that shape with samples from the distribution.
+    Currently support distributions include:
+    - uniform ------------------------------- (low, high) or just a single param p which gives (0.5*p, 1.5*p)
+    - rayleigh ------------------------------ (scale)
+    - normal -------------------------------- (loc, scale)
+    - logarithmic --------------------------- (low, high)
+    - delta --------------------------------- (the_single_value)
+    - modules ------------------------------- (module1_val, module2_val, module3_val, ...)
+    - truncnorm ----------------------------- (low, high, loc, scale)
+
+
+    Arg: distribution_name (str): name of the distribution.
+    Arg: distribution_parameters (tuple): An int, float or tuple specifying the parameter(s)
+    """
+    if type(distribution_parameters) is not tuple:
+        distribution_parameters = tuple((distribution_parameters,))
+
+    if distribution_name == "uniform":
+        if len(distribution_parameters) == 1:
+            low, high = (
+                0.5 * distribution_parameters[0],
+                1.5 * distribution_parameters[0],
+            )
+        elif len(distribution_parameters) == 2:
+            low, high = distribution_parameters[0], distribution_parameters[1]
+        return np.random.uniform(low, high, size=shape)
+
+    elif distribution_name == "rayleigh":
+        return np.random.rayleigh(scale=distribution_parameters[0], size=shape)
+
+    elif distribution_name == "normal":
+        return np.random.normal(
+            loc=distribution_parameters[0], scale=distribution_parameters[1], size=shape
+        )
+
+    elif distribution_name == "logarithmic":
+        assert len(shape) == 1, "Logarithmic distribution only works for 1D arrays"
+        return np.logspace(
+            np.log10(distribution_parameters[0]),
+            np.log10(distribution_parameters[1]),
+            num=shape[0],
+            base=10,
+        )
+
+    elif distribution_name == "delta":
+        return distribution_parameters[0] * np.ones(shape)
+
+    elif distribution_name == "modules":
+        assert len(shape) == 1, "Modules distribution only works for 1D arrays"
+        n_per_module = shape[0] // len(distribution_parameters)
+        array = distribution_parameters[-1] * np.ones(
+            shape
+        )  # any remainder will be assigned to the last module
+        for i, module_size in enumerate(distribution_parameters):
+            array[i * n_per_module : (i + 1) * n_per_module] = np.array(
+                [module_size] * n_per_module
+            )
+        return array
+
+    elif distribution_name == "truncnorm":
+        lower, upper = distribution_parameters[0], distribution_parameters[1]
+        mu, sigma = distribution_parameters[2], distribution_parameters[3]
+        return scipy.stats.truncnorm.rvs(
+            (lower - mu) / sigma,
+            (upper - mu) / sigma,
+            scale=sigma,
+            loc=mu,
+            size=shape,
+        )
+
+    else:
+        raise ValueError("This distribution is not recognised")
+
+
 """Plotting functions"""
 
 
@@ -546,7 +623,9 @@ def save_figure(
     fig,
     save_title="",
     fig_save_types=["png", "svg"],
-    anim_save_types=["mp4",],
+    anim_save_types=[
+        "mp4",
+    ],
     save=True,
 ):
     """
