@@ -1,3 +1,10 @@
+---
+
+# !!!!!THIS IS A VERY EARLY BETA FOR RiaB2.0. NOT FOR GENERAL USE!!!!!!
+## See issue #60 if you have ideas for new features/changes in v2.0
+
+---
+
 # RatInABox 
 ![Tests](https://github.com/TomGeorge1234/RatInABox/actions/workflows/test.yml/badge.svg)   [![PyPI version](https://badge.fury.io/py/ratinabox.svg)](https://badge.fury.io/py/ratinabox) [![Downloads](https://static.pepy.tech/badge/ratinabox)](https://pepy.tech/project/ratinabox)
 
