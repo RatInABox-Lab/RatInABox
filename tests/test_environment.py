@@ -3,7 +3,7 @@ import pytest
 import ratinabox
 import matplotlib
 import numpy
-from ratinabox.Environment import Environment
+from ratinabox.env.Environment import Environment
 
 @pytest.fixture
 def Env1D():

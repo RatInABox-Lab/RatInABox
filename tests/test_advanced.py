@@ -7,11 +7,14 @@
 import pytest
 import numpy as np 
 import matplotlib.pyplot as plt 
-from ratinabox.Environment import Environment
-from ratinabox.Agent import Agent
-from ratinabox.Neurons import PlaceCells, GridCells, BoundaryVectorCells
+from ratinabox.env.Environment import Environment
+from ratinabox.agent.Agent import Agent
+from ratinabox.neuron.GridCells import GridCells
+from ratinabox.neuron.BoundaryVectorCells import BoundaryVectorCells
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.linear_model import Ridge
+
+from ratinabox.neuron.PlaceCells import PlaceCells
 
 
 def test_simple():

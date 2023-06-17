@@ -2,8 +2,8 @@ import pytest
 
 from types import FunctionType
 
-from ratinabox.contribs.TaskEnvironment import SpatialGoalEnvironment, get_goal_vector
-from ratinabox.Agent import Agent
+from ratinabox.env.contribs.TaskEnvironment import SpatialGoalEnvironment, get_goal_vector
+from ratinabox.agent.Agent import Agent
 
 import numpy as np
 from pettingzoo.test import parallel_api_test
