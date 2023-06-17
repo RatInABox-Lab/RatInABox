@@ -18,11 +18,20 @@ class Environment:
     """Environment class: defines the Environment in which the Agent lives.
     This class needs no other classes to initialise it. It exists independently of any Agents or Neurons.
 
+    2D Environments (the default) can contain
+        • a boundary  ------- if non-default (square), this must be given at initialisation
+        • walls ------------- can be given at initialisation or added after
+        • holes ------------- can be given at initialisation or added after
+        • objects ----------- can only be given after initialisation using Env.add_object
+        (beware, some Neurons classes depend on walls and holes being define before they are initialised, see their documentation - this means it is safest to define walls and holes at initialisation)
+
     A default parameters dictionary (with descriptions) can be found in __init__()
 
     List of functions...
         ...that you might use:
             • add_wall()
+            • add_hole()
+            • add_object()
             • plot_environment()
         ...that you probably won't directly use/use very often:
             • sample_positions()
@@ -43,8 +52,10 @@ class Environment:
             "scale": 1,
             "aspect": 1,
             "dx": 0.01,
-            "boundary":None #defaults to rectangular
+            "walls":[],#defaults to no walls
+            "boundary":None #defaults to square
             "holes":[],#defaults to no holes
+            "objects":[],#defaults to no objects
         }
     """
 
@@ -52,9 +63,10 @@ class Environment:
         "dimensionality": "2D",  # 1D or 2D environment
         "boundary_conditions": "solid",  # solid vs periodic
         "scale": 1,  # scale of environment (in metres)
-        "aspect": 1,  # x/y aspect ratio for the (rectangular) 2D environment (how wide this is relative to tall)
+        "aspect": 1,  # x/y aspect ratio for the (rectangular) 2D environment (how wide this is relative to tall). Only applies if you are not passing a boundary
         "dx": 0.01,  # discretises the environment (for plotting purposes only)
         "boundary": None,  # coordinates [[x0,y0],[x1,y1],...] of the corners of a 2D polygon bounding the Env (if None, Env defaults to rectangular). Corners must be ordered clockwise or anticlockwise, and the polygon must be a 'simple polygon' (no holes, doesn't self-intersect).
+        "walls": [],  # a list of loose walls within the environment. Each wall in the list can be defined by it's start and end coords [[x0,y0],[x1,y1]]. You can also manually add walls after init using Env.add_wall().
         "holes": [],  # coordinates [[[x0,y0],[x1,y1],...],...] of corners of any holes inside the Env. These must be entirely inside the environment and not intersect one another. Corners must be ordered clockwise or anticlockwise. holes has 1-dimension more than boundary since there can be multiple holes
     }
 
@@ -96,7 +108,7 @@ class Environment:
             b = self.boundary
 
             # make the arena walls
-            self.walls = np.array([])
+            self.walls = np.array(self.walls).reshape(-1, 2, 2)
             if (self.boundary_conditions == "periodic") and (
                 self.is_rectangular == False
             ):
@@ -105,13 +117,13 @@ class Environment:
                 )
                 self.params["boundary_conditions"] = "solid"
             elif self.boundary_conditions == "solid":
-                self.walls = np.array(
+                boundary_walls = np.array(
                     [
                         [b[(i + 1) if (i + 1) < len(b) else 0], b[i]]
                         for i in range(len(b))
                     ]
                 )  # constructs walls from points on polygon
-
+                self.walls = np.vstack((boundary_walls, self.walls))
             # make the hole walls (if there are any)
             self.holes_polygons = []
             self.has_holes = False
@@ -128,9 +140,7 @@ class Environment:
                             for i in range(len(h))
                         ]
                     )
-                    self.walls = np.append(
-                        self.walls.reshape(-1, 2, 2), hole_walls, axis=0
-                    )
+                    self.walls = np.vstack((self.walls, hole_walls))
                     self.holes_polygons.append(shapely.Polygon(h))
             self.boundary_polygon = shapely.Polygon(self.boundary)
 
@@ -186,6 +196,28 @@ class Environment:
             self.walls = wall
         else:
             self.walls = np.concatenate((self.walls, wall), axis=0)
+        return
+
+    def add_hole(self, hole):
+        """Add a hole to the (2D) environment.
+        Extends self.holes array to include one new hole.
+        Args:
+            hole (np.array): n_corners x 2 array [[x1,y1],[x2,y2]] where n_corners is the number of corners of the hole (so must be >= 3, holes can't be lines)
+        """
+        assert self.dimensionality == "2D", "can only add holes into a 2D environment"
+        assert len(hole) >= 3, "holes must have at least 3 corners"
+
+        self.holes.append(hole)
+        self.has_holes = True
+        hole_walls = np.array(
+            [
+                [hole[(i + 1) if (i + 1) < len(hole) else 0], hole[i]]
+                for i in range(len(hole))
+            ]
+        )
+
+        self.walls = np.vstack((self.walls, hole_walls.reshape(-1, 2, 2)))
+        self.holes_polygons.append(shapely.Polygon(hole))
         return
 
     def add_object(self, object, type="new"):
