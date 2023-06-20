@@ -17,11 +17,11 @@ MOUNTAIN_PLOT_WIDTH_MM = (
 MOUNTAIN_PLOT_SHIFT_MM = 2  # this is the shift between the nth mountain plot line and the (n+1)th mountain plot line
 MOUNTAIN_PLOT_OVERLAP = 2.2  # this is the max fraction the nth mountain plot line will over lap into the (n+1)th mountain plot line
 
-# from .Environment import *
-# from .Agent import *
-# from .Neurons import *
+from .Environment import *
+from .Agent import *
+from .Neurons import *
 
-# from . import contribs
+from . import contribs
 
 
 def stylize_plots():
