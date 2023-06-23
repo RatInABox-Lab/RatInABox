@@ -181,7 +181,7 @@ class Neurons:
             the below params I just added for help with animations
             • imshow - if True will not dispaly as mountain plot but as an image (plt.imshow). Thee "extent" will be (t_start, t_end, 0, 1) in case you want to plot on top of this
             • fig, ax: the figure, axis to plot on (can be None)
-            xlim: fix xlim of plot irrespective of how much time you're plotting
+            • xlim: fix xlim of plot irrespective of how much time you're plotting
             • color: color of the line, if None, defaults to cell class default (probalby "C1")
             • background_color: color of the background if not matplotlib default (probably white)
             • autosave: if True, will try to save the figure to the figure directory `ratinabox.figure_directory`. Defaults to None in which case looks for global constant ratinabox.autosave_plots
