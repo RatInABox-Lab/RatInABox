@@ -79,7 +79,7 @@ plt.suptitle('Constant decay reward function')
     
 
 
-### 🎯 `Goal` objects are used to 🔍 _detect a condition_ and 💰 _release these `Reward` objects above 👆
+### 🎯 `Goal` objects are used to 🔍 _detect a condition_ and 💰 _release_ these `Reward` objects above 👆
 
 `Rewards` come from special objects that merely check for a rule or objective being satisfied: `Goal`s. For example, an agent enters a special region of a maze and receives a reward, a `SpatialGoal`. Later, we will create those and place them into our `TaskEnvironment`. 
 
@@ -179,7 +179,7 @@ def animate_update(*pos, **kws):
             for (agent, dir_to_reward) in dir_to_reward.items()}
     
     observation, reward, terminate_episode, _, info = \
-            env.step(actions)
+            env.step(None)
     
     fig, ax = env.render()
     if any(terminate_episode.values()):
