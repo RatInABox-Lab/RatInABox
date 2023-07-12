@@ -304,7 +304,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         np.random.seed(seed)
 
     def reset(self, seed=None, return_info=False, options=None):
-        """ How to reset the task when finised """
+        """ How to reset the task when finished """
         if seed is not None:
             self.seed(seed)
         if self.verbose:
@@ -441,7 +441,6 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         if self.verbose:
             print(f"🐀 action @ {self.t}:", actions)
             print(f"🌍 step @ {self.t}:", outs)
-
         return outs
 
     def step1(self, action=None, *pos, **kws):
@@ -732,6 +731,7 @@ class Reward:
         "exponential": [2],
         "none": [],
     }
+
     def __init__(
         self,
         init_state=1,
@@ -909,7 +909,8 @@ class RewardCache:
             self.stats['total_steps_inactive'] += 1
     
     def get_total(self):
-        """ If there are any active rewards, return the sum of their values.
+        """ 
+        If there are any active rewards, return the sum of their values.
         """
         r = sum([reward.state for reward in self.cache]) + self.default_reward_level
         assert not np.isnan(r), "reward is nan"

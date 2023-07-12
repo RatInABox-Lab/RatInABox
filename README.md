@@ -1,7 +1,7 @@
 # RatInABox 
 ![Tests](https://github.com/TomGeorge1234/RatInABox/actions/workflows/test.yml/badge.svg)   [![PyPI version](https://badge.fury.io/py/ratinabox.svg)](https://badge.fury.io/py/ratinabox) [![Downloads](https://static.pepy.tech/badge/ratinabox)](https://pepy.tech/project/ratinabox)
 
-`RatInABox` (see [paper](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v3)) is a toolkit for generating locomotion trajectories and complementary neural data for spatially and/or velocity selective cell types in complex continuous environments. 
+`RatInABox` (see [paper](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v3)) is a toolkit for generating synthetic behaviour and neural data for spatially and/or velocity selective cell types in complex continuous environments. 
 
 [**Install**](#installing-and-importing) | [**Demos**](#get-started) | [**Features**](#feature-run-down) | [**Contributions and Questions**](#contribute) | [**Cite**](#cite)
 
@@ -10,26 +10,26 @@
 With `RatInABox` you can: 
 
 * **Generate realistic trajectories** for rats exploring complex 1 and 2D environments under a smooth random policy, an external control signal, or your own trajectory data.
-* **Generate artificial neuronal data** for various location- or velocity-selective cells found in the Hippocampal formation, or build your own more complex cell types. 
+* **Generate artificial neuronal data** for various location- or velocity-selective cells found in the brain (e.g., but not limited to, Hippocampal cell types), or build your own more complex cell types. 
 * **Build and train complex multi-layer networks** of cells, powered by data generated with `RatInABox`. 
 
 `RatInABox` is an open source project welcoming [contributions](#contribute). If you use `RatInABox` please [cite](#cite) the paper and consider giving this repository a star ☆. It contains three classes: 
 
-1. `Environment`📦: The environment/maze (or "box") that the agent lives in. 1- or 2-dimensional.
-2. `Agent`      🐀: The agent (or "rat") moving around the `Environment`. 
-3. `Neurons`    🧠: A population of neurons with firing rates determined by the state (position and velocity) of the `Agent`. Make your own or use one of our premade cell types including: 
-    * `PlaceCells`
-    * `GridCells`
-    * `BoundaryVectorCells` (egocentric or allocentric)
-    * `ObjectVectorCells`
-    * `VelocityCells`
-    * `SpeedCells`
-    * `HeadDirectionCells`
-    * `FeedForwardLayer` (a generic class analagous to a feedforward layer in a deep neural network)
-    * `SuccessorFeatures` 
+1. `Environment()`📦: The environment/maze (or "box") that the agent lives in. 1- or 2-dimensional.
+2. `Agent()`      🐀: The agent (or "rat") moving around the `Environment`. 
+3. `Neurons()`    🧠: A population of neurons with firing rates determined by the state (position and velocity) of the `Agent`. Make your own or use one of our premade cell types including: 
+    * `PlaceCells()`
+    * `GridCells()`
+    * `BoundaryVectorCells()` (egocentric or allocentric)
+    * `ObjectVectorCells()`
+    * `VelocityCells()`
+    * `SpeedCells()`
+    * `HeadDirectionCells()`
+    * `FeedForwardLayer()` (a generic class analagous to a feedforward layer in a deep neural network)
+    * `SuccessorFeatures()` 
     * ...
 
-The top animation shows an example use case: an `Agent` randomly explores a 2D `Environment` with a wall. Three populations of `Neurons` (`PlaceCells`, `GridCells`, `BoundaryVectorCells`) fire according to the receptive fields shown. All data is saved into the history for downstream use. `RatInABox` is fully continuous is space; this means that position and neuronal firing rates are calculated rapidly online with float precision rather than pre-calculated over a discretised mesh. `RatInABox` is flexibly discretised in time; `dt` can be set by the user (defaulting to 10 ms) depending on requirements.
+The top animation shows an example use case: an `Agent` randomly explores a 2D `Environment` with a wall. Three populations of `Neurons` (`PlaceCells`, `GridCells`, `BoundaryVectorCells`) fire according to the receptive fields shown. All data is saved into the history for downstream use. `RatInABox` is fully continuous in space; this means that position and neural firing rates are calculated rapidly online with float precision rather than pre-calculated over a discretised mesh. `RatInABox` is flexibly discretised in time; `dt` can be set by the user (defaulting to 10 ms) depending on requirements.
 
 
 ## Key features
@@ -38,7 +38,7 @@ The top animation shows an example use case: an `Agent` randomly explores a 2D `
 * **Flexible**:     Simulate environments in 1D or 2D with arbitrarily wall arrangements.  Combine premade or bespoke `Neurons` classes into arbitrary deep networks (examples given).
 * **Fast**:         Simulating 1 minute of exploration in a 2D environment with 100 place cells (dt=10 ms) take just 2 seconds on a laptop (no GPU needed).
 * **Precise**:      No more prediscretised positions, tabular state spaces, or jerky movement policies. It's all continuous. 
-* **Easy**:         Sensible default parameters mean you can have realisitic simulation data to work with in ~10 lines of code.
+* **Easy**:         Sensible default parameters mean you can have realisitic simulation data to work with in <10 lines of code.
 * **Visual**        Plot or animate trajectories, firing rate timeseries', spike rasters, receptive fields, heat maps, velocity histograms...using the plotting functions ([summarised here](./demos/list_of_plotting_fuctions.md)). 
 
 ## Announcement about support for OpenAI's `gymnasium` <img src=".images/readme/gymnasium_logo.svg" width=25> API

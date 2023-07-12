@@ -181,7 +181,7 @@ class Neurons:
             the below params I just added for help with animations
             • imshow - if True will not dispaly as mountain plot but as an image (plt.imshow). Thee "extent" will be (t_start, t_end, 0, 1) in case you want to plot on top of this
             • fig, ax: the figure, axis to plot on (can be None)
-            xlim: fix xlim of plot irrespective of how much time you're plotting
+            • xlim: fix xlim of plot irrespective of how much time you're plotting
             • color: color of the line, if None, defaults to cell class default (probalby "C1")
             • background_color: color of the background if not matplotlib default (probably white)
             • autosave: if True, will try to save the figure to the figure directory `ratinabox.figure_directory`. Defaults to None in which case looks for global constant ratinabox.autosave_plots
@@ -857,9 +857,16 @@ class GridCells(Neurons):
 
     Must be initialised with an Agent and a 'params' dictionary.
 
-    GridCells defines a set of 'n' grid cells with random orientations, grid scales and offsets (these can be set non-randomly of course). Grids are modelled as the rectified sum of three cosine waves at 60 degrees to each other.
+    GridCells defines a set of 'n' grid cells with random orientations, grid scales and offsets (these can be set non-randomly of course). Grids are modelled as the rectified or shifted sum of three cosine waves at 60 degrees to each other.
 
-    To initialise grid cells you specify three things: (i) params['gridscale'], (ii) params['orientation'] and (iii) params['phase_offset']. These are all sampled from a distribution (specified as, e.g. params['phase_offset_distribution']) and then used to calculate the firing rate of each grid cell. For each of these there quantities the value you specify parameterises the distribution from which it is sampled. For example params['gridscale':0.5,'gridscale_distribution':'uniform'] will pull gridscales from a uniform distribution between 0.5*gridscale (=0.25m) and 1.5*gridscale (=0.75m) The 'delta' distribution means a constant will be taken. For all three of these you can optionally just pass an array of length GridCells.n (in which case the corresponding distribution parameter is ignored). This array is set a the value for each grid cell.
+    To initialise grid cells you specify three things: (i) params['gridscale'], (ii) params['orientation'] and (iii) params['phase_offset']. gridscale, orientations and phase_offsets of all 'n' grid cells are then sampled from a distribution (specified as, e.g. params['phase_offset_distribution']). For each, the value is a parameter of the distribution from which it is sampled. For example
+        • params = {'gridscale':(0.5,0.6),'gridscale_distribution':'uniform'} will pull gridscales from a uniform distribution between 0.5 m and 0.6 m.
+        • params = {'gridscale':0.4,'gridscale_distribution':'rayleigh'} will draw from a Rayleigh distribution of scale 'n'
+        • params {'gridscale':(0.1,0.4,1.0),'gridscale_distribution':'modules') will mkae 3 evenly sized modules of scales 0.1,0.4 and 1.0 m respectively.
+        • params = {'gridscale':0.3,'gridscale_distribution':'delta'} will make all grid cells have the same gridscale of 0.3 m.
+    For a full list of distributions, see ratinabox.utils.distribution_sampler(). For distributions which take multiple params these must be give in a tuple (not list or array, see next paragraph).
+
+    For all three of these you can optionally just pass a list or array array of length GridCells.n (in which case the corresponding distribution parameter is ignored). This array is set a the value for each grid cell.
 
     params['description'] gives the place cells model being used. Currently either rectified sum of three cosines "three_rectified_cosines" or a shifted sum of three cosines "three_shifted_cosines" (which is similar, just a little softer at the edges, see Solstad et al. 2006)
 
@@ -870,11 +877,11 @@ class GridCells(Neurons):
 
     default_params = {
             "n": 10,
-            "gridscale": 0.5,
+            "gridscale": (0.50,1),
             "gridscale_distribution": "uniform",
-            "orientation": None,
+            "orientation": (0,2*np.pi),
             "orientation_distribution": "uniform",
-            "phase_offset": True,
+            "phase_offset": (0,2*np.pi),
             "phase_offset_distribution": "uniform",
             "description":"three_rectified_cosines",
             "min_fr": 0,
@@ -885,11 +892,11 @@ class GridCells(Neurons):
 
     default_params = {
         "n": 10,
-        "gridscale": 0.50,
-        "gridscale_distribution": "rayleigh",
-        "orientation": None,
+        "gridscale": (0.50, 1),
+        "gridscale_distribution": "uniform",
+        "orientation": (0, 2 * np.pi),
         "orientation_distribution": "uniform",
-        "phase_offset": None,
+        "phase_offset": (0, 2 * np.pi),
         "phase_offset_distribution": "uniform",
         "description": "three_rectified_cosines",  # can also be "three_shifted_cosines" as in Solstad 2006 Eq. (2)
         "min_fr": 0,
@@ -919,36 +926,33 @@ class GridCells(Neurons):
             )
 
         # Initialise the gridscales
-        if hasattr(self.params["gridscale"], "__len__"):
+        if type(self.params["gridscale"]) in (
+            list,
+            np.ndarray,
+        ):  # assumes you are manually passing gridscales, one for each neuron
             self.gridscales = np.array(self.params["gridscale"])
             self.params["n"] = len(self.gridscales)
-        else:
-            if self.params["gridscale_distribution"] == "uniform":
-                self.gridscales = np.random.uniform(
-                    0.5 * self.params["gridscale"],
-                    1.5 * self.params["gridscale"],
-                    self.params["n"],
-                )
-            elif self.params["gridscale_distribution"] == "rayleigh":
-                self.gridscales = np.random.rayleigh(
-                    scale=self.params["gridscale"], size=self.params["n"]
-                )
-            elif self.params["gridscale_distribution"] == "logarithmic":
-                [low, high] = list(self.params["gridscale"])
-                self.gridscales = np.logspace(
-                    np.log10(low), np.log10(high), num=self.params["n"], base=10
-                )
-            elif self.params["gridscale_distribution"] == "delta":
-                self.gridscales = np.ones(self.params["n"]) * self.params["gridscale"]
-            else:
-                raise ValueError("gridscale distribution not recognised")
+        elif type(self.params["gridscale"]) in (
+            float,
+            tuple,
+            int,
+        ):  # assumes you are passing distribution parameters
+            self.gridscales = utils.distribution_sampler(
+                distribution_name=self.params["gridscale_distribution"],
+                distribution_parameters=self.params["gridscale"],
+                shape=(self.params["n"],),
+            )
 
         # Initialise Neurons parent class
         super().__init__(Agent, self.params)
 
         # Initialise phase offsets for each grid cell
         if (
-            hasattr(self.params["phase_offset"], "__len__")
+            type(self.params["phase_offset"])
+            in (
+                list,
+                np.ndarray,
+            )
             and len(np.array(self.params["phase_offset"]).shape) == 2
         ):
             self.phase_offsets = np.array(self.params["phase_offset"])
@@ -956,36 +960,29 @@ class GridCells(Neurons):
                 len(self.phase_offsets) == self.params["n"]
             ), "number of phase offsets supplied incompatible with number of neurons"
         else:
-            if self.params["phase_offset_distribution"] == "uniform":
-                self.phase_offsets = np.random.uniform(
-                    0, 2 * np.pi, size=(self.params["n"], 2)
-                )
-            elif self.params["phase_offset_distribution"] == "delta":
-                phase_offset = self.params["phase_offset"] or np.array([0, 0])
-                self.phase_offsets = np.ones((self.params["n"], 2)) * np.array(
-                    phase_offset
-                )
-            elif self.params["phase_offset_distribution"] == "grid":
+            self.phase_offsets = utils.distribution_sampler(
+                distribution_name=self.params["phase_offset_distribution"],
+                distribution_parameters=self.params["phase_offset"],
+                shape=(self.params["n"], 2),
+            )
+            if self.params["phase_offset_distribution"] == "grid":
                 self.phase_offsets = self.set_phase_offsets_on_grid()
-            else:
-                raise ValueError("phase offset distribution not recognised")
 
         # Initialise orientations for each grid cell
-        if hasattr(self.params["orientation"], "__len__"):
+        if type(self.params["orientation"]) in (
+            list,
+            np.ndarray,
+        ):
             self.orientations = np.array(self.params["orientation"])
             assert (
                 len(self.orientations) == self.params["n"]
             ), "number of orientations supplied incompatible with number of neurons"
         else:
-            if self.params["orientation_distribution"] == "uniform":
-                self.orientations = np.random.uniform(
-                    0, 2 * np.pi, size=(self.params["n"],)
-                )
-            elif self.params["orientation_distribution"] == "delta":
-                orientation = self.params["orientation"] or 0
-                self.orientations = np.ones(self.params["n"]) * orientation
-            else:
-                raise ValueError("orientation distribution not recognised")
+            self.orientations = utils.distribution_sampler(
+                distribution_name=self.params["orientation_distribution"],
+                distribution_parameters=self.params["orientation"],
+                shape=(self.params["n"],),
+            )
 
         # Initialise grid cells
         assert (
@@ -1078,9 +1075,13 @@ class BoundaryVectorCells(Neurons):
 
     BoundaryVectorCells defines a set of 'n' BVCs cells with random orientations preferences, distance preferences  (these can be set non-randomly of course). We use the model described firstly by Hartley et al. (2000) and more recently de Cothi and Barry (2000).
 
-    Distance preferences of each BVC are drawn fro ma random distribution which can be one of "uniform" (default), "rayleigh", "normal", and "delta" and parameterised by "wall_pref_dist".
+    Distance preferences of each BVC are drawn fro ma random distribution which can be any of the utils.distribution_sampler() accepted distributions. pass parameters in as a tuple e.g.
+        • params{'pref_wall_dist':(0.1,0.4), 'pref_wall_dist_distribution':'uniform'} samples from a uniform distribution between [0.1,0.4]
+        • params{'pref_wall_dist':(0.4), 'pref_wall_dist_distribution':'rayleigh'} samples from a rayleigh distribution with scale 0.4
+        • params{'pref_wall_dist':(0.4), 'pref_wall_dist_distribution':'delta'} samples gives all a constant value of 0.4
+        • etc. there are others
 
-    BVCs can have allocentric (mec,subiculum) OR egocentric (ppc, retrosplenial cortex) reference frames.
+    BVCs can have allocentric (mec,subiculum) OR egocentric (ppc, retrosplenial cortex) reference frames. In the egocentric case they could be arranged to act like "field of view" cells. We have a seperate class for this.
 
     List of functions:
         • get_state()
@@ -1089,7 +1090,7 @@ class BoundaryVectorCells(Neurons):
     default_params = {
             "n": 10,
             "reference_frame": "allocentric",
-            "pref_wall_dist": 0.15,
+            "pref_wall_dist": (0.1,0.3)
             "pref_wall_dist_distribution": "uniform",
             "angle_spread_degrees": 11.25,
             "xi": 0.08,  # as in de cothi and barry 2020
@@ -1104,7 +1105,7 @@ class BoundaryVectorCells(Neurons):
     default_params = {
         "n": 10,
         "reference_frame": "allocentric",
-        "pref_wall_dist": 0.25,
+        "pref_wall_dist": (0.1, 0.3),
         "pref_wall_dist_distribution": "uniform",
         "angle_spread_degrees": 11.25,
         "xi": 0.08,
@@ -1155,27 +1156,12 @@ class BoundaryVectorCells(Neurons):
         self.tuning_angles = np.random.uniform(0, 2 * np.pi, size=self.n)
 
         # define tuning distances from specific distribution in params dict
-        if self.pref_wall_dist_distribution == "rayleigh":
-            self.tuning_distances = np.random.rayleigh(
-                scale=self.pref_wall_dist, size=self.n
-            )
-        elif self.pref_wall_dist_distribution == "uniform":
-            self.tuning_distances = np.random.uniform(
-                low=0, high=self.pref_wall_dist * 2, size=self.n
-            )
-        elif self.pref_wall_dist_distribution == "normal":
-            lower, upper = 0, self.Agent.Environment.scale
-            mu, sigma = self.pref_wall_dist, self.pref_wall_dist / 2
-            self.tuning_distances = scipy.stats.truncnorm.rvs(
-                (lower - mu) / sigma,
-                (upper - mu) / sigma,
-                scale=sigma,
-                loc=mu,
-                size=self.n,
-            )
-        elif self.pref_wall_dist_distribution == "delta":
-            self.tuning_distances = self.pref_wall_dist * np.ones(self.n)
-
+        self.tuning_distances = utils.distribution_sampler(
+            distribution_name=self.pref_wall_dist_distribution,
+            distribution_parameters=self.pref_wall_dist,
+            shape=(self.n,),
+        )
+        self.tuning_distances = np.abs(self.tuning_distances)  # hard bound at zero
         self.sigma_distances = self.tuning_distances / beta + xi
 
         # calculate normalising constants for BVS firing rates in the current environment. Any extra walls you add from here onwards you add will likely push the firingrate up further.
@@ -1444,18 +1430,9 @@ class ObjectVectorCells(Neurons):
         )
 
         # preferred object types, distance and angle to objects and their tuning widths (set these yourself if needed)
-        self.object_types = self.Agent.Environment.objects["object_types"]
-        self.tuning_types = np.random.choice(
-            np.unique(self.object_types), replace=True, size=(self.n,)
-        )
-        self.tuning_angles = np.random.uniform(0, 2 * np.pi, size=self.n)
-        self.tuning_distances = np.random.rayleigh(
-            scale=self.pref_object_dist, size=self.n
-        )
-        self.sigma_distances = self.tuning_distances / self.beta + self.xi
-        self.sigma_angles = np.array(
-            [(self.angle_spread_degrees / 360) * 2 * np.pi] * self.n
-        )
+        self.set_tuning_types()
+        self.set_tuning_angles_and_distances()
+        self.set_sigma_angles_and_distances()
 
         if self.walls_occlude == True:
             self.wall_geometry = "line_of_sight"
@@ -1471,6 +1448,40 @@ class ObjectVectorCells(Neurons):
                 "ObjectVectorCells (OVCs) successfully initialised. You can also manually set their orientation preferences (OVCs.tuning_angles, OVCs.sigma_angles), distance preferences (OVCs.tuning_distances, OVCs.sigma_distances)."
             )
         return
+
+
+    def set_tuning_types(self):
+        """Sets the preferred object types for each OVC.
+
+        This is called automatically when the OVCs are initialised.
+        """
+
+        self.object_types = self.Agent.Environment.objects["object_types"]
+        self.tuning_types = np.random.choice(
+            np.unique(self.object_types), replace=True, size=(self.n,)
+        )
+    
+    def set_tuning_angles_and_distances(self):
+        """Sets the tuning angles and distances for each OVC.
+
+        This is called automatically when the OVCs are initialised.
+        """
+
+        self.tuning_angles = np.random.uniform(0, 2 * np.pi, size=self.n)
+        self.tuning_distances = np.random.rayleigh(
+            scale=self.pref_object_dist, size=self.n
+        )
+
+    def set_sigma_angles_and_distances(self):
+        """Sets sigma distances and angles based on the tuning distances and angles and the xi and beta parameters.
+
+        This is called automatically when the OVCs are initialised.
+        """
+
+        self.sigma_distances = self.tuning_distances / self.beta + self.xi
+        self.sigma_angles = np.array(
+            [(self.angle_spread_degrees / 360) * 2 * np.pi] * self.n
+        )
 
     def get_state(self, evaluate_at="agent", **kwargs):
         """Returns the firing rate of the ObjectVectorCells.
