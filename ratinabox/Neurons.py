@@ -1430,18 +1430,9 @@ class ObjectVectorCells(Neurons):
         )
 
         # preferred object types, distance and angle to objects and their tuning widths (set these yourself if needed)
-        self.object_types = self.Agent.Environment.objects["object_types"]
-        self.tuning_types = np.random.choice(
-            np.unique(self.object_types), replace=True, size=(self.n,)
-        )
-        self.tuning_angles = np.random.uniform(0, 2 * np.pi, size=self.n)
-        self.tuning_distances = np.random.rayleigh(
-            scale=self.pref_object_dist, size=self.n
-        )
-        self.sigma_distances = self.tuning_distances / self.beta + self.xi
-        self.sigma_angles = np.array(
-            [(self.angle_spread_degrees / 360) * 2 * np.pi] * self.n
-        )
+        self.set_tuning_types()
+        self.set_tuning_angles_and_distances()
+        self.set_sigma_angles_and_distances()
 
         if self.walls_occlude == True:
             self.wall_geometry = "line_of_sight"
@@ -1457,6 +1448,40 @@ class ObjectVectorCells(Neurons):
                 "ObjectVectorCells (OVCs) successfully initialised. You can also manually set their orientation preferences (OVCs.tuning_angles, OVCs.sigma_angles), distance preferences (OVCs.tuning_distances, OVCs.sigma_distances)."
             )
         return
+
+
+    def set_tuning_types(self):
+        """Sets the preferred object types for each OVC.
+
+        This is called automatically when the OVCs are initialised.
+        """
+
+        self.object_types = self.Agent.Environment.objects["object_types"]
+        self.tuning_types = np.random.choice(
+            np.unique(self.object_types), replace=True, size=(self.n,)
+        )
+    
+    def set_tuning_angles_and_distances(self):
+        """Sets the tuning angles and distances for each OVC.
+
+        This is called automatically when the OVCs are initialised.
+        """
+
+        self.tuning_angles = np.random.uniform(0, 2 * np.pi, size=self.n)
+        self.tuning_distances = np.random.rayleigh(
+            scale=self.pref_object_dist, size=self.n
+        )
+
+    def set_sigma_angles_and_distances(self):
+        """Sets sigma distances and angles based on the tuning distances and angles and the xi and beta parameters.
+
+        This is called automatically when the OVCs are initialised.
+        """
+
+        self.sigma_distances = self.tuning_distances / self.beta + self.xi
+        self.sigma_angles = np.array(
+            [(self.angle_spread_degrees / 360) * 2 * np.pi] * self.n
+        )
 
     def get_state(self, evaluate_at="agent", **kwargs):
         """Returns the firing rate of the ObjectVectorCells.
