@@ -94,6 +94,10 @@ class FieldOfViewNeurons(Neurons):
             self.super.sigma_angles = self.super.sigma_distances / (
                 self.manifold_coords_polar[:, 0]
             )
+            locs = self.Agent.Environment.discretise_environment(dx=0.04)
+            locs = locs.reshape(-1, locs.shape[-1])
+            self.super.cell_fr_norm = np.ones(self.n)
+            self.super.cell_fr_norm = np.max(self.get_state(evaluate_at=None, pos=locs), axis=1)
 
         elif self.params["cell_type"] == "OVC":
             unique_objects = np.unique(Agent.Environment.objects["object_types"])
