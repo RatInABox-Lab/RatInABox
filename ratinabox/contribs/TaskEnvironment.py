@@ -96,9 +96,9 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         self.history = {"t": []}  # history of the environment
 
         if render_every is None and render_every_framestep is not None:
-            self.render_every = render_every_framestep # How often to render
+            self.render_every = render_every_framestep  # How often to render
         elif render_every is not None:
-            self.render_every = render_every/self.dt
+            self.render_every = render_every / self.dt
         self.verbose = verbose
         self.render_mode: str = render_mode  # options 'matplotlib'|'pygame'|'none'
         self._stable_render_objects: dict = {}  # objects that are stable across
@@ -134,7 +134,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         self.episodes["duration"] = []
         self.episode = 0
         # Episode state and option
-        self.episode_state = {'delayed_term':False}
+        self.episode_state = {"delayed_term": False}
         self.episode_terminate_delay = episode_terminate_delay
 
         # Reward cache specifics
@@ -304,7 +304,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         np.random.seed(seed)
 
     def reset(self, seed=None, return_info=False, options=None):
-        """ How to reset the task when finished """
+        """How to reset the task when finished"""
         if seed is not None:
             self.seed(seed)
         if self.verbose:
@@ -322,7 +322,9 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         if self.teleport_on_reset:
             for agent_name, agent in self.Ags.items():
                 agent.update()
-                agent.pos = self.sample_positions(1)[0] #random position in the environment
+                agent.pos = self.sample_positions(1)[
+                    0
+                ]  # random position in the environment
                 agent.history["pos"][-1] = agent.pos
 
         # Increment episode counter
@@ -342,7 +344,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
 
         # Episode state trackers
         # we have not applied a delayed terminate
-        self.episode_state['delayed_term'] = False 
+        self.episode_state["delayed_term"] = False
 
         return self.get_observation(), self.infos
 
@@ -391,18 +393,17 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             actions = self._dict([None for _ in range(len(self.Ags))])
 
         if not isinstance(drift_to_random_strength_ratio, dict):
-            drift_to_random_strength_ratio = \
-                    self._dict(drift_to_random_strength_ratio)
-        for (agent, action) in zip(self.agents, actions.values()):
+            drift_to_random_strength_ratio = self._dict(drift_to_random_strength_ratio)
+        for agent, action in zip(self.agents, actions.values()):
             Ag = self.Ags[agent]
             dt = dt if dt is not None else Ag.dt
-            if action is not None: 
+            if action is not None:
                 action = np.array(action).ravel()
                 action[np.isnan(action)] = 0
             strength = drift_to_random_strength_ratio[agent]
-            Ag.update(dt=dt, 
-                      drift_velocity=action,
-                      drift_to_random_strength_ratio=strength)
+            Ag.update(
+                dt=dt, drift_velocity=action, drift_to_random_strength_ratio=strength
+            )
 
         # Update the reward caches for time decay of existing rewards
         for reward_cache in self.reward_caches.values():
@@ -415,12 +416,18 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         terminal = self._is_terminal_state()
 
         # Episode termination delay?
-        if terminal and self.episode_terminate_delay and \
-            self.episode_state['delayed_term'] == False:
-            unrewarded_episode_padding = TimeElapsedGoal(self, 
-                                        wait_time=self.episode_terminate_delay,
-                                        verbose=False)
-            self.episode_state['delayed_term'] = True
+        if (
+            terminal
+            and self.episode_terminate_delay
+            and self.episode_state["delayed_term"] == False
+        ):
+            unrewarded_episode_padding = TimeElapsedGoal(
+                self,
+                reward=no_reward_default,
+                wait_time=self.episode_terminate_delay,
+                verbose=False,
+            )
+            self.episode_state["delayed_term"] = True
             self.goal_cache.append(unrewarded_episode_padding)
             terminal = self._is_terminal_state()
 
@@ -429,7 +436,6 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         for agent, term in self._dict(self._is_terminal_state()).items():
             if term and agent in self.agents or truncations[agent]:
                 self.agents.remove(agent)
-
 
         # Create pettingzoo outputs
         outs = (
@@ -596,7 +602,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
     def _render_mpl_env(self):
         R, fig, ax = self._get_mpl_render_cache()
         if "environment" not in R:
-            R["environment"] = self.plot_environment(fig=fig, ax=ax,autosave=False)
+            R["environment"] = self.plot_environment(fig=fig, ax=ax, autosave=False)
             R["title"] = fig.suptitle(
                 "t={:.2f}\nepisode={}".format(self.t, self.episode)
             )
@@ -730,7 +736,7 @@ class Reward:
         "linear": [1],
         "constant": [1],
         "exponential": [2],
-        "none": [],
+        "none": [0],
     }
 
     def __init__(
@@ -781,13 +787,16 @@ class Reward:
             self.decay = decay or self.decay_preset["constant"]
         self.external_drive = external_drive
         self.external_drive_strength = external_drive_strength
-        self.history = {'state': [], 'expire_clock': []}
-        self.name = name if name is not None else \
-                self.__class__.__name__ + " " + str(hash(self))[:5]
+        self.history = {"state": [], "expire_clock": []}
+        self.name = (
+            name
+            if name is not None
+            else self.__class__.__name__ + " " + str(hash(self))[:5]
+        )
         # if a goal provides a reward, then this attribute is used to track
         # the goal that provided the reward
-        self.goal:Union[None, Goal] = None # optional store goal linked to
-                                           # reward
+        self.goal: Union[None, Goal] = None  # optional store goal linked to
+        # reward
 
     def update(self):
         """
@@ -827,7 +836,9 @@ class Reward:
         rewards = [self.state]
         name = self.name if name is None else name
         timesteps = np.arange(timerange[0], timerange[1], self.dt)
-        pre_expire_timesteps = np.arange(timerange[0], self.expire_clock+self.dt, self.dt)
+        pre_expire_timesteps = np.arange(
+            timerange[0], self.expire_clock + self.dt, self.dt
+        )
         for t in pre_expire_timesteps[1:]:
             r = rewards[-1] + self.get_delta(state=rewards[-1]) * self.dt
             rewards.append(r)
@@ -839,10 +850,8 @@ class Reward:
         y1 = np.min((self.state, 0, np.min(plt.gca().get_ylim())))
         y2 = np.max((self.state, 0, np.max(plt.gca().get_ylim())))
         plt.ylim((y1, y2))
-        plt.xlim((timerange[0],timerange[1]))
-        plt.axvspan(
-            0, self.expire_clock, color="r", alpha=0.2
-        )
+        plt.xlim((timerange[0], timerange[1]))
+        plt.axvspan(0, self.expire_clock, color="r", alpha=0.2)
         plt.text(
             np.mean((plt.gca().get_xlim()[0], self.expire_clock)),
             np.mean(plt.gca().get_ylim()),
@@ -878,26 +887,31 @@ class RewardCache:
         self.default_reward_level = default_reward_level
         self.cache: List[Reward] = []
         self.verbose = verbose
-        self.stats = {'total_steps_active':0, 'total_steps_inactive':0,
-                      'max':-np.inf, 'min':np.inf,
-                      'uniq_rewards':[], 'uniq_goals':[]}
+        self.stats = {
+            "total_steps_active": 0,
+            "total_steps_inactive": 0,
+            "max": -np.inf,
+            "min": np.inf,
+            "uniq_rewards": [],
+            "uniq_goals": [],
+        }
 
     def append(self, reward: Reward, copymode=True):
         assert isinstance(reward, Reward), "reward must be a Reward object"
         if reward is not None:
             if copymode:
-                reward=copy(reward)
-            if reward.name not in self.stats['uniq_rewards']:
-                self.stats['uniq_rewards'].append(reward.name)
-            if reward.goal.name not in self.stats['uniq_goals']:
-                self.stats['uniq_goals'].append(reward.goal.name)
+                reward = copy(reward)
+            if reward.name not in self.stats["uniq_rewards"]:
+                self.stats["uniq_rewards"].append(reward.name)
+            if reward.goal.name not in self.stats["uniq_goals"]:
+                self.stats["uniq_goals"].append(reward.goal.name)
             self.cache.append(reward)
 
     def update(self):
-        """ Update """
+        """Update"""
         # If any rewards ...
         if self.cache:
-            self.stats['total_steps_active'] += 1
+            self.stats["total_steps_active"] += 1
             # Iterate through each reward, updating
             for reward in self.cache:
                 reward_still_active = reward.update()
@@ -907,27 +921,31 @@ class RewardCache:
                         print("Reward removed from cache")
         # Else, increment inactivity tracker
         else:
-            self.stats['total_steps_inactive'] += 1
-    
+            self.stats["total_steps_inactive"] += 1
+
     def get_total(self):
-        """ 
+        """
         If there are any active rewards, return the sum of their values.
         """
         r = sum([reward.state for reward in self.cache]) + self.default_reward_level
         assert not np.isnan(r), "reward is nan"
-        if r > self.stats['max']:
-            self.stats['max'] = r
-        if r < self.stats['min']:
-            self.stats['min'] = r
+        if r > self.stats["max"]:
+            self.stats["max"] = r
+        if r < self.stats["min"]:
+            self.stats["min"] = r
         return r
 
     def get_fraction(self):
-        """ Return the fraction of the total reward value relative to the max
-        and min values so far experienced. """
+        """Return the fraction of the total reward value relative to the max
+        and min values so far experienced."""
         r = self.get_total()
-        return (r - self.stats['min':]) / (self.stats['max'] - self.stats['min'])
+        return (r - self.stats["min":]) / (self.stats["max"] - self.stats["min"])
+
 
 reward_default = Reward(1, 0.01, expire_clock=1, decay="linear")
+no_reward_default = Reward(
+    0, 0.01, expire_clock=0.1, decay="none"
+)  # A reward object which doesn't give any reward (for use in goals where no reward is then given)
 
 
 class Goal:
@@ -935,16 +953,22 @@ class Goal:
     Abstract `Objective` class that can be used to define finishing coditions
     for a task
     """
-    def __init__(self, 
-                 env:Union[None,TaskEnvironment] = None, 
-                 reward = reward_default, 
-                 name=None,  
-                 **kws):
-        self.env    = env
+
+    def __init__(
+        self,
+        env: Union[None, TaskEnvironment] = None,
+        reward=reward_default,
+        name=None,
+        **kws,
+    ):
+        self.env = env
         self.reward = reward
         self.reward.goal = self
-        self.name  = name if name is not None \
-                else self.__class__.__name__+ " " + str(hash(random.random()))[:5]
+        self.name = (
+            name
+            if name is not None
+            else self.__class__.__name__ + " " + str(hash(random.random()))[:5]
+        )
 
     def __hash__(self):
         """hash for uniquely identifying a goal"""
@@ -1231,11 +1255,9 @@ class GoalCache:
         raise NotImplementedError("find() not implemented")
         return results
 
+
 class TimeElapsedGoal(Goal):
-    def __init__(self, *args, 
-                 wait_time=1,
-                 verbose=False,
-                 **kwargs):
+    def __init__(self, *args, wait_time=1, verbose=False, **kwargs):
         super().__init__(*args, **kwargs)
         self.start_time = self.env.t
         self.wait_time = wait_time
@@ -1251,6 +1273,7 @@ class TimeElapsedGoal(Goal):
             return {agent: self.reward for agent in self.env._agentnames(agents)}
         else:
             return {}
+
 
 class SpatialGoal(Goal):
     """
@@ -1269,6 +1292,7 @@ class SpatialGoal(Goal):
 
     see also : Goal
     """
+
     def __init__(
         self,
         *positionals,
@@ -1431,8 +1455,13 @@ class SpatialGoalEnvironment(TaskEnvironment):
         Shortcut for getting an numpy array of goal positions
         dimensions: (n_goals, n_dimensions)
         """
-        return np.array([goal.pos for goal in self.goal_cache.get_goals()
-                         if isinstance(goal, SpatialGoal)])
+        return np.array(
+            [
+                goal.pos
+                for goal in self.goal_cache.get_goals()
+                if isinstance(goal, SpatialGoal)
+            ]
+        )
 
     def reset(
         self, goal_locations: Union[np.ndarray, None] = None, n_objectives=None, **kws
@@ -1627,7 +1656,7 @@ if active and __name__ == "__main__":
         teleport_on_reset=False,
         goalkws=goalkws,
         goalcachekws=goalcachekws,
-        episode_terminate_delay=2, #seconds
+        episode_terminate_delay=2,  # seconds
         verbose=False,
     )
     #################################################################
