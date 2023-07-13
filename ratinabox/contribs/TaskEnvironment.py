@@ -396,8 +396,9 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         for (agent, action) in zip(self.agents, actions.values()):
             Ag = self.Ags[agent]
             dt = dt if dt is not None else Ag.dt
-            action = np.array(action).ravel() if action is not None else None
-            action[np.isnan(action)] = 0
+            if action is not None: 
+                action = np.array(action).ravel()
+                action[np.isnan(action)] = 0
             strength = drift_to_random_strength_ratio[agent]
             Ag.update(dt=dt, 
                       drift_velocity=action,
@@ -1236,14 +1237,14 @@ class TimeElapsedGoal(Goal):
                  verbose=False,
                  **kwargs):
         super().__init__(*args, **kwargs)
-        self.start_time = time.time()
+        self.start_time = self.env.t
         self.wait_time = wait_time
         self.verbose = verbose
         if verbose:
             print(f"time elapsed with {wait_time}")
 
     def check(self, agents=None):
-        current_time = time.time()
+        current_time = self.env.t
         if self.verbose:
             print(f"waited {current_time - self.start_time}")
         if current_time - self.start_time >= self.wait_time:
