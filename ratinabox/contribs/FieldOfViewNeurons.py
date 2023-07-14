@@ -96,13 +96,13 @@ class FieldOfViewNeurons(Neurons):
         # initialise BVCs and set their distance/angular preferences and widths
         if self.params["cell_type"] == "BVC":
             self.params["n"] = self.n_manifold
-            super().__init__(Agent, self.params)
-            
-            
+                       
         elif self.params["cell_type"] == "OVC":
             self.unique_objects = np.unique(Agent.Environment.objects["object_types"])
             self.params["n"] = self.n_manifold * len(self.unique_objects)  # one manifold for each unique object type
-            super().__init__(Agent, self.params)
+        
+        
+        super().__init__(Agent, self.params)
             
 
     def display_manifold(self, fig=None, ax=None, t=None, object_type=0, **kwargs):
