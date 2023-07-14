@@ -40,6 +40,18 @@ class FieldOfViewNeurons(Neurons):
         "cell_type": "BVC",  # FoV neurons can either respond to local boundaries ("BVC") or objects ("OVC")
     }
 
+    @classmethod
+    def get_instance(cls, Agent, params={}):
+
+        if params["cell_type"] == "BVC":
+            return FieldOfViewBVCNeurons(Agent, params)
+        elif params["cell_type"] == "OVC":
+            return FieldOfViewOVCNeurons(Agent, params)
+        else:
+            # by default return BVCs
+            return FieldOfViewBVCNeurons(Agent, params)
+    
+
     def __init__(self, Agent, params={}):
 
         self.params = copy.deepcopy(__class__.default_params)        
@@ -85,42 +97,13 @@ class FieldOfViewNeurons(Neurons):
         if self.params["cell_type"] == "BVC":
             self.params["n"] = self.n_manifold
             super().__init__(Agent, self.params)
-            self.super = BoundaryVectorCells(Agent, self.params)
-            self.super.tuning_distances = self.manifold_coords_polar[:, 0]
-            self.super.sigma_distances = max(
-                0.01, self.spatial_resolution / 2
-            ) * np.ones(self.n)
-            self.super.tuning_angles = self.manifold_coords_polar[:, 1]
-            self.super.sigma_angles = self.super.sigma_distances / (
-                self.manifold_coords_polar[:, 0]
-            )
-            locs = self.Agent.Environment.discretise_environment(dx=0.04)
-            locs = locs.reshape(-1, locs.shape[-1])
-            self.super.cell_fr_norm = np.ones(self.n)
-            self.super.cell_fr_norm = np.max(self.get_state(evaluate_at=None, pos=locs), axis=1)
-
+            
+            
         elif self.params["cell_type"] == "OVC":
-            unique_objects = np.unique(Agent.Environment.objects["object_types"])
-            self.params["n"] = len(self.manifold_coords_polar) * len(
-                unique_objects
-            )  # one manifold for each unique object type
+            self.unique_objects = np.unique(Agent.Environment.objects["object_types"])
+            self.params["n"] = self.n_manifold * len(self.unique_objects)  # one manifold for each unique object type
             super().__init__(Agent, self.params)
-            self.super = ObjectVectorCells(Agent, self.params)
-            for (i, obj_id) in enumerate(unique_objects):
-                # for each unique object type, make a manifold of neurons which respond to it at differnet angles/distances tiling the FOV
-                sid, eid = i * self.n_manifold, (i + 1) * self.n_manifold
-                self.super.tuning_types[sid:eid] = obj_id * np.ones(self.n_manifold)
-                self.super.tuning_distances[sid:eid] = self.manifold_coords_polar[:, 0]
-                self.super.sigma_distances[sid:eid] = max(
-                    0.01, self.spatial_resolution / 2
-                ) * np.ones(self.n_manifold)
-                self.super.tuning_angles[sid:eid] = self.manifold_coords_polar[:, 1]
-                self.super.sigma_angles[sid:eid] = self.super.sigma_distances[
-                    sid:eid
-                ] / (self.manifold_coords_polar[:, 0])
-
-    def get_state(self, evaluate_at="agent", **kwargs):
-        return self.super.get_state(evaluate_at, **kwargs)
+            
 
     def display_manifold(self, fig=None, ax=None, t=None, object_type=0, **kwargs):
         """Visualises the current firing rate of these cells relative to the Agent. Essentially this plots the "manifold" ontop of the Agent.
@@ -163,7 +146,7 @@ class FieldOfViewNeurons(Neurons):
             [x, y] = coord
             pos_of_cell = pos - x * ego_x + y * ego_y
             facecolor = list(matplotlib.colors.to_rgba(facecolor))
-            facecolor[-1] = max(0, min(1, fr[i] / (0.1 * self.super.max_fr)))
+            facecolor[-1] = max(0, min(1, fr[i] / (0.1 * self.max_fr)))
             circ = matplotlib.patches.Circle(
                 (pos_of_cell[0], pos_of_cell[1]),
                 radius=0.5 * self.spatial_resolution,
@@ -175,3 +158,73 @@ class FieldOfViewNeurons(Neurons):
             ax.add_patch(circ)
 
         return fig, ax
+
+
+
+
+class FieldOfViewOVCNeurons(FieldOfViewNeurons, ObjectVectorCells):
+
+    '''
+        These are Object Vector Cells which are also FieldOfViewNeurons. This means that they will fire to a particular 
+        object type at a particular angle and distance from the Agent (2D Environment only) but only in the Field of View of the Agent 
+        accounting for the direction the Agent is facing (See FieldOfViewNeurons Class for details on the manifold).
+    '''
+
+
+    def __init__(self, Agent, params={}):
+
+        super().__init__(Agent, params)
+
+        self.unique_objects = np.unique(Agent.Environment.objects["object_types"])
+        self.params["n"] = self.n_manifold * len(self.unique_objects)
+
+        for (i, obj_id) in enumerate(self.unique_objects):
+            # for each unique object type, make a manifold of neurons which respond to it at differnet angles/distances tiling the FOV
+            sid, eid = i * self.n_manifold, (i + 1) * self.n_manifold
+            self.tuning_types[sid:eid] = obj_id * np.ones(self.n_manifold)
+            self.tuning_distances[sid:eid] = self.manifold_coords_polar[:, 0]
+            self.sigma_distances[sid:eid] = max(
+                0.01, self.spatial_resolution / 2
+            ) * np.ones(self.n_manifold)
+            self.tuning_angles[sid:eid] = self.manifold_coords_polar[:, 1]
+            self.sigma_angles[sid:eid] = self.sigma_distances[
+                sid:eid
+            ] / (self.manifold_coords_polar[:, 0])
+        
+
+class FieldOfViewBVCNeurons(FieldOfViewNeurons, BoundaryVectorCells):
+
+    '''
+        These are Boundary Vector Cells which are also FieldOfViewNeurons. This means that they will fire to a boundary
+        at a particular angle and distance from the Agent (2D Environment only) but only in the Field of View of the Agent 
+        accounting for the direction the Agent is facing (See FieldOfViewNeurons Class for details on the manifold).
+    '''
+
+    def __init__(self, Agent, params={}):
+
+
+
+        super().__init__(Agent, params)
+
+        self.params["n"] = self.n_manifold
+
+        self.tuning_distances = self.manifold_coords_polar[:, 0]
+        self.sigma_distances = max(
+            0.01, self.spatial_resolution / 2
+        ) * np.ones(self.n)
+        self.tuning_angles = self.manifold_coords_polar[:, 1]
+        self.sigma_angles = self.sigma_distances / (
+            self.manifold_coords_polar[:, 0]
+        )
+        locs = self.Agent.Environment.discretise_environment(dx=0.04)
+        locs = locs.reshape(-1, locs.shape[-1])
+        self.cell_fr_norm = np.ones(self.n)
+        self.cell_fr_norm = np.max(self.get_state(evaluate_at=None, pos=locs), axis=1)
+
+
+
+
+
+        
+
+
