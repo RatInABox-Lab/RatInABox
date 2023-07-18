@@ -42,6 +42,7 @@ class Agent:
             "speed_std": 0.08,
             "rotational_velocity_coherence_time": 0.08,
             "rotational_velocity_std": 120 * (np.pi / 180),
+            "head_direction_smoothing_timescale" : 0.0,
             "thigmotaxis": 0.5,
             "wall_repel_distance": 0.1,
             "walls_repel": True,
@@ -63,11 +64,11 @@ class Agent:
         "rotational_velocity_std": (
             120 * (np.pi / 180)
         ),  # std of rotational speed, σ_w wall following parameter
+        "head_direction_smoothing_timescale" : 0.0, # timescale over which head direction is smoothed (head dir = smoothed velocity vector) 
         "thigmotaxis": 0.5,  # tendency for agents to linger near walls [0 = not at all, 1 = max]
         "wall_repel_distance": 0.1,
         "walls_repel": True,  # whether or not the walls repel
         "save_history": True,  # whether to save position and velocity history as you go
-        "head_direction_smoothing_timescale" : 0.0, # timescale over which head direction is smoothed
     }
 
     def __init__(self, Environment, params={}):
@@ -456,11 +457,15 @@ class Agent:
         """
         This function updates the head direction of the agent. #
 
+        Args: 
+            dt: the time step (float)
+
         The head direction is updated by a low pass filter of the the current velocity vector.
         """
 
         tau_head_direction = self.head_direction_smoothing_timescale
-
+        immediate_head_direction = self.velocity / np.linalg.norm(self.velocity)
+        
         if dt < tau_head_direction:
             warnings.warn("dt >= head_direction_smoothing_timescale. This will break the head direction smoothing.")
 
@@ -468,9 +473,9 @@ class Agent:
             self.head_direction = self.velocity
         
         if tau_head_direction == 0: 
-            self.head_direction = self.velocity
+            self.head_direction = immediate_head_direction
         else:
-            self.head_direction = self.head_direction * ( 1 - dt / tau_head_direction ) + dt / tau_head_direction * self.velocity
+            self.head_direction = self.head_direction * ( 1 - dt / tau_head_direction ) + dt / tau_head_direction * immediate_head_direction
 
         # normalize the head direction
         self.head_direction = self.head_direction / np.linalg.norm(self.head_direction)
