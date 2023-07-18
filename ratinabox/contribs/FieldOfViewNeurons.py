@@ -141,10 +141,10 @@ class FieldOfViewNeurons(Neurons):
             fig, ax = self.Agent.plot_trajectory(t_start=t - 10, t_end=t, **kwargs)
 
         pos = self.Agent.history["pos"][t_id]
-        vel = self.Agent.history["vel"][t_id]
+        head_direction = self.Agent.history["head_direction"][t_id]
         fr = self.history["firingrate"][t_id]
-        ego_y = vel / np.linalg.norm(
-            vel
+        ego_y = head_direction / np.linalg.norm(
+            head_direction
         )  # this is the "y" direction" in egocentric coords
         ego_x = utils.rotate(ego_y, -np.pi / 2)
         facecolor = "C1"
