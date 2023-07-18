@@ -8,6 +8,7 @@ import matplotlib
 from matplotlib import pyplot as plt
 import scipy
 from scipy import stats as stats
+import warnings
 
 from ratinabox import utils
 
@@ -1242,14 +1243,19 @@ class BoundaryVectorCells(Neurons):
         # if egocentric references frame shift angle into coordinate from of heading direction of agent
         if self.reference_frame == "egocentric":
             if evaluate_at == "agent":
-                vel = self.Agent.velocity
+                head_direction = self.Agent.head_direction
+            elif "head_direction" in kwargs.keys():
+                head_direction = kwargs["head_direction"]
             elif "vel" in kwargs.keys():
-                vel = kwargs["vel"]
+                # just to make backwards compatible
+                head_direction = kwargs["vel"]
             else:
-                vel = np.array([1, 0])
-            vel = np.array(vel)
-            head_direction_angle = utils.get_angle(vel)
-            test_angles = test_angles - head_direction_angle
+                head_direction = np.array([1, 0])
+                warnings.warn(
+                    "BVCs in egocentric plane require a head direction vector but none was passed. Using [1,0]"
+                )
+            head_bearing = utils.get_angle(head_direction)
+            test_angles -= head_bearing  # account for head direction
 
         tuning_angles = np.tile(
             np.expand_dims(np.expand_dims(self.tuning_angles, axis=-1), axis=-1),
@@ -1529,15 +1535,18 @@ class ObjectVectorCells(Neurons):
         )  # (N_pos,N_objects) #vectors go from pos2 to pos1 so must do subtract pi from bearing
         if self.reference_frame == "egocentric":
             if evaluate_at == "agent":
-                vel = self.Agent.velocity
+                head_direction = self.Agent.head_direction
+            elif "head_direction" in kwargs.keys():
+                head_direction = kwargs["head_direction"]
             elif "vel" in kwargs.keys():
-                vel = kwargs["vel"]
+                # just to make backwards compatible
+                head_direction = kwargs["vel"]
             else:
-                vel = np.array([1, 0])
-                print(
-                    "Field of view OVCs require a velocity vector but none was passed. Using [1,0]"
+                head_direction = np.array([1, 0])
+                warnings.warn(
+                    "OVCs in egocentric plane require a head direction vector but none was passed. Using [1,0]"
                 )
-            head_bearing = utils.get_angle(vel)
+            head_bearing = utils.get_angle(head_direction)
             bearings_to_objects -= head_bearing  # account for head direction
 
         tuning_distances = np.tile(
@@ -1648,24 +1657,26 @@ class HeadDirectionCells(Neurons):
         """In 2D n head direction cells encode the head direction of the animal. By default velocity (which determines head direction) is taken from the agent but this can also be passed as a kwarg 'vel'"""
 
         if evaluate_at == "agent":
-            vel = self.Agent.history["vel"][-1]
+            head_direction = self.Agent.head_direction
+        elif "head_direction" in kwargs.keys():
+            head_direction = kwargs["head_direction"]
         elif "vel" in kwargs.keys():
-            vel = np.array(kwargs["vel"])
+            head_direction = np.array(kwargs["vel"])
         else:
-            print("HeadDirection cells need a velocity but not was given, taking...")
+            print("HeadDirection cells need a head direction but not was given, taking...")
             if self.Agent.Environment.dimensionality == "2D":
-                vel = np.array([1, 0])
+                head_direction = np.array([1, 0])
                 print("...[1,0] as default")
             if self.Agent.Environment.dimensionality == "1D":
-                vel = np.array([1])
+                head_direction = np.array([1])
                 print("...[1] as default")
 
         if self.Agent.Environment.dimensionality == "1D":
-            hdleft_fr = max(0, np.sign(vel[0]))
-            hdright_fr = max(0, -np.sign(vel[0]))
+            hdleft_fr = max(0, np.sign(head_direction[0]))
+            hdright_fr = max(0, -np.sign(head_direction[0]))
             firingrate = np.array([hdleft_fr, hdright_fr])
         if self.Agent.Environment.dimensionality == "2D":
-            current_angle = utils.get_angle(vel)
+            current_angle = utils.get_angle(head_direction)
             firingrate = utils.von_mises(
                 current_angle, self.preferred_angles, self.angular_tunings, norm=1
             )

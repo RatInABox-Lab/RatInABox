@@ -6,6 +6,7 @@ import numpy as np
 import os
 import matplotlib
 from matplotlib import pyplot as plt
+import warnings
 
 
 from ratinabox import utils
@@ -66,6 +67,7 @@ class Agent:
         "wall_repel_distance": 0.1,
         "walls_repel": True,  # whether or not the walls repel
         "save_history": True,  # whether to save position and velocity history as you go
+        "head_direction_smoothing_timescale" : 0.0, # timescale over which head direction is smoothed
     }
 
     def __init__(self, Environment, params={}):
@@ -84,12 +86,20 @@ class Agent:
         utils.update_class_params(self, self.params, get_all_defaults=True)
         utils.check_params(self, params.keys())
 
+        # check if dt < coherence times and warn if not
+        if self.head_direction_smoothing_timescale!= 0 and self.dt >= self.head_direction_smoothing_timescale:
+            warnings.warn("WARNING: dt >= head_direction_smoothing_timescale. This will break the head direction smoothing. \
+                          Set head_direction_smoothing_timescale to 0 to disable head direction smoothing OR \
+                          set dt < head_direction_smoothing_timescale")
+
+
         # initialise history dataframes
         self.history = {}
         self.history["t"] = []
         self.history["pos"] = []
         self.history["vel"] = []
         self.history["rot_vel"] = []
+        self.history["head_direction"] = []
 
         self.Neurons = []  # each new Neurons class belonging to this Agent will append itself to this list
 
@@ -117,9 +127,14 @@ class Agent:
             self.velocity = np.array([self.speed_mean])
             if self.Environment.boundary_conditions == "solid":
                 if self.speed_mean != 0:
-                    print(
+                    warnings.warn(
                         "Warning: You have solid 1D boundary conditions and non-zero speed mean."
                     )
+        
+        # normally this will just be a low pass filter over the velocity vector
+        # this is done to smooth out head turning and make it more realistic 
+        # (potentially stablize behaviours associated with head direction)
+        self.head_direction = self.velocity
 
         if ratinabox.verbose is True:
             print(
@@ -416,6 +431,8 @@ class Agent:
                     self.times
                 )
 
+        self.update_head_direction(dt=dt)
+        
         if len(self.history["pos"]) >= 1:
             self.distance_travelled += np.linalg.norm(
                 self.Environment.get_vectors_between___accounting_for_environment(
@@ -435,12 +452,36 @@ class Agent:
 
         return
 
+    def update_head_direction(self, dt):
+        """
+        This function updates the head direction of the agent. #
+
+        The head direction is updated by a low pass filter of the the current velocity vector.
+        """
+
+        tau_head_direction = self.head_direction_smoothing_timescale
+
+        if dt < tau_head_direction:
+            warnings.warn("dt >= head_direction_smoothing_timescale. This will break the head direction smoothing.")
+
+        if self.head_direction is None:
+            self.head_direction = self.velocity
+        
+        if tau_head_direction == 0: 
+            self.head_direction = self.velocity
+        else:
+            self.head_direction = self.head_direction * ( 1 - dt / tau_head_direction ) + dt / tau_head_direction * self.velocity
+
+        # normalize the head direction
+        self.head_direction = self.head_direction / np.linalg.norm(self.head_direction)
+
     def save_to_history(self):
         self.history["t"].append(self.t)
         self.history["pos"].append(list(self.pos))
         self.history["vel"].append(list(self.save_velocity))
+        self.history["head_direction"].append(self.head_direction)
         if self.Environment.dimensionality == "2D":
-            self.history["rot_vel"].append(self.rotational_velocity)
+            self.history["rot_vel"].append(self.rotational_velocity)     
         return
 
     def reset_history(self):
