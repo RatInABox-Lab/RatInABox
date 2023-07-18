@@ -1248,6 +1248,7 @@ class BoundaryVectorCells(Neurons):
                 head_direction = kwargs["head_direction"]
             elif "vel" in kwargs.keys():
                 # just to make backwards compatible
+                warning.warn("'vel' kwarg deprecated in favour of 'head_direction'")
                 head_direction = kwargs["vel"]
             else:
                 head_direction = np.array([1, 0])
@@ -1540,6 +1541,7 @@ class ObjectVectorCells(Neurons):
                 head_direction = kwargs["head_direction"]
             elif "vel" in kwargs.keys():
                 # just to make backwards compatible
+                warning.warn("'vel' kwarg deprecated in favour of 'head_direction'")
                 head_direction = kwargs["vel"]
             else:
                 head_direction = np.array([1, 0])
@@ -1662,6 +1664,7 @@ class HeadDirectionCells(Neurons):
             head_direction = kwargs["head_direction"]
         elif "vel" in kwargs.keys():
             head_direction = np.array(kwargs["vel"])
+            warning.warn("'vel' kwarg deprecated in favour of 'head_direction'")
         else:
             print("HeadDirection cells need a head direction but not was given, taking...")
             if self.Agent.Environment.dimensionality == "2D":
