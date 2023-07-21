@@ -466,7 +466,7 @@ class Agent:
         tau_head_direction = self.head_direction_smoothing_timescale
         immediate_head_direction = self.velocity / np.linalg.norm(self.velocity)
         
-        if dt < tau_head_direction:
+        if dt > tau_head_direction:
             warnings.warn("dt >= head_direction_smoothing_timescale. This will break the head direction smoothing.")
 
         if self.head_direction is None:

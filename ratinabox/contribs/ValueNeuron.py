@@ -34,7 +34,7 @@ class ValueNeuron(FeedForwardLayer):
 
     default_params = {
         "tau": 2,  # discount time horizon (equivalent to gamma in discrete RL)
-        "tau_e": None,  # eligibility trace timescale, must be <= tau (defaults to tau/2)
+        "tau_e": None,  # eligibility trace timescale, must be <= tau (defaults to tau/4)
         "eta": 0.001,  # learning rate
         "L2": 0.001,  # L2 regularisation
         "activation_params": {"activation": "relu"},  # non-linearity for

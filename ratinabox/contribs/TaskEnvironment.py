@@ -132,6 +132,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         self.episodes["start"] = []
         self.episodes["end"] = []
         self.episodes["duration"] = []
+        self.episodes["meta_info"] = []
         self.episode = 0
         # Episode state and option
         self.episode_state = {"delayed_term": False}
@@ -303,14 +304,14 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         """Seed the random number generator"""
         np.random.seed(seed)
 
-    def reset(self, seed=None, return_info=False, options=None):
+    def reset(self, seed=None, episode_meta_info=False, options=None):
         """How to reset the task when finished"""
         if seed is not None:
             self.seed(seed)
         if self.verbose:
             print("Resetting")
         if len(self.episodes["start"]) > 0:
-            self.write_end_episode()
+            self.write_end_episode(episode_meta_info=episode_meta_info)
 
         # Reset active non-terminated agents
         self.agents = copy(self.agent_names)
@@ -531,9 +532,10 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             print("starting episode {}".format(self.episode))
             print("episode start time: {}".format(self.episodes["start"][-1]))
 
-    def write_end_episode(self):
+    def write_end_episode(self, episode_meta_info="none"):
         self.episodes["end"].append(self.t)
         self.episodes["duration"].append(self.t - self.episodes["start"][-1])
+        self.episodes["meta_info"].append(episode_meta_info)
         if self.verbose:
             print("ending episode {}".format(self.episode))
             print("episode end time: {}".format(self.episodes["end"][-1]))
