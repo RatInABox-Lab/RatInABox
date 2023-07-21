@@ -4,13 +4,14 @@
 
 [**Install**](#installing-and-importing) | [**Demos**](#get-started) | [**Features**](#feature-run-down) | [**Contributions and Questions**](#contribute) | [**Cite**](#cite)
 
-<img src=".images/readme/ratinabox.gif" width=850>
-
 With `RatInABox` you can: 
 
 * **Generate realistic trajectories** for rats exploring complex 1 and 2D environments under a smooth random policy, an external control signal, or your own trajectory data.
 * **Generate artificial neuronal data** for various location- or velocity-selective cells found in the brain (e.g., but not limited to, Hippocampal cell types), or build your own more complex cell types. 
 * **Build and train complex multi-layer networks** of cells, powered by data generated with `RatInABox`. 
+
+<img src=".images/readme/ratinabox.gif" width=850>
+
 
 `RatInABox` is an open source project welcoming [contributions](#contribute). If you use `RatInABox` please [cite](#cite) the paper and consider giving this repository a star ☆. It contains three classes: 
 
