@@ -3,6 +3,7 @@
 `RatInABox` (see [paper](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v3)) is a toolkit for generating synthetic behaviour and neural data for spatially and/or velocity selective cell types in complex continuous environments. 
 
 [**Install**](#installing-and-importing) | [**Demos**](#get-started) | [**Features**](#feature-run-down) | [**Contributions and Questions**](#contribute) | [**Cite**](#cite)
+---
 
 With `RatInABox` you can: 
 
@@ -11,7 +12,6 @@ With `RatInABox` you can:
 * **Build and train complex multi-layer networks** of cells, powered by data generated with `RatInABox`. 
 
 <img src=".images/readme/ratinabox.gif" width=850>
-
 
 `RatInABox` is an open source project welcoming [contributions](#contribute). If you use `RatInABox` please [cite](#cite) the paper and consider giving this repository a star ☆. It contains three classes: 
 
