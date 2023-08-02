@@ -1148,12 +1148,12 @@ class VectorCells(Neurons):
 
         # check if the manifold is a function passed by the user 
         if callable(self.manifold_function):
-            mu_d, mu_theta, sigma_d, sigma_theta =  self.manifold_function(kwargs)
+            mu_d, mu_theta, sigma_d, sigma_theta =  self.manifold_function(**kwargs)
 
         if self.manifold_function == "uniform":
-            mu_d, mu_theta, sigma_d, sigma_theta =  self.get_uniform_manifold(kwargs)
+            mu_d, mu_theta, sigma_d, sigma_theta =  self.get_uniform_manifold(**kwargs)
         elif self.manifold_function == "hartley":
-            mu_d, mu_theta, sigma_d, sigma_theta =  self.get_hartley_manifold(kwargs)
+            mu_d, mu_theta, sigma_d, sigma_theta =  self.get_hartley_manifold(**kwargs)
         else:
             raise ValueError("manifold_function must be either 'uniform' or 'hartley' or a function")
         
@@ -1228,7 +1228,7 @@ class VectorCells(Neurons):
 
 
     def get_hartley_manifold(self,
-                             distance_range: list = [0.0, 0.2],
+                             distance_range: list = [0.01, 0.2],
                              angle_range: list = [0, 90],
                              spatial_resolution = 0.04,
                              **kwargs):
@@ -1311,12 +1311,12 @@ class VectorCells(Neurons):
 
         y_axis_wrt_agent = np.array([0, 1])
         x_axis_wrt_agent = np.array([1, 0])
+        head_direction = self.Agent.history["head_direction"][t_id]
         head_direction_angle = (180 / np.pi) * (
             ratinabox.utils.get_angle(head_direction) - np.pi / 2
         ) # head direction angle (CCW from true North)
             
         if self.reference_frame == "egocentric":
-            head_direction = self.Agent.history["head_direction"][t_id]
             
             # this is the "y" direction" in egocentric coords
             y_axis_wrt_agent = head_direction / np.linalg.norm(head_direction)  
@@ -1450,6 +1450,7 @@ class BoundaryVectorCells(VectorCells):
         locs = self.Agent.Environment.discretise_environment(dx=0.04)
         locs = locs.reshape(-1, locs.shape[-1])
         
+        self.cell_fr_norm = np.ones(self.n) #value for initialization
         self.cell_fr_norm = np.max(self.get_state(evaluate_at=None, pos=locs), axis=1)
 
         if ratinabox.verbose is True:
@@ -1703,24 +1704,34 @@ class BoundaryVectorCells(VectorCells):
 
 
 class ObjectVectorCells(VectorCells):
-    """Initialises ObjectVectorCells(), takes as input a parameter dictionary. Any values not provided by the params dictionary are taken from a default dictionary below.
+    """Initialises ObjectVectorCells(), takes as input a parameter dictionary. Any values 
+    not provided by the params dictionary are taken from a default dictionary below.
 
-    ObjectVectorCells respond to Objects inside the Environment (2D only). Add objects to the environment using the `Env.add_object()` method. Each OVC has a prefrerred type (which "type" of object it responds to), tuning angle, and tuning distance (direction and distance from object cell will preferentially fire at).
+    ObjectVectorCells respond to Objects inside the Environment (2D only). Add objects to the 
+    environment using the `Env.add_object()` method. Each OVC has a prefrerred type 
+    (which "type" of object it responds to), tuning angle, and tuning distance 
+    (direction and distance from object cell will preferentially fire at).
 
-    Reference frame can be allocentric or egocentric. In the latter case the tuning angle is relative to the heading direction of the agent.
+    Reference frame can be allocentric or egocentric. In the latter case the tuning 
+    angle is relative to the heading direction of the agent.
 
     default_params = {
         "n": 10, #each will be randomly assigned an object type, tuning angle and tuning distance
         "name": "ObjectVectorCell",
         "walls_occlude":True, #whether walls occlude OVC firing
         "reference_frame":"allocentric", #"or "egocentric" (equivalent to field of view neurons)
-        "angle_spread_degrees":15, #spread of von Mises angular preferrence functinon for each OVC, you can also set this array manually after initialisation
-        "pref_object_dist": 0.25, # distance preference drawn from a Rayleigh with this sigma. How far away from object the OVC fires. Can set this array manually after initialisation.
-        "xi": 0.08, #parameters determining the distance preferrence function std given the preferred distance. See BoundaryVectorCells or de cothi and barry 2020
+        "angle_spread_degrees":15, #spread of von Mises angular preferrence functinon for each OVC, 
+                                    you can also set this array manually after initialisation
+        "pref_object_dist": 0.25, # distance preference drawn from a Rayleigh with this sigma. 
+                                    How far away from object the OVC fires. Can set this array manually 
+                                    after initialisation.
+        "xi": 0.08, #parameters determining the distance preferrence function std given the preferred distance. 
+                    See BoundaryVectorCells or de cothi and barry 2020
         "beta": 12,
         "max_fr":1, # likely max firing rate of an OVC
         "min_fr":0, # likely min firing rate
-        "object_tuning_type" : None, Can be a list of length n, int or None #if None, will randomly assign object types to each OVC
+        "object_tuning_type" : None #Can be a list of length n, int or None.
+                                    if None, will randomly assign object types to each OVC
     }
     """
 
@@ -1759,7 +1770,8 @@ class ObjectVectorCells(VectorCells):
         self.tuning_types = None
 
 
-        # preferred object types, distance and angle to objects and their tuning widths (set these yourself if needed)
+        # preferred object types, distance and angle to objects and their tuning widths 
+        # (set these yourself if needed)
         self.set_tuning_types(self.object_tuning_type)
 
         self.set_tuning_angles()
@@ -1963,13 +1975,30 @@ class ObjectVectorCells(VectorCells):
 
 
 class FieldOfViewOVCells(ObjectVectorCells):
-    """FieldOfViewOVCells are collection of object vector cells organised so as to represent the local field of view i.e. what walls or objects the agent can "see" in the local vicinity. They work as follow:
+    """FieldOfViewOVCells are collection of object vector cells organised so as to represent the 
+    local field of view i.e. what walls or objects the agent can "see" in the local vicinity. 
+    
+    They work as follow:
 
-    A "manifold" of object vector cells (OVCs) tiling the agents FoV is initialised. Users define the radius and angular extent of this manifold which determine the distances and angles available in the FoV. These default to a 180 degree FoV from distance of 0 to 20cm. Each point on this manifold is therefore defined  by tuple (angle and radius), or (θ,r). Egocentric cells are initialised which tile this manifold (uniformly or growing with radius), the cell at position (θ,r) will fire with a preference for objects (for OVCs) a distance r from the agent at an angle θ relative to the current heading direction (they are "egocentric"). Thus only if the part of the manifold where the cell sits crosses a wall or object, will that cell fire. Thus only the cells on the part of a manifold touching or close to a wall/object will fire.
+    A "manifold" of object vector cells (OVCs) tiling the agents FoV is initialised. 
+    Users define the radius and angular extent of this manifold which determine the distances and angles 
+    available in the FoV. These default to a 180 degree FoV from distance of 0 to 20cm. Each point on this 
+    manifold is therefore defined  by tuple (angle and radius), or (θ,r). 
+    
+    Egocentric cells are initialised which tile this manifold (uniformly or growing with radius),
+    the cell at position (θ,r) will fire with a preference for objects (for OVCs) a distance r from 
+    the agent at an angle θ relative to the current heading direction (they are "egocentric"). Thus only if 
+    the part of the manifold where the cell sits crosses a wall or object, will that cell fire. Thus only 
+    the cells on the part of a manifold touching or close to a wall/object will fire.
 
-    By default these are BVCs (the agent can only "see" walls), but if cell_type == 'OVC' then for each unique object type present in the Environment a manifold of these cells is created. So if there are two "types " of objects (red objects and blue objects) then one manifold will reveal the presence of red objects in the Agents FoV and the other blue objects. See Neurons.ObjectVectorCells for more information about how OVCs work.
+    By default these are BVCs (the agent can only "see" walls), but if cell_type == 'OVC' then for each 
+    unique object type present in the Environment a manifold of these cells is created. So if there are two 
+    "types " of objects (red objects and blue objects) then one manifold will reveal the presence of red 
+    objects in the Agents FoV and the other blue objects. See Neurons.ObjectVectorCells for more information 
+    about how OVCs work.
 
-    The tiling resolution (the spatial and angular tuning sizes of the smallest cells receptive fields) is given by the `spatial_resolution` param in the input dictionary.
+    The tiling resolution (the spatial and angular tuning sizes of the smallest cells receptive fields) is 
+    given by the `spatial_resolution` param in the input dictionary.
 
     In order to visuale the manifold, we created a plotting function. First make a trajectory figure, then pass this into the plotting func:
         >>> fig, ax = Ag.plot_trajectory()
@@ -1979,7 +2008,7 @@ class FieldOfViewOVCells(ObjectVectorCells):
 
     """
     default_params = {
-        "FoV_distance": [0.0, 0.2],  # min and max distances the agent can "see"
+        "FoV_distance": [0.01, 0.2],  # min and max distances the agent can "see"
         "FoV_angles": [
             0,
             90,
@@ -1995,9 +2024,13 @@ class FieldOfViewOVCells(ObjectVectorCells):
 
         self.params["reference_frame"] = "egocentric"
 
-        manifold = self._create_manifold(distance_range = params["FoV_distance"],
-                                        angle_range = params["FoV_angles"],
-                                        spatial_resolution = params["spatial_resolution"])
+        #TODO: this is a hack
+        utils.update_class_params(self, self.params, get_all_defaults=True)
+        utils.check_params(self, params.keys())
+
+        manifold = self._create_manifold(distance_range = self.params["FoV_distance"],
+                                        angle_range = self.params["FoV_angles"],
+                                        spatial_resolution = self.params["spatial_resolution"])
 
         self.params["n"] = manifold["n"]
 
