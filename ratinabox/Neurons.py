@@ -155,6 +155,9 @@ class Neurons:
         if self.save_history is True:
             self.save_to_history()
         return
+    
+    def get_state(self, **kwargs):
+        raise NotImplementedError("Neurons object needs a get_state() method")
 
     def plot_rate_timeseries(
         self,
@@ -1096,6 +1099,30 @@ class VectorCells(Neurons):
         
         self.manifold_coords_euclid = None #defining the euclidean coordinates of the vector cells w.r.t to the agent
         self.manifold_coords_polar = None #defining the polar coordinates of the vector cells w.r.t to the agent
+
+        if self.manifold_function is None:
+            self.set_tuning_angles()
+            self.set_tuning_distances()
+            self.set_sigma_angles()
+            self.set_sigma_distances()
+
+            self.manifold_coords_polar = np.array([self.tuning_distances, self.tuning_angles]).T
+            self.manifold_coords_euclid = np.array([self.tuning_distances * np.sin(self.tuning_angles), 
+                                               self.tuning_distances * np.cos(self.tuning_angles)]
+                                             ).T
+
+        else:
+            manifold = self._create_manifold(**self.params)
+            self.n = manifold["n"]
+            self.firingrate = np.zeros(self.n)
+            self.noise = np.zeros(self.n)
+
+            self.tuning_angles = manifold["tuning_angles"]
+            self.tuning_distances = manifold["tuning_distances"]
+            self.sigma_angles = manifold["sigma_angles"]
+            self.sigma_distances = manifold["sigma_distances"]
+            self.manifold_coords_polar = manifold["manifold_coords_polar"]
+            self.manifold_coords_euclid = manifold["manifold_coords_euclid"]
     
     def set_tuning_types(self, tuning_types = None):
         raise NotImplementedError("VectorCells.set_tuning_types() not implemented yet.\
@@ -1116,14 +1143,7 @@ class VectorCells(Neurons):
     def set_sigma_distances(self, sigma_distances = None):
         raise NotImplementedError("VectorCells.set_sigma_distances() not implemented yet.\
                                    Override this method in your subclass.") 
-    
-    def set_tuning_angles_and_distances(self, tuning_angles = None, tuning_distances = None):
-        raise NotImplementedError("VectorCells.set_tuning_angles_and_distances() not implemented yet.\
-                                   Override this method in your subclass.")
-    
-    def set_sigma_angles_and_distances(self, sigma_angles = None, sigma_distances = None):
-        raise NotImplementedError("VectorCells.set_sigma_angles_and_distances() not implemented yet.\
-                                   Override this method in your subclass.")
+
     
     
     def _create_manifold(self, **kwargs):
@@ -1312,11 +1332,13 @@ class VectorCells(Neurons):
         y_axis_wrt_agent = np.array([0, 1])
         x_axis_wrt_agent = np.array([1, 0])
         head_direction = self.Agent.history["head_direction"][t_id]
-        head_direction_angle = (180 / np.pi) * (
-            ratinabox.utils.get_angle(head_direction) - np.pi / 2
-        ) # head direction angle (CCW from true North)
+        head_direction_angle = 0.0
             
         if self.reference_frame == "egocentric":
+            head_direction = self.Agent.history["head_direction"][t_id]
+            head_direction_angle = (180 / np.pi) * (
+                ratinabox.utils.get_angle(head_direction) - np.pi / 2
+            ) # head direction angle (CCW from true North)
             
             # this is the "y" direction" in egocentric coords
             y_axis_wrt_agent = head_direction / np.linalg.norm(head_direction)  
@@ -1436,14 +1458,6 @@ class BoundaryVectorCells(VectorCells):
             test_angles.append(2 * np.pi * i * self.dtheta / 360)
         self.test_directions = np.array(test_directions)
         self.test_angles = np.array(test_angles)
-        self.sigma_angles = np.array(
-            [(self.angle_spread_degrees / 360) * 2 * np.pi] * self.n
-        )
-        
-        self.set_tuning_angles()
-        self.set_tuning_distances()
-        self.set_sigma_angles()
-        self.set_sigma_distances()
         
         
         # calculate normalising constants for BVS firing rates in the current environment. Any extra walls you add from here onwards you add will likely push the firingrate up further.
@@ -1451,7 +1465,10 @@ class BoundaryVectorCells(VectorCells):
         locs = locs.reshape(-1, locs.shape[-1])
         
         self.cell_fr_norm = np.ones(self.n) #value for initialization
-        self.cell_fr_norm = np.max(self.get_state(evaluate_at=None, pos=locs), axis=1)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            # ignores the warning raised during initialisation of the BVCs
+            self.cell_fr_norm = np.max(self.get_state(evaluate_at=None, pos=locs), axis=1)
 
         if ratinabox.verbose is True:
             print(
@@ -1485,6 +1502,10 @@ class BoundaryVectorCells(VectorCells):
         if sigma_angles is not None:
             assert sigma_angles.shape == (self.n,), f"Sigma angles must be a vector of length of the number of neurons: ({self.n},)"
             self.sigma_angles = sigma_angles
+        else:
+            self.sigma_angles = np.array(
+                [(self.angle_spread_degrees / 360) * 2 * np.pi] * self.n
+            )
 
     def set_sigma_distances(self, sigma_distances=None):
 
@@ -1703,6 +1724,28 @@ class BoundaryVectorCells(VectorCells):
         return fig, ax
 
 
+class FieldOfViewBVCells(BoundaryVectorCells):
+
+    default_params = {
+        "distance_range": [0.01, 0.2],  # min and max distances the agent can "see"
+        "angle_range": [
+            0,
+            90,
+        ],  # angluar FoV in degrees (will be symmetric on both sides, so give range in 0 (forwards) to 180 (backwards)
+        "spatial_resolution": 0.04,  # resolution of each BVC tiling FoV
+        "manifold_function": "hartley",  # whether all cells have "uniform" receptive field sizes or they grow ("hartley") with radius.
+    }
+
+    def __init__(self,Agent,params={}):
+
+        self.params = copy.deepcopy(__class__.default_params)
+        self.params.update(params)
+
+        self.params["reference_frame"] = "egocentric"
+        assert self.params["manifold_function"] is not None, "Manifold_function must be set for FOV Neurons"
+
+        super().__init__(Agent, self.params)
+
 class ObjectVectorCells(VectorCells):
     """Initialises ObjectVectorCells(), takes as input a parameter dictionary. Any values 
     not provided by the params dictionary are taken from a default dictionary below.
@@ -1770,14 +1813,8 @@ class ObjectVectorCells(VectorCells):
         self.tuning_types = None
 
 
-        # preferred object types, distance and angle to objects and their tuning widths 
-        # (set these yourself if needed)
+        # preferred object types
         self.set_tuning_types(self.object_tuning_type)
-
-        self.set_tuning_angles()
-        self.set_tuning_distances()
-        self.set_sigma_angles()
-        self.set_sigma_distances()
 
         if self.walls_occlude == True:
             self.wall_geometry = "line_of_sight"
@@ -1822,7 +1859,6 @@ class ObjectVectorCells(VectorCells):
                 np.unique(self.object_types), replace=True, size=(self.n,)
             )
 
-    
     def set_tuning_distances(self, tuning_distances=None):
         if tuning_distances is not None:
             assert tuning_distances.shape == (self.n,), f"Tuning distances must be a vector of length of the number of neurons: ({self.n},)"
@@ -1991,11 +2027,8 @@ class FieldOfViewOVCells(ObjectVectorCells):
     the part of the manifold where the cell sits crosses a wall or object, will that cell fire. Thus only 
     the cells on the part of a manifold touching or close to a wall/object will fire.
 
-    By default these are BVCs (the agent can only "see" walls), but if cell_type == 'OVC' then for each 
-    unique object type present in the Environment a manifold of these cells is created. So if there are two 
-    "types " of objects (red objects and blue objects) then one manifold will reveal the presence of red 
-    objects in the Agents FoV and the other blue objects. See Neurons.ObjectVectorCells for more information 
-    about how OVCs work.
+    One object vector cell is initialised for each object in the environment. Each cell has a preferred
+    object type, distance and angle.
 
     The tiling resolution (the spatial and angular tuning sizes of the smallest cells receptive fields) is 
     given by the `spatial_resolution` param in the input dictionary.
@@ -2008,8 +2041,8 @@ class FieldOfViewOVCells(ObjectVectorCells):
 
     """
     default_params = {
-        "FoV_distance": [0.01, 0.2],  # min and max distances the agent can "see"
-        "FoV_angles": [
+        "distance_range": [0.01, 0.2],  # min and max distances the agent can "see"
+        "angle_range": [
             0,
             90,
         ],  # angluar FoV in degrees (will be symmetric on both sides, so give range in 0 (forwards) to 180 (backwards)
@@ -2023,29 +2056,11 @@ class FieldOfViewOVCells(ObjectVectorCells):
         self.params.update(params)
 
         self.params["reference_frame"] = "egocentric"
-
-        #TODO: this is a hack
-        utils.update_class_params(self, self.params, get_all_defaults=True)
-        utils.check_params(self, params.keys())
-
-        manifold = self._create_manifold(distance_range = self.params["FoV_distance"],
-                                        angle_range = self.params["FoV_angles"],
-                                        spatial_resolution = self.params["spatial_resolution"])
-
-        self.params["n"] = manifold["n"]
+        assert self.params["manifold_function"] is not None, "Manifold_function must be set for FOV Neurons"
 
         super().__init__(Agent, self.params)
 
-        self.tuning_angles = manifold["tuning_angles"]
-        self.tuning_distances = manifold["tuning_distances"]
-        self.sigma_angles = manifold["sigma_angles"]
-        self.sigma_distances = manifold["sigma_distances"]
-        self.manifold_coords_polar = manifold["manifold_coords_polar"]
-        self.manifold_coords_euclid  = manifold["manifold_coords_euclid"]
-
-    
-   
-    
+      
 class HeadDirectionCells(Neurons):
     """The HeadDirectionCells class defines a population of head direction cells. This class is a subclass of Neurons() and inherits it properties/plotting functions.
 
