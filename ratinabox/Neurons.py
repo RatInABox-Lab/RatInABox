@@ -1724,7 +1724,7 @@ class BoundaryVectorCells(VectorCells):
         return fig, ax
 
 
-class FieldOfViewBVCells(BoundaryVectorCells):
+class FieldOfViewBVCs(BoundaryVectorCells):
 
     default_params = {
         "distance_range": [0.01, 0.2],  # min and max distances the agent can "see"
@@ -2010,7 +2010,7 @@ class ObjectVectorCells(VectorCells):
 
 
 
-class FieldOfViewOVCells(ObjectVectorCells):
+class FieldOfViewOVCs(ObjectVectorCells):
     """FieldOfViewOVCells are collection of object vector cells organised so as to represent the 
     local field of view i.e. what walls or objects the agent can "see" in the local vicinity. 
     
