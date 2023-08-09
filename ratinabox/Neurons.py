@@ -1073,6 +1073,23 @@ class GridCells(Neurons):
 
 
 class VectorCells(Neurons):
+    """
+    The VectorCells class defines a population of VectorCells. This class is a 
+    subclass of Neurons() and inherits it properties/plotting functions.
+
+    Must be initialised with an Agent and a 'params' dictionary.
+
+    This class should be used as a parent class for specific subclasses of vector cells and 
+    is a helper class to create the manifolds and appropriate parameters for the subclasses.
+    Inheriting this class will allow you to use the plotting functions and some out of the box 
+    manifold functions.(See _create_manifold() for more details)
+
+
+    Examples of VectorCells subclasses:
+        • BoundaryVectorCells
+        • ObjectVectorCells
+    
+    """
     default_params = {
         "n": 10,
         "name": "VectorCell",
@@ -1378,19 +1395,24 @@ class VectorCells(Neurons):
 
 
 class BoundaryVectorCells(VectorCells):
-    """The BoundaryVectorCells class defines a population of Boundary Vector Cells. This class is a subclass of Neurons() and inherits it properties/plotting functions.
+    """The BoundaryVectorCells class defines a population of Boundary Vector Cells. This class 
+    is a subclass of Neurons() and inherits it properties/plotting functions.
 
     Must be initialised with an Agent and a 'params' dictionary.
 
-    BoundaryVectorCells defines a set of 'n' BVCs cells with random orientations preferences, distance preferences  (these can be set non-randomly of course). We use the model described firstly by Hartley et al. (2000) and more recently de Cothi and Barry (2000).
+    BoundaryVectorCells defines a set of 'n' BVCs cells with random orientations preferences, 
+    distance preferences  (these can be set non-randomly of course). 
+    We use the model described firstly by Hartley et al. (2000) and more recently de Cothi and Barry (2000).
 
-    Distance preferences of each BVC are drawn fro ma random distribution which can be any of the utils.distribution_sampler() accepted distributions. pass parameters in as a tuple e.g.
+    Distance preferences of each BVC are drawn fro ma random distribution which can be any of the utils.distribution_sampler() 
+    accepted distributions. pass parameters in as a tuple e.g.
         • params{'pref_wall_dist':(0.1,0.4), 'pref_wall_dist_distribution':'uniform'} samples from a uniform distribution between [0.1,0.4]
         • params{'pref_wall_dist':(0.4), 'pref_wall_dist_distribution':'rayleigh'} samples from a rayleigh distribution with scale 0.4
         • params{'pref_wall_dist':(0.4), 'pref_wall_dist_distribution':'delta'} samples gives all a constant value of 0.4
         • etc. there are others
 
-    BVCs can have allocentric (mec,subiculum) OR egocentric (ppc, retrosplenial cortex) reference frames. In the egocentric case they could be arranged to act like "field of view" cells. We have a seperate class for this.
+    BVCs can have allocentric (mec,subiculum) OR egocentric (ppc, retrosplenial cortex) reference frames. 
+    In the egocentric case they could be arranged to act like "field of view" cells. We have a seperate class for this.
 
     List of functions:
         • get_state()
@@ -1407,7 +1429,6 @@ class BoundaryVectorCells(VectorCells):
             "dtheta":2, #angular resolution in degrees
             "min_fr": 0,
             "max_fr": 1,
-            "name": "BoundaryVectorCells",
         }
     """
 
@@ -1422,7 +1443,6 @@ class BoundaryVectorCells(VectorCells):
         "dtheta": 2,
         "min_fr": 0,
         "max_fr": 1,
-        "name": "BoundaryVectorCells",
     }
 
     def __init__(self, Agent, params={}):
@@ -1725,6 +1745,32 @@ class BoundaryVectorCells(VectorCells):
 
 
 class FieldOfViewBVCs(BoundaryVectorCells):
+    """FieldOfViewNeurons are collection of boundary vector cells or object vector cells 
+    organised so as to represent the local field of view i.e. what walls or objects the 
+    agent can "see" in the local vicinity. They work as follow:
+
+    A "manifold" of boundary vector cells (BVCs) tiling the agents FoV is initialised. 
+    Users define the radius and angular extent of this manifold 
+    which determine the distances and angles available in the FoV. These default to a 180 
+    degree FoV from distance of 0 to 20cm. Each point on this manifold is therefore defined  
+    by tuple (angle and radius), or (θ,r). Egocentric cells are initialised which tile this 
+    manifold (uniformly or growing with radius), the cell at position (θ,r) will fire with a 
+    preference for boundaries (in the case of BVCs) or objects (for OVCs) a distance r 
+    from the agent at an angle θ relative to the current heading direction (they are "egocentric"). 
+    Thus only if the part of the manifold where the cell sits crosses a wall or object, will that cell fire. 
+    Thus only the cells on the part of a manifold touching or close to a wall/object will fire.
+
+
+    The tiling resolution (the spatial and angular tuning sizes of the smallest cells receptive fields) 
+    is given by the `spatial_resolution` param in the input dictionary.
+
+    In order to visuale the manifold, we created a plotting function. First make a trajectory figure, then pass this into the plotting func:
+        >>> fig, ax = Ag.plot_trajectory()
+        >>> fig, ax = my_FoVNeurons.display_manifold(fig, ax)
+    or animate it with
+        >>> fig, ax = Ag.animate_trajectory(additional_plot_func=my_FoVNeurons.display_manifold)
+
+    """
 
     default_params = {
         "distance_range": [0.01, 0.2],  # min and max distances the agent can "see"
