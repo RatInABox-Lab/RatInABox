@@ -1980,14 +1980,13 @@ class ObjectVectorCells(VectorCells):
             return_vectors=True,
             wall_geometry=self.wall_geometry,
         )  # (N_pos,N_objects) (N_pos,N_objects,2)
-        flattened_vectors_to_objects = vectors_to_objects.reshape(
+        flattened_vectors_to_objects = -1 * vectors_to_objects.reshape(
             -1, 2
         )  # (N_pos x N_objects, 2)
         bearings_to_objects = (
             utils.get_angle(flattened_vectors_to_objects, is_array=True).reshape(
                 N_pos, N_objects
             )
-            - np.pi
         )  # (N_pos,N_objects) #vectors go from pos2 to pos1 so must do subtract pi from bearing
         if self.reference_frame == "egocentric":
             if evaluate_at == "agent":
