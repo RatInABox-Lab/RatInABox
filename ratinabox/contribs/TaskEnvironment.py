@@ -1417,7 +1417,7 @@ class SpatialGoalEnvironment(TaskEnvironment):
         """
         Shortcut function for intializing a set of goals from numpy
         array or from a string saying how many goals to randomly create our
-        reservoir from. The reservoir is the pool used to replinish the
+        reservoir from. The reservoir is the pool used to replenish the
         list of goals from on .reset()
 
         Parameters
@@ -1481,7 +1481,7 @@ class SpatialGoalEnvironment(TaskEnvironment):
             self.goal_cache.reset_n_goals = n_objectives
         # Did user pass new goals?
         if goal_locations is not None:
-            self.goal_caches.reset_goals = self._init_poss_goal_positions(
+            self.goal_cache.reset_goals = self._init_poss_goal_positions(
                 goal_locations
             )
 
