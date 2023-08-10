@@ -1092,10 +1092,16 @@ class VectorCells(Neurons):
     """
     default_params = {
         "n": 10,
-        "name": "VectorCell",
-        "walls_occlude": True,
+        "name": "VectorCells",
         "reference_frame": "allocentric",
-        "manifold_function": None #if None, will randomly assign the tuning distances and angles
+        "manifold_function": None, #if None, will randomly assign the tuning distances and angles
+        "angle_spread_degrees": 15,
+        "xi": 0.08,
+        "beta": 12,
+        "min_fr": 0,
+        "max_fr": 1,
+        "pref_distance": [0.1,0.3], 
+        "pref_distance_distribution": "uniform",
     }
 
     def __init__(self, Agent, params={}):
@@ -1114,52 +1120,18 @@ class VectorCells(Neurons):
         self.sigma_angles = None
         self.sigma_distances = None
         
-        self.manifold_coords_euclid = None #defining the euclidean coordinates of the vector cells w.r.t to the agent
-        self.manifold_coords_polar = None #defining the polar coordinates of the vector cells w.r.t to the agent
 
-        if self.manifold_function is None:
-            self.set_tuning_angles()
-            self.set_tuning_distances()
-            self.set_sigma_angles()
-            self.set_sigma_distances()
 
-            self.manifold_coords_polar = np.array([self.tuning_distances, self.tuning_angles]).T
-            self.manifold_coords_euclid = np.array([self.tuning_distances * np.sin(self.tuning_angles), 
-                                               self.tuning_distances * np.cos(self.tuning_angles)]
-                                             ).T
+        manifold = self._create_manifold(**self.params)
+        self.n = manifold["n"]
+        self.firingrate = np.zeros(self.n)
+        self.noise = np.zeros(self.n)
 
-        else:
-            manifold = self._create_manifold(**self.params)
-            self.n = manifold["n"]
-            self.firingrate = np.zeros(self.n)
-            self.noise = np.zeros(self.n)
+        self.tuning_angles = manifold["tuning_angles"]
+        self.tuning_distances = manifold["tuning_distances"]
+        self.sigma_angles = manifold["sigma_angles"]
+        self.sigma_distances = manifold["sigma_distances"]
 
-            self.tuning_angles = manifold["tuning_angles"]
-            self.tuning_distances = manifold["tuning_distances"]
-            self.sigma_angles = manifold["sigma_angles"]
-            self.sigma_distances = manifold["sigma_distances"]
-            self.manifold_coords_polar = manifold["manifold_coords_polar"]
-            self.manifold_coords_euclid = manifold["manifold_coords_euclid"]
-    
-    def set_tuning_types(self, tuning_types = None):
-        raise NotImplementedError("VectorCells.set_tuning_types() not implemented yet.\
-                                   Override this method in your subclass.")
-
-    def set_tuning_angles(self, tuning_angles = None):
-        raise NotImplementedError("VectorCells.set_tuning_angles() not implemented yet.\
-                                   Override this method in your subclass.")
-
-    def set_tuning_distances(self, tuning_distances = None):
-        raise NotImplementedError("VectorCells.set_tuning_distances() not implemented yet.\
-                                   Override this method in your subclass.")
-
-    def set_sigma_angles(self, sigma_angles = None):
-        raise NotImplementedError("VectorCells.set_sigma_angles() not implemented yet.\
-                                   Override this method in your subclass.")
-
-    def set_sigma_distances(self, sigma_distances = None):
-        raise NotImplementedError("VectorCells.set_sigma_distances() not implemented yet.\
-                                   Override this method in your subclass.") 
 
     
     
@@ -1179,18 +1151,20 @@ class VectorCells(Neurons):
                 • "manifold_coords_euclid" : coordinates in egocentric euclidean coords [x,y]
 
         """
-        assert self.manifold_function is not None, "manifold_function must be set to create a manifold"
 
         mu_d, mu_theta, sigma_d, sigma_theta = None, None, None, None
 
         # check if the manifold is a function passed by the user 
-        if callable(self.manifold_function):
-            mu_d, mu_theta, sigma_d, sigma_theta =  self.manifold_function(**kwargs)
+        if self.manifold_function is None:
+            mu_d, mu_theta, sigma_d, sigma_theta = utils.get_random_manifold(**kwargs)
 
-        if self.manifold_function == "uniform":
-            mu_d, mu_theta, sigma_d, sigma_theta =  self.get_uniform_manifold(**kwargs)
+        elif callable(self.params['manifold_function']):
+            mu_d, mu_theta, sigma_d, sigma_theta =  self.params['manifold_function'](**kwargs)
+
+        elif self.manifold_function == "uniform":
+            mu_d, mu_theta, sigma_d, sigma_theta =  utils.get_uniform_manifold(**kwargs)
         elif self.manifold_function == "hartley":
-            mu_d, mu_theta, sigma_d, sigma_theta =  self.get_hartley_manifold(**kwargs)
+            mu_d, mu_theta, sigma_d, sigma_theta =  utils.get_hartley_manifold(**kwargs)
         else:
             raise ValueError("manifold_function must be either 'uniform' or 'hartley' or a function")
         
@@ -1211,110 +1185,14 @@ class VectorCells(Neurons):
         #ensure correct shape of the arrays all the same length
         assert len(mu_d) == len(mu_theta) == len(sigma_d) == len(sigma_theta), "All manifold tuning parameters must be of the same length"
 
-        manifold_coords_polar = np.array([mu_d, mu_theta]).T
-        manifold_coords_euclid = np.array([mu_d * np.sin(mu_theta), 
-                                           mu_d * np.cos(mu_theta)]
-                                         ).T
 
         return {
             "tuning_angles": mu_theta,
             "tuning_distances": mu_d,
             "sigma_angles": sigma_theta,
             "sigma_distances": sigma_d,
-            "manifold_coords_polar": manifold_coords_polar,
-            "manifold_coords_euclid": manifold_coords_euclid,
             "n" : len(mu_d)
         }
-
-
-    def get_uniform_manifold(self,
-                             distance_range: list = [0.0, 0.2],
-                             angle_range: list = [0, 90],
-                             spatial_resolution = 0.04,
-                             **kwargs):
-        '''
-        Get the parameters for a uniform manifold of vector cells.
-
-        Args:
-            • distance_range (list): [min,max] distance from the agent to tile the manifold
-            • angle_range (list): [min,max] angular extent of the manifold in degrees
-            • spatial_resolution (float): size of each receptive field ("uniform") 
-        '''
-        
-        FoV_angles_radians = [a * np.pi / 180 for a in angle_range]
-        (mu_d, mu_theta, sigma_d, sigma_theta) = ([], [], [], [])
-
-        dx = spatial_resolution
-        radii = np.arange(max(0.01, distance_range[0]), distance_range[1], dx)
-        for radius in radii:
-            dtheta = dx / radius
-            right_thetas = np.arange(
-                FoV_angles_radians[0] + dtheta / 2,
-                FoV_angles_radians[1],
-                dtheta,
-            )
-            left_thetas = -right_thetas[::-1]
-            thetas = np.concatenate((left_thetas, right_thetas))
-            for theta in thetas:
-                mu_d.append(radius)
-                mu_theta.append(theta)
-                sigma_d.append(spatial_resolution)
-                sigma_theta.append(spatial_resolution / radius)
-
-        return mu_d, mu_theta, sigma_d, sigma_theta
-
-
-    def get_hartley_manifold(self,
-                             distance_range: list = [0.01, 0.2],
-                             angle_range: list = [0, 90],
-                             spatial_resolution = 0.04,
-                             **kwargs):
-        '''
-        Get the parameters for a hartley manifold of vector cells. 
-        (further away receptive fields are larger in line with Hartley et al. 2000 eqn (1))
-
-        Args:
-            • distance_range (list): [min,max] distance from the agent to tile the manifold
-            • angle_range (list): [min,max] angular extent of the manifold in degrees
-            • spatial_resolution (float): size of the smallest receptive field ("hartley")
-        '''
-
-        FoV_angles_radians = [a * np.pi / 180 for a in angle_range]
-        (mu_d, mu_theta, sigma_d, sigma_theta) = ([], [], [], [])
-
-        # Hartley model says that the spatial tuning width of a B/OVC should be proportional to the distance from the agent according to
-        # sigma_d = mu_d / beta + xi where beta := 12 and xi := 0.08 m  are constants.
-        # In this case, however, we want to force the smallest cells to have sigma_d = spatial_resolution setting the constraint that xi = spatial_resolution - min_radius / beta
-        radius = max(0.01, distance_range[0])
-        beta = 5  # smaller means larger rate of increase of cell size with radius
-        xi = spatial_resolution - radius / beta
-        while radius < distance_range[1]:
-            resolution = xi + radius / beta  # spatial resolution of this row
-            dtheta = resolution / radius
-            if dtheta / 2 > FoV_angles_radians[1]:
-                right_thetas = np.array(
-                    [FoV_angles_radians[0] + dtheta / 2]
-                )  # at least one cell in this row
-            else:
-                right_thetas = np.arange(
-                    FoV_angles_radians[0] + dtheta / 2,
-                    FoV_angles_radians[1],
-                    dtheta,
-                )
-            left_thetas = -right_thetas[::-1]
-            thetas = np.concatenate((left_thetas, right_thetas))
-            for theta in thetas:
-                mu_d.append(radius)
-                mu_theta.append(theta)
-                sigma_d.append(resolution)
-                sigma_theta.append(resolution / radius)
-            # the radius of the next row of cells is found by solving the simultaneous equations:
-            # • r2 = r1 + sigma1/2 + sigma2/2 (the radius, i.e. sigma/2, of the second cell just touches the first cell)
-            # • sigma2 = r2/beta + xi (Hartleys rule)
-            # the solution is: r2 = (2*r1 + sigma1 +xi) / (2 - 1/beta)
-            radius = (2 * radius + resolution + xi) / (2 - 1 / beta)
-
-        return mu_d, mu_theta, sigma_d, sigma_theta
 
 
     def display_manifold(self, 
@@ -1326,6 +1204,9 @@ class VectorCells(Neurons):
         Essentially this plots the "manifold" ontop of the Agent. 
         Each cell is plotted as an ellipse where the alpha-value of its facecolor reflects the current firing rate 
         (normalised against the approximate maximum firing rate for all cells, but, take this just as a visualisation)
+
+        This assumes the X-axis in the Agent's frame of reference is the heading direction. 
+        (Or the heading diection is the X-axis for egocentric frame of reference). IN this case the Y-axis is the towards the "left" of the agent.
 
         Args:
         • fig, ax: the matplotlib fig, ax objects to plot on (if any), otherwise will plot the Environment
@@ -1347,29 +1228,29 @@ class VectorCells(Neurons):
         
 
         y_axis_wrt_agent = np.array([0, 1])
-        x_axis_wrt_agent = np.array([1, 0])
+        x_axis_wrt_agent = np.array([1,0])
         head_direction = self.Agent.history["head_direction"][t_id]
         head_direction_angle = 0.0
-            
+        
+
         if self.reference_frame == "egocentric":
             head_direction = self.Agent.history["head_direction"][t_id]
-            head_direction_angle = (180 / np.pi) * (
-                ratinabox.utils.get_angle(head_direction) - np.pi / 2
-            ) # head direction angle (CCW from true North)
+            # head direction angle (CCW from true North)
+            head_direction_angle = (180 / np.pi) * ratinabox.utils.get_angle(head_direction)  
             
             # this is the "y" direction" in egocentric coords
-            y_axis_wrt_agent = head_direction / np.linalg.norm(head_direction)  
-            x_axis_wrt_agent = utils.rotate(y_axis_wrt_agent, -np.pi / 2)
+            x_axis_wrt_agent = head_direction / np.linalg.norm(head_direction)  
+            y_axis_wrt_agent = utils.rotate(x_axis_wrt_agent, np.pi / 2)
 
 
         fr = self.history["firingrate"][t_id]
         facecolor = self.color or "C1"
 
-
-        # TODO redo this with ellipse collections
-        for i, coord in enumerate(self.manifold_coords_euclid):
-            [x, y] = coord
-            pos_of_cell = pos - x * x_axis_wrt_agent + y * y_axis_wrt_agent
+        
+        for i in range(self.n):
+            x = self.tuning_distances[i] * np.cos(self.tuning_angles[i])
+            y = self.tuning_distances[i] * np.sin(self.tuning_angles[i])
+            pos_of_cell = pos + x * x_axis_wrt_agent + y * y_axis_wrt_agent
             facecolor = list(matplotlib.colors.to_rgba(facecolor))
             facecolor[-1] = max(
                 0, min(1, fr[i] / (0.5 * self.max_fr))
@@ -1389,9 +1270,6 @@ class VectorCells(Neurons):
             ax.add_patch(ellipse)
 
         return fig, ax
-
-
-
 
 
 class BoundaryVectorCells(VectorCells):
@@ -1434,15 +1312,10 @@ class BoundaryVectorCells(VectorCells):
 
     default_params = {
         "n": 10,
+        "name": "BoundaryVectorCells",
         "reference_frame": "allocentric",
-        "pref_wall_dist": (0.1, 0.3),
-        "pref_wall_dist_distribution": "uniform",
         "angle_spread_degrees": 11.25,
-        "xi": 0.08,
-        "beta": 12,
         "dtheta": 2,
-        "min_fr": 0,
-        "max_fr": 1,
     }
 
     def __init__(self, Agent, params={}):
@@ -1496,45 +1369,7 @@ class BoundaryVectorCells(VectorCells):
             )
         return
     
-    def set_tuning_angles(self, tuning_angles=None):
-        if tuning_angles is not None:
-            assert tuning_angles.shape == (self.n,), f"Tuning angles must be a vector of length of the number of neurons: ({self.n},)"
-            self.tuning_angles = tuning_angles
-        else:
-            # define tuning angles from uniform distribution
-            self.tuning_angles = np.random.uniform(0, 2 * np.pi, size=self.n)
-    
-    def set_tuning_distances(self, tuning_distances=None):
-        if tuning_distances is not None:
-            assert tuning_distances.shape == (self.n,), f"Tuning distances must be a vector of length of the number of neurons: ({self.n},)"
-            self.tuning_distances = tuning_distances
-        else:
-            # define tuning distances from specific distribution in params dict
-            self.tuning_distances = utils.distribution_sampler(
-                distribution_name=self.pref_wall_dist_distribution,
-                distribution_parameters=self.pref_wall_dist,
-                shape=(self.n,),
-            )
-        self.tuning_distances = np.abs(self.tuning_distances)  # hard bound at zero
-    
-    def set_sigma_angles(self, sigma_angles=None):
-        
-        if sigma_angles is not None:
-            assert sigma_angles.shape == (self.n,), f"Sigma angles must be a vector of length of the number of neurons: ({self.n},)"
-            self.sigma_angles = sigma_angles
-        else:
-            self.sigma_angles = np.array(
-                [(self.angle_spread_degrees / 360) * 2 * np.pi] * self.n
-            )
 
-    def set_sigma_distances(self, sigma_distances=None):
-
-        if sigma_distances is not None:
-            assert sigma_distances.shape == (self.n,), f"Sigma distances must be a vector of length of the number of neurons: ({self.n},)"
-            self.sigma_distances = sigma_distances
-        else:
-            self.sigma_distances = self.tuning_distances / self.beta + self.xi
-        
 
     def get_state(self, evaluate_at="agent", **kwargs):
         """Here we implement the same type if boundary vector cells as de Cothi et al. (2020), who follow Barry & Burgess, (2007). See equations there.
@@ -1829,12 +1664,6 @@ class ObjectVectorCells(VectorCells):
         "name": "ObjectVectorCell",
         "walls_occlude": True,
         "reference_frame": "allocentric",
-        "angle_spread_degrees": 15,
-        "pref_object_dist": 0.25,
-        "xi": 0.08,
-        "beta": 12,
-        "max_fr": 1,
-        "min_fr": 0,
         "object_tuning_type" : None, #if None, will randomly assign object types to each OVC
         
     }
@@ -1867,9 +1696,6 @@ class ObjectVectorCells(VectorCells):
         else:
             self.wall_geometry = "euclidean"
 
-        # normalises activity over the environment
-        locs = self.Agent.Environment.discretise_environment(dx=0.04)
-        locs = locs.reshape(-1, locs.shape[-1])
 
         if ratinabox.verbose is True:
             print(
@@ -1905,46 +1731,7 @@ class ObjectVectorCells(VectorCells):
                 np.unique(self.object_types), replace=True, size=(self.n,)
             )
 
-    def set_tuning_distances(self, tuning_distances=None):
-        if tuning_distances is not None:
-            assert tuning_distances.shape == (self.n,), f"Tuning distances must be a vector of length of the number of neurons: ({self.n},)"
-            self.tuning_distances = tuning_distances
-        else:
-            self.tuning_distances = np.random.rayleigh(
-            scale=self.pref_object_dist, size=self.n
-            )
-
-        self.tuning_distances = np.abs(self.tuning_distances)  # hard bound at zero
-
-    def set_tuning_angles(self, tuning_angles=None):
-
-        if tuning_angles is not None:
-            assert tuning_angles.shape == (self.n,), f"Tuning angles must be a vector of length of the number of neurons: ({self.n},)"
-            self.tuning_angles = tuning_angles
-        else:
-            # define tuning angles from uniform distribution
-            self.tuning_angles = np.random.uniform(0, 2 * np.pi, size=self.n)
-        
-    def set_sigma_angles(self, sigma_angles=None):
-        if sigma_angles is not None:
-            assert sigma_angles.shape == (self.n,), f"Sigma angles must be a vector of length of the number of neurons: ({self.n},)"
-            self.sigma_angles = sigma_angles
-        else:
-            self.sigma_angles = np.array(
-            [(self.angle_spread_degrees / 360) * 2 * np.pi] * self.n
-            )
-
-    def set_sigma_distances(self, sigma_distances = None):
-        """Sets sigma distances based on the tuning distances and angles and the xi and beta parameters.
-
-        This is called automatically when the OVCs are initialised.
-        """
-        if sigma_distances is not None:
-            assert sigma_distances.shape == (self.n,), f"Sigma distances must be a vector of length of the number of neurons: ({self.n},)"
-            self.sigma_distances = sigma_distances
-        else:
-            self.sigma_distances = self.tuning_distances / self.beta + self.xi  
-
+    
     def get_state(self, evaluate_at="agent", **kwargs):
         """Returns the firing rate of the ObjectVectorCells.
 
@@ -1982,12 +1769,12 @@ class ObjectVectorCells(VectorCells):
         )  # (N_pos,N_objects) (N_pos,N_objects,2)
         flattened_vectors_to_objects = -1 * vectors_to_objects.reshape(
             -1, 2
-        )  # (N_pos x N_objects, 2)
+        )  # (N_pos x N_objects, 2) #vectors go from pos2 to pos1 so must multiply by -1 
         bearings_to_objects = (
             utils.get_angle(flattened_vectors_to_objects, is_array=True).reshape(
                 N_pos, N_objects
             )
-        )  # (N_pos,N_objects) #vectors go from pos2 to pos1 so must do subtract pi from bearing
+        )  # (N_pos,N_objects) 
         if self.reference_frame == "egocentric":
             if evaluate_at == "agent":
                 head_direction = self.Agent.head_direction

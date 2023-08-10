@@ -433,7 +433,11 @@ def distribution_sampler(
     Arg: distribution_name (str): name of the distribution.
     Arg: distribution_parameters (tuple): An int, float or tuple specifying the parameter(s)
     """
-    if type(distribution_parameters) is not tuple:
+    
+    #ensure distribution_parameters is a tuple
+    if type(distribution_parameters) is list:
+        distribution_parameters = tuple(distribution_parameters)
+    elif type(distribution_parameters) is not tuple:
         distribution_parameters = tuple((distribution_parameters,))
 
     if distribution_name == "uniform":
@@ -958,3 +962,126 @@ def activate(x, activation="sigmoid", deriv=False, other_args={}):
             return other_args["gain"] * np.log(1 + np.exp(x - other_args["threshold"]))
         elif deriv == True:
             return other_args["gain"] / (1 + np.exp(-(x - other_args["threshold"])))
+
+
+
+
+# ** Manifold Functions **
+
+def get_uniform_manifold(distance_range: list = [0.0, 0.2],
+                        angle_range: list = [0, 90],
+                        spatial_resolution = 0.04,
+                        **kwargs):
+    '''
+    Get the parameters for a uniform manifold of vector cells.
+
+    Args:
+        • distance_range (list): [min,max] distance from the agent to tile the manifold
+        • angle_range (list): [min,max] angular extent of the manifold in degrees
+        • spatial_resolution (float): size of each receptive field ("uniform") 
+    '''
+    
+    FoV_angles_radians = [a * np.pi / 180 for a in angle_range]
+    (mu_d, mu_theta, sigma_d, sigma_theta) = ([], [], [], [])
+
+    dx = spatial_resolution
+    radii = np.arange(max(0.01, distance_range[0]), distance_range[1], dx)
+    for radius in radii:
+        dtheta = dx / radius
+        right_thetas = np.arange(
+            FoV_angles_radians[0] + dtheta / 2,
+            FoV_angles_radians[1],
+            dtheta,
+        )
+        left_thetas = -right_thetas[::-1]
+        thetas = np.concatenate((left_thetas, right_thetas))
+        for theta in thetas:
+            mu_d.append(radius)
+            mu_theta.append(theta)
+            sigma_d.append(spatial_resolution)
+            sigma_theta.append(spatial_resolution / radius)
+
+    return mu_d, mu_theta, sigma_d, sigma_theta
+
+
+def get_hartley_manifold(distance_range: list = [0.01, 0.2],
+                        angle_range: list = [0, 90],
+                        spatial_resolution = 0.04,
+                        **kwargs):
+    '''
+    Get the parameters for a hartley manifold of vector cells. 
+    (further away receptive fields are larger in line with Hartley et al. 2000 eqn (1))
+
+    Args:
+        • distance_range (list): [min,max] distance from the agent to tile the manifold
+        • angle_range (list): [min,max] angular extent of the manifold in degrees
+        • spatial_resolution (float): size of the smallest receptive field ("hartley")
+    '''
+
+    FoV_angles_radians = [a * np.pi / 180 for a in angle_range]
+    (mu_d, mu_theta, sigma_d, sigma_theta) = ([], [], [], [])
+
+    # Hartley model says that the spatial tuning width of a B/OVC should be proportional to the distance from the agent according to
+    # sigma_d = mu_d / beta + xi where beta := 12 and xi := 0.08 m  are constants.
+    # In this case, however, we want to force the smallest cells to have sigma_d = spatial_resolution setting the constraint that xi = spatial_resolution - min_radius / beta
+    radius = max(0.01, distance_range[0])
+    beta = 5  # smaller means larger rate of increase of cell size with radius
+    xi = spatial_resolution - radius / beta
+    while radius < distance_range[1]:
+        resolution = xi + radius / beta  # spatial resolution of this row
+        dtheta = resolution / radius
+        if dtheta / 2 > FoV_angles_radians[1]:
+            right_thetas = np.array(
+                [FoV_angles_radians[0] + dtheta / 2]
+            )  # at least one cell in this row
+        else:
+            right_thetas = np.arange(
+                FoV_angles_radians[0] + dtheta / 2,
+                FoV_angles_radians[1],
+                dtheta,
+            )
+        left_thetas = -right_thetas[::-1]
+        thetas = np.concatenate((left_thetas, right_thetas))
+        for theta in thetas:
+            mu_d.append(radius)
+            mu_theta.append(theta)
+            sigma_d.append(resolution)
+            sigma_theta.append(resolution / radius)
+        # the radius of the next row of cells is found by solving the simultaneous equations:
+        # • r2 = r1 + sigma1/2 + sigma2/2 (the radius, i.e. sigma/2, of the second cell just touches the first cell)
+        # • sigma2 = r2/beta + xi (Hartleys rule)
+        # the solution is: r2 = (2*r1 + sigma1 +xi) / (2 - 1/beta)
+        radius = (2 * radius + resolution + xi) / (2 - 1 / beta)
+
+    return mu_d, mu_theta, sigma_d, sigma_theta
+
+
+def get_random_manifold(pref_distance_distribution: str = "uniform",
+                        pref_distance: list| tuple = [0.0, 0.3],
+                        angle_spread_degrees: float = 15,
+                        beta: float = 5,
+                        xi: float = 0.08,
+                        n: int = 10,
+                        **kwargs):
+    '''
+    Get the parameters for a random manifold of vector cells. 
+    (randomly sample from the space of possible parameters)
+    '''
+    # define tuning distances from specific distribution in params dict
+    mu_d =  distribution_sampler(
+            distribution_name=pref_distance_distribution,
+            distribution_parameters=pref_distance,
+            shape=(n,),
+        )
+    mu_d = np.abs(mu_d) # hard bound at zero
+
+    mu_theta = np.random.uniform(0, 2 * np.pi, size=n)
+
+
+    sigma_d = mu_d / beta + xi
+
+    sigma_theta = np.array(
+            [(angle_spread_degrees / 360) * 2 * np.pi] * n
+        )
+    
+    return mu_d, mu_theta, sigma_d, sigma_theta
