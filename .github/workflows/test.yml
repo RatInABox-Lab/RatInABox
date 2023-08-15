@@ -1,5 +1,9 @@
 name: Tests
-on: [push]
+on:  
+  push:
+  pull_request:
+    branches:
+      - dev
 jobs:
   run_tests:
     runs-on: ubuntu-latest
