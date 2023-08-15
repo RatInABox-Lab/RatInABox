@@ -1247,6 +1247,8 @@ class VectorCells(Neurons):
         facecolor = self.color or "C1"
 
         
+
+        # TODO: Use EllipseCollections
         for i in range(self.n):
             x = self.tuning_distances[i] * np.cos(self.tuning_angles[i])
             y = self.tuning_distances[i] * np.sin(self.tuning_angles[i])
