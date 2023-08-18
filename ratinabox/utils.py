@@ -968,7 +968,7 @@ def activate(x, activation="sigmoid", deriv=False, other_args={}):
 
 # ** Manifold Functions **
 
-def get_uniform_manifold(distance_range: list = [0.0, 0.2],
+def create_uniform_radial_assembly(distance_range: list = [0.0, 0.2],
                         angle_range: list = [0, 90],
                         spatial_resolution = 0.04,
                         **kwargs):
@@ -1004,9 +1004,10 @@ def get_uniform_manifold(distance_range: list = [0.0, 0.2],
     return mu_d, mu_theta, sigma_d, sigma_theta
 
 
-def get_hartley_manifold(distance_range: list = [0.01, 0.2],
+def create_diverging_radial_assembly(distance_range: list = [0.01, 0.2],
                         angle_range: list = [0, 90],
-                        spatial_resolution = 0.04,
+                        spatial_resolution:float = 0.04,
+                        beta: float = 5,
                         **kwargs):
     '''
     Get the parameters for a hartley manifold of vector cells. 
@@ -1016,6 +1017,7 @@ def get_hartley_manifold(distance_range: list = [0.01, 0.2],
         • distance_range (list): [min,max] distance from the agent to tile the manifold
         • angle_range (list): [min,max] angular extent of the manifold in degrees
         • spatial_resolution (float): size of the smallest receptive field ("hartley")
+        • beta (float): smaller means larger rate of increase of cell size with radius
     '''
 
     FoV_angles_radians = [a * np.pi / 180 for a in angle_range]
@@ -1025,7 +1027,7 @@ def get_hartley_manifold(distance_range: list = [0.01, 0.2],
     # sigma_d = mu_d / beta + xi where beta := 12 and xi := 0.08 m  are constants.
     # In this case, however, we want to force the smallest cells to have sigma_d = spatial_resolution setting the constraint that xi = spatial_resolution - min_radius / beta
     radius = max(0.01, distance_range[0])
-    beta = 5  # smaller means larger rate of increase of cell size with radius
+    
     xi = spatial_resolution - radius / beta
     while radius < distance_range[1]:
         resolution = xi + radius / beta  # spatial resolution of this row
@@ -1056,10 +1058,10 @@ def get_hartley_manifold(distance_range: list = [0.01, 0.2],
     return mu_d, mu_theta, sigma_d, sigma_theta
 
 
-def get_random_manifold(pref_distance_distribution: str = "uniform",
+def create_random_assembly(pref_distance_distribution: str = "uniform",
                         pref_distance: list| tuple = [0.0, 0.3],
                         angle_spread_degrees: float = 15,
-                        beta: float = 5,
+                        beta: float = 12,
                         xi: float = 0.08,
                         n: int = 10,
                         **kwargs):

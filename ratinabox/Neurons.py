@@ -9,6 +9,7 @@ from matplotlib import pyplot as plt
 import scipy
 from scipy import stats as stats
 import warnings
+from matplotlib.collections import EllipseCollection
 
 from ratinabox import utils
 
@@ -1082,7 +1083,7 @@ class VectorCells(Neurons):
     This class should be used as a parent class for specific subclasses of vector cells and 
     is a helper class to create the manifolds and appropriate parameters for the subclasses.
     Inheriting this class will allow you to use the plotting functions and some out of the box 
-    manifold functions.(See _create_manifold() for more details)
+    manifold functions.(See set_tuning_parameters() for more details)
 
 
     Examples of VectorCells subclasses:
@@ -1092,12 +1093,8 @@ class VectorCells(Neurons):
     """
     default_params = {
         "n": 10,
-        "name": "VectorCells",
         "reference_frame": "allocentric",
-        "manifold_function": None, #if None, will randomly assign the tuning distances and angles
-        "angle_spread_degrees": 15,
-        "xi": 0.08,
-        "beta": 12,
+        "cell_arrangement": None, #if None, will randomly assign the tuning distances and angles
         "min_fr": 0,
         "max_fr": 1,
         "pref_distance": [0.1,0.3], 
@@ -1122,7 +1119,7 @@ class VectorCells(Neurons):
         
 
 
-        manifold = self._create_manifold(**self.params)
+        manifold = self.set_tuning_parameters(**self.params)
         self.n = manifold["n"]
         self.firingrate = np.zeros(self.n)
         self.noise = np.zeros(self.n)
@@ -1135,11 +1132,15 @@ class VectorCells(Neurons):
 
     
     
-    def _create_manifold(self, **kwargs):
+    def set_tuning_parameters(self, **kwargs):
         """Get the manifold paramaters for the vector cells.
 
          Args:
-            • manifold_function (str | function ): "uniform" (all receptive fields the same size or "hartley" 
+            • cell_arrangement (str | function ): "uniform_manifold" (all receptive fields the same size or 
+                                                  "diverging_manifold" (basd on the hartley manifolds) or
+                                                  "random_manifold" (randomly generated manifolds) or
+                                                a function that returns 4 lists of the same length corresponding to 
+                                                the tuning distances, tuning angles, sigma distances and sigma angles
 
         Returns:
             • manifold (dict): a dictionary containing all details of the manifold of cells including
@@ -1147,26 +1148,26 @@ class VectorCells(Neurons):
                 • "tuning_angles" : angular preferences (radians)
                 • "sigma_distances" : distance tunings - variance for the von miss distribution
                 • "sigma_angles" : angular tunings (radians) - variance for the von miss distribution
-                • "manifold_coords_polar" : coordinates in egocentric polar coords [d, theta]
-                • "manifold_coords_euclid" : coordinates in egocentric euclidean coords [x,y]
 
         """
 
         mu_d, mu_theta, sigma_d, sigma_theta = None, None, None, None
 
         # check if the manifold is a function passed by the user 
-        if self.manifold_function is None:
-            mu_d, mu_theta, sigma_d, sigma_theta = utils.get_random_manifold(**kwargs)
+        if self.cell_arrangement is None:
+            mu_d, mu_theta, sigma_d, sigma_theta = utils.create_random_assembly(**kwargs)
+        elif self.cell_arrangement == "random_manifold":
+            mu_d, mu_theta, sigma_d, sigma_theta = utils.create_random_assembly(**kwargs)
 
-        elif callable(self.params['manifold_function']):
-            mu_d, mu_theta, sigma_d, sigma_theta =  self.params['manifold_function'](**kwargs)
+        elif callable(self.params['cell_arrangement']):
+            mu_d, mu_theta, sigma_d, sigma_theta =  self.params['cell_arrangement'](**kwargs)
 
-        elif self.manifold_function == "uniform":
-            mu_d, mu_theta, sigma_d, sigma_theta =  utils.get_uniform_manifold(**kwargs)
-        elif self.manifold_function == "hartley":
-            mu_d, mu_theta, sigma_d, sigma_theta =  utils.get_hartley_manifold(**kwargs)
+        elif self.cell_arrangement == "uniform_manifold":
+            mu_d, mu_theta, sigma_d, sigma_theta =  utils.create_uniform_radial_assembly(**kwargs)
+        elif self.cell_arrangement == "diverging_manifold":
+            mu_d, mu_theta, sigma_d, sigma_theta =  utils.create_diverging_radial_assembly(**kwargs)
         else:
-            raise ValueError("manifold_function must be either 'uniform' or 'hartley' or a function")
+            raise ValueError("cell_arrangement must be either 'uniform_manifold' or 'diverging_manifold' or a function")
         
         # ensure the lists are not None
         assert mu_d is not None, "Tuning distance must not be None"
@@ -1194,8 +1195,18 @@ class VectorCells(Neurons):
             "n" : len(mu_d)
         }
 
+    def display_manifold(self,
+                        fig=None,
+                        ax=None,
+                        t=None,
+                        **kwargs):
+        '''This is an alias for the display_vector_cells() function. See that for more details.
+            This is not deprecated. Please use display_vector_cells() instead.
+        '''
+        warnings.warn("display_manifold() is deprecated. Please use display_vector_cells() instead.")
+        return self.display_vector_cells(fig=fig, ax=ax, t=t, **kwargs)
 
-    def display_manifold(self, 
+    def display_vector_cells(self, 
                          fig=None, 
                          ax=None, 
                          t=None,
@@ -1243,33 +1254,37 @@ class VectorCells(Neurons):
             y_axis_wrt_agent = utils.rotate(x_axis_wrt_agent, np.pi / 2)
 
 
-        fr = self.history["firingrate"][t_id]
+        fr = np.array(self.history["firingrate"][t_id])
         facecolor = self.color or "C1"
+        facecolor = list(matplotlib.colors.to_rgba(facecolor))
 
+        x = self.tuning_distances * np.cos(self.tuning_angles)
+        y = self.tuning_distances * np.sin(self.tuning_angles)
+
+        pos_of_cells = pos + np.outer(x, x_axis_wrt_agent) + np.outer(y, y_axis_wrt_agent)
+
+        ww = self.sigma_angles * self.tuning_distances
+        hh = self.sigma_distances
+        aa  = 1.0 * head_direction_angle + self.tuning_angles * 180 / np.pi
+
+        ec = EllipseCollection(ww,hh, aa, units = 'x',
+                                offsets = pos_of_cells,
+                                offset_transform = ax.transData,
+                                linewidth=0.5,
+                                edgecolor="dimgrey",
+                                zorder = 2.1,
+                                )
         
+        facecolor_array = np.tile(np.array(facecolor), (self.n, 1))
+        facecolor_array[:, -1] = np.maximum(
+            0, np.minimum(1, fr / (0.5 * self.max_fr))
+        )
+        ec.set_facecolors(facecolor_array)
+        # ec.set_array(fr)
+        ax.add_collection(ec) 
 
-        # TODO: Use EllipseCollections
-        for i in range(self.n):
-            x = self.tuning_distances[i] * np.cos(self.tuning_angles[i])
-            y = self.tuning_distances[i] * np.sin(self.tuning_angles[i])
-            pos_of_cell = pos + x * x_axis_wrt_agent + y * y_axis_wrt_agent
-            facecolor = list(matplotlib.colors.to_rgba(facecolor))
-            facecolor[-1] = max(
-                0, min(1, fr[i] / (0.5 * self.max_fr))
-            )  # set the alpha value
-            
-            ellipse = matplotlib.patches.Ellipse(
-                (pos_of_cell[0], pos_of_cell[1]),
-                width=self.sigma_angles[i] * self.tuning_distances[i],
-                height=self.sigma_distances[i],
-                angle=1.0 * head_direction_angle
-                + self.tuning_angles[i] * 180 / np.pi,
-                linewidth=0.5,
-                edgecolor="dimgrey",
-                facecolor=facecolor,
-                zorder=2.1,
-            )
-            ax.add_patch(ellipse)
+
+
 
         return fig, ax
 
@@ -1305,7 +1320,6 @@ class BoundaryVectorCells(VectorCells):
             "pref_wall_dist_distribution": "uniform",
             "angle_spread_degrees": 11.25,
             "xi": 0.08,  # as in de cothi and barry 2020
-            "beta": 12,
             "dtheta":2, #angular resolution in degrees
             "min_fr": 0,
             "max_fr": 1,
@@ -1321,10 +1335,13 @@ class BoundaryVectorCells(VectorCells):
     }
 
     def __init__(self, Agent, params={}):
-        """Initialise BoundaryVectorCells(), takes as input a parameter dictionary. Any values not provided by the params dictionary are taken from a default dictionary below.
+        """
+        Initialise BoundaryVectorCells(), takes as input a parameter dictionary. 
+        Any values not provided by the params dictionary are taken from a default dictionary below.
 
         Args:
-            params (dict, optional). Defaults to {}."""
+            params (dict, optional). Defaults to {}.
+        """
 
         self.Agent = Agent
 
@@ -1374,18 +1391,30 @@ class BoundaryVectorCells(VectorCells):
 
 
     def get_state(self, evaluate_at="agent", **kwargs):
-        """Here we implement the same type if boundary vector cells as de Cothi et al. (2020), who follow Barry & Burgess, (2007). See equations there.
+        """
+        Here we implement the same type if boundary vector cells as de Cothi et al. (2020), 
+        who follow Barry & Burgess, (2007). See equations there.
 
-        The way we do this is a little complex. We will describe how it works from a single position (but remember this can be called in a vectorised manner from an array of positons in parallel)
+        The way we do this is a little complex. We will describe how it works from a single position 
+        (but remember this can be called in a vectorised manner from an array of positons in parallel)
             1. An array of normalised "test vectors" span, in all directions at small increments, from the current position
             2. These define an array of line segments stretching from [pos, pos+test vector]
-            3. Where these line segments collide with all walls in the environment is established, this uses the function "utils.vector_intercepts()"
-            4. This pays attention to only consider the first (closest) wall forawrd along a line segment. Walls behind other walls are "shaded" by closer walls. Its a little complex to do this and requires the function "boundary_vector_preference_function()"
-            5. Now that, for every test direction, the closest wall is established it is simple a process of finding the response of the neuron to that wall segment at that angle (multiple of two gaussians, see de Cothi (2020)) and then summing over all wall segments for all test angles.
+            3. Where these line segments collide with all walls in the environment is established, 
+               this uses the function "utils.vector_intercepts()"
+            4. This pays attention to only consider the first (closest) wall forawrd along a line segment. 
+               Walls behind other walls are "shaded" by closer walls. Its a little complex to do this and 
+               requires the function "boundary_vector_preference_function()"
+            5. Now that, for every test direction, the closest wall is established it is simple a process 
+               of finding the response of the neuron to that wall segment at that angle 
+               (multiple of two gaussians, see de Cothi (2020)) and then summing over all wall segments 
+               for all test angles.
 
-        We also apply a check in the middle to utils.rotate the reference frame into that of the head direction of the agent iff self.reference_frame='egocentric'.
+        We also apply a check in the middle to utils.rotate the reference frame into that of the head direction 
+        of the agent iff self.reference_frame='egocentric'.
 
-        By default position is taken from the Agent and used to calculate firing rates. This can also by passed directly (evaluate_at=None, pos=pass_array_of_positions) or you can use all the positions in the environment (evaluate_at="all").
+        By default position is taken from the Agent and used to calculate firing rates. This can also by passed 
+        directly (evaluate_at=None, pos=pass_array_of_positions) or you can use all the positions in the 
+        environment (evaluate_at="all").
         """
         if evaluate_at == "agent":
             pos = self.Agent.pos
@@ -1491,7 +1520,14 @@ class BoundaryVectorCells(VectorCells):
         return firingrate
 
     def boundary_vector_preference_function(self, x):
-        """This is a random function needed to efficiently produce boundary vector cells. x is any array of final dimension shape shape[-1]=2. As I use it here x has the form of the output of utils.vector_intercepts. I.e. each point gives shape[-1]=2 lambda values (lam1,lam2) for where a pair of line segments intercept. This function gives a preference for each pair. Preference is -1 if lam1<0 (the collision occurs behind the first point) and if lam2>1 or lam2<0 (the collision occurs ahead of the first point but not on the second line segment). If neither of these are true it's 1/x (i.e. it prefers collisions which are closest).
+        """This is a random function needed to efficiently produce boundary vector cells. 
+        x is any array of final dimension shape shape[-1]=2. As I use it here x has the form of the 
+        output of utils.vector_intercepts. I.e. each point gives shape[-1]=2 lambda values (lam1,lam2) 
+        for where a pair of line segments intercept. This function gives a preference for each pair. 
+        
+        Preference is -1 if lam1<0 (the collision occurs behind the first point) and if lam2>1 or lam2<0 
+        (the collision occurs ahead of the first point but not on the second line segment). If neither of these 
+        are true it's 1/x (i.e. it prefers collisions which are closest).
 
         Args:
             x (array): shape=(any_shape...,2)
@@ -1524,12 +1560,15 @@ class BoundaryVectorCells(VectorCells):
         ax=None,
         autosave=None,
     ):
-        """Plots the receptive field (in polar corrdinates) of the BVC cells. For allocentric BVCs "up" in this plot == "North", for egocentric BVCs, up == the head direction of the animals
+        """
+        Plots the receptive field (in polar corrdinates) of the BVC cells. For allocentric BVCs 
+        "up" in this plot == "East", for egocentric BVCs, up == the head direction of the animals
 
         Args:
             chosen_neurons: Which neurons to plot. Can be int, list, array or "all". Defaults to "all".
             fig, ax: the figure/ax object to plot onto (optional)
-            autosave (bool, optional): if True, will try to save the figure into `ratinabox.figure_directory`. Defaults to None in which case looks for global constant ratinabox.autosave_plots
+            autosave (bool, optional): if True, will try to save the figure into `ratinabox.figure_directory`. 
+                                    Defaults to None in which case looks for global constant ratinabox.autosave_plots
 
         Returns:
             fig, ax
@@ -1601,7 +1640,8 @@ class FieldOfViewBVCs(BoundaryVectorCells):
     The tiling resolution (the spatial and angular tuning sizes of the smallest cells receptive fields) 
     is given by the `spatial_resolution` param in the input dictionary.
 
-    In order to visuale the manifold, we created a plotting function. First make a trajectory figure, then pass this into the plotting func:
+    In order to visuale the manifold, we created a plotting function. First make a trajectory figure, 
+    then pass this into the plotting func:
         >>> fig, ax = Ag.plot_trajectory()
         >>> fig, ax = my_FoVNeurons.display_manifold(fig, ax)
     or animate it with
@@ -1616,7 +1656,8 @@ class FieldOfViewBVCs(BoundaryVectorCells):
             90,
         ],  # angluar FoV in degrees (will be symmetric on both sides, so give range in 0 (forwards) to 180 (backwards)
         "spatial_resolution": 0.04,  # resolution of each BVC tiling FoV
-        "manifold_function": "hartley",  # whether all cells have "uniform" receptive field sizes or they grow ("hartley") with radius.
+        "beta": 5, # smaller means larger rate of increase of cell size with radius in hartley type manifolds
+        "cell_arrangement": "diverging_manifold",  # whether all cells have "uniform" receptive field sizes or they grow ("hartley") with radius.
     }
 
     def __init__(self,Agent,params={}):
@@ -1625,7 +1666,7 @@ class FieldOfViewBVCs(BoundaryVectorCells):
         self.params.update(params)
 
         self.params["reference_frame"] = "egocentric"
-        assert self.params["manifold_function"] is not None, "Manifold_function must be set for FOV Neurons"
+        assert self.params["cell_arrangement"] is not None, "cell_arrangement must be set for FOV Neurons"
 
         super().__init__(Agent, self.params)
 
@@ -1881,7 +1922,8 @@ class FieldOfViewOVCs(ObjectVectorCells):
             90,
         ],  # angluar FoV in degrees (will be symmetric on both sides, so give range in 0 (forwards) to 180 (backwards)
         "spatial_resolution": 0.04,  # resolution of each BVC tiling FoV
-        "manifold_function": "hartley",  # whether all cells have "uniform" receptive field sizes or they grow ("hartley") with radius.
+        "beta": 5, # smaller means larger rate of increase of cell size with radius in hartley type manifolds
+        "cell_arrangement": "diverging_manifold",  # whether all cells have "uniform" receptive field sizes or they grow ("hartley") with radius.
     }
 
     def __init__(self,Agent,params={}):
@@ -1890,17 +1932,22 @@ class FieldOfViewOVCs(ObjectVectorCells):
         self.params.update(params)
 
         self.params["reference_frame"] = "egocentric"
-        assert self.params["manifold_function"] is not None, "Manifold_function must be set for FOV Neurons"
+        assert self.params["cell_arrangement"] is not None, "cell_arrangement must be set for FOV Neurons"
 
         super().__init__(Agent, self.params)
 
       
 class HeadDirectionCells(Neurons):
-    """The HeadDirectionCells class defines a population of head direction cells. This class is a subclass of Neurons() and inherits it properties/plotting functions.
+    """The HeadDirectionCells class defines a population of head direction cells. This class is a subclass of Neurons() 
+    and inherits it properties/plotting functions.
 
     Must be initialised with an Agent and a 'params' dictionary.
 
-    HeadDirectionCells defines a set of 'n' head direction cells. Each cell has a preffered direction/angle (default evenly spaced across unit circle). In 1D there are always only n=2 cells preffering left and right directions. The firing rates are scaled such that when agent travels exactly along the preferred direction the firing rate of that cell is the max_fr. The firing field of a cell is a von mises centred around its preferred direction of default width 30 degrees (can be changed with parameter params["angular_spread_degrees"])
+    HeadDirectionCells defines a set of 'n' head direction cells. Each cell has a preffered direction/angle 
+    (default evenly spaced across unit circle). In 1D there are always only n=2 cells preffering left and right directions. 
+    The firing rates are scaled such that when agent travels exactly along the preferred direction the firing rate of that 
+    cell is the max_fr. The firing field of a cell is a von mises centred around its preferred direction of default 
+    width 30 degrees (can be changed with parameter params["angular_spread_degrees"])
 
     To print/set preffered direction: self.preferred_angles
 
@@ -1925,7 +1972,9 @@ class HeadDirectionCells(Neurons):
     }
 
     def __init__(self, Agent, params={}):
-        """Initialise HeadDirectionCells(), takes as input a parameter dictionary. Any values not provided by the params dictionary are taken from a default dictionary below.
+        """
+        Initialise HeadDirectionCells(), takes as input a parameter dictionary. Any values not provided by the 
+        params dictionary are taken from a default dictionary below.
         Args:
             params (dict, optional). Defaults to {}."""
 
@@ -1951,7 +2000,8 @@ class HeadDirectionCells(Neurons):
             )
 
     def get_state(self, evaluate_at="agent", **kwargs):
-        """In 2D n head direction cells encode the head direction of the animal. By default velocity (which determines head direction) is taken from the agent but this can also be passed as a kwarg 'vel'"""
+        """In 2D n head direction cells encode the head direction of the animal. By default velocity 
+        (which determines head direction) is taken from the agent but this can also be passed as a kwarg 'vel'"""
 
         if evaluate_at == "agent":
             head_direction = self.Agent.head_direction
@@ -1988,12 +2038,14 @@ class HeadDirectionCells(Neurons):
     def plot_HDC_receptive_field(
         self, chosen_neurons="all", fig=None, ax=None, autosave=None
     ):
-        """Plots the receptive fields, in polar coordinates, of hte head direction cells. The receptive field is a von mises function centred around the preferred direction of the cell.
+        """Plots the receptive fields, in polar coordinates, of hte head direction cells. The receptive field 
+        is a von mises function centred around the preferred direction of the cell.
 
         Args:
             chosen_neurons (str, optional): The neurons to plot. Defaults to "all".
             fig, ax (_type_, optional): matplotlib fig, ax objects ot plot onto (optional).
-            autosave (bool, optional): if True, will try to save the figure into `ratinabox.figure_directory`. Defaults to None in which case looks for global constant ratinabox.autosave_plots
+            autosave (bool, optional): if True, will try to save the figure into `ratinabox.figure_directory`. 
+                                       Defaults to None in which case looks for global constant ratinabox.autosave_plots
 
         Returns:
             fig, ax
