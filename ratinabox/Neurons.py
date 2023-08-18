@@ -1855,7 +1855,7 @@ class ObjectVectorCells(VectorCells):
             np.expand_dims(self.tuning_types, axis=0), reps=(N_objects, 1)
         )
         object_types = np.tile(
-            np.expand_dims(self.object_types, axis=-1), reps=(1, N_cells)
+            np.expand_dims(self.Agent.Environment.objects["object_types"], axis=-1), reps=(1, N_cells)
         )
 
         distances_to_objects = np.tile(
