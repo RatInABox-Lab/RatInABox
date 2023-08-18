@@ -136,6 +136,8 @@ class Neurons:
         return all_default_params
 
     def update(self):
+        """Update the firing rate of the Neurons() class. This is called by the Agent.update() function. This core function should be called by the user on each loop in order to refresh the firing rate of the Neurons() class in line with the Agent's current state. It will also save the firing rate and spikes to the Agent.history dictionary if self.save_history is True."""
+        
         # update noise vector
         dnoise = utils.ornstein_uhlenbeck(
             dt=self.Agent.dt,
@@ -205,7 +207,7 @@ class Neurons:
         # neurons to plot
         chosen_neurons = self.return_list_of_neurons(chosen_neurons)
         n_neurons_to_plot = len(chosen_neurons)
-        spike_data = spike_data[slice, chosen_neurons]
+        spike_data = spike_data[:, chosen_neurons]
         rate_timeseries = rate_timeseries[:, chosen_neurons]
 
         was_fig, was_ax = (fig is None), (
