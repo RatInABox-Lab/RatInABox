@@ -1082,12 +1082,31 @@ class VectorCells(Neurons):
     subclass of Neurons() and inherits it properties/plotting functions.Must be initialised with an Agent and a 'params' dictionary.
     Typical VectorCells include BoundaryVectorCells and ObjectVectorCells. These are similar in that each cell within these
     classes has a preferred tuning_distance, tuning_angle, sigma_distances (i.w. width of receptive field in distance) and sigma_angle. 
-    They are different in theat the former, cells respond to walls whereas in the latter cells respond to objects (which may come in different types) 
+    They are different in that the former, cells respond to walls whereas in the latter cells respond to objects (which may come in different types) 
 
     This class should be only be used as a parent class for specific subclasses of vector cells and 
     is a helper class to set the cell tuning parameters (angular and distance preferences) for the subclasses.
     Inheriting this class will allow you to use the plotting functions and some out of the box 
     manifold functions. (See set_tuning_parameters() for more details)
+
+    All vector cells have receptive fields which is a von Mises distributions in angle (mean = tuning_angle, 1/sqrt_kappa ~= std = sigma_angle) and 
+    a Gaussian in distance (mean = tuning_distance, std = sigma_distance). There are many ways we might like to set these parameters for each neuron...e.g.
+
+    • Randomly ["cell_arrangement": "random"] 
+        Distance preferences of each cell are drawn from a random distribution which can be any of the utils.distribution_sampler() 
+        accepted distributions. pass parameters in as a tuple e.g.
+            • params{'distance_distribution_params':(0.1,0.4), 'distance_distribution':'uniform'} samples from a uniform distribution between [0.1,0.4]
+            • params{'distance_distribution_params':(0.4), 'distance_distribution':'rayleigh'} samples from a rayleigh distribution with scale 0.4
+            • params{'distance_distribution_params':(0.4), 'distance_distribution':'delta'} samples gives all a constant value of 0.4
+            • etc. there are others
+        Distance preference width 
+        Angular preferences of each BVC are drawn from a uniform distribution on [0, 2pi] and angular prefernce widths all have the constant value of "angle_spread_degrees". 
+    • Arranged in the form of a radial assembly so as to simulate a "field of view".  This is handled by the `FieldOfViewOVCs/BVCs` subclasses.
+        ["cell_arrangement": "uniform_manifold" or "diverging_manifold"].
+        Think of these like the US house of representatives where each politician is a neuron. 
+    • User defined: pass a function that returns 4 lists of the same length corresponding to the tuning distances, tuning angles, sigma distances
+        and sigma angles ["cell_arrangement": my_funky_tuning_parameter_setting_function]
+    
 
     Use the plotting function self.display_vector_cells() to show the "receptive field" of each vector cell on the environment with its color
     scaled by its firing rate. 
@@ -1103,11 +1122,16 @@ class VectorCells(Neurons):
     default_params = {
         "n": 10,
         "reference_frame": "allocentric",
-        "cell_arrangement": None, #if None, will randomly assign the tuning distances and angles
         "min_fr": 0,
         "max_fr": 1,
-        "pref_distance": [0.1,0.3], 
-        "pref_distance_distribution": "uniform",
+        "cell_arrangement": "random", #if "random", will randomly assign the tuning distances and angles according to the below parameters. 
+        #the following params determine how the tuning parameters are sampled if cell_arrangement is "random"
+        "distance_distribution": "uniform",
+        "distance_distribution_params": [0.1,0.3],
+        "angle_spread_degrees":15,
+        "xi": 0.08,
+        "beta" : 12,
+
     }
 
     def __init__(self, Agent, params={}):
@@ -1120,10 +1144,24 @@ class VectorCells(Neurons):
             self.Agent.Environment.dimensionality == "2D"
         ), "Vector cells only possible in 2D"
 
-        self.params = copy.deepcopy(self.default_params)
+        #Deprecation warnings
+        if 'pref_wall_dist_distribution' in params.keys():
+            warnings.warn("'pref_wall_dist_distribution' param is deprecated and will be removed in future versions. Please use 'distance_distribution' instead")
+            params['distance_distribution'] = params['pref_wall_dist_distribution']
+            del params['pref_wall_dist_distribution']
+        if 'pref_wall_dist' in params.keys():
+            warnings.warn("'pref_wall_dist' param is deprecated. Please use 'distance_distribution_params' instead")
+            params['distance_distribution_params'] = params['pref_wall_dist']
+            del params['pref_wall_dist']
+        if 'pref_object_dist' in params.keys():
+            warnings.warn("'pref_object_dist' param is deprecated. Please use 'distance_distribution_params' instead")
+            params['distance_distribution_params'] = params['pref_object_dist']
+            del params['pref_object_dist']
+
+        self.params = copy.deepcopy(__class__.default_params)
         self.params.update(params)
 
-        super().__init__(Agent, params)
+        super().__init__(Agent, self.params)
 
         self.tuning_angles = None
         self.tuning_distances = None
@@ -1166,17 +1204,13 @@ class VectorCells(Neurons):
         mu_d, mu_theta, sigma_d, sigma_theta = None, None, None, None
 
         # check if the manifold is a function passed by the user 
-        if self.cell_arrangement is None:
-            mu_d, mu_theta, sigma_d, sigma_theta = utils.create_random_assembly(**kwargs)
-        elif self.cell_arrangement == "random_manifold":
-            mu_d, mu_theta, sigma_d, sigma_theta = utils.create_random_assembly(**kwargs)
-
-        elif callable(self.params['cell_arrangement']):
+        if callable(self.params['cell_arrangement']): #users passed own function 
             mu_d, mu_theta, sigma_d, sigma_theta =  self.params['cell_arrangement'](**kwargs)
-
-        elif self.cell_arrangement == "uniform_manifold":
+        elif (self.cell_arrangement is None) or self.cell_arrangement[:6] == "random": #random tuning for each cell 
+            mu_d, mu_theta, sigma_d, sigma_theta = utils.create_random_assembly(**kwargs)
+        elif self.cell_arrangement == "uniform_manifold": #radial assembly uniform width of all cells 
             mu_d, mu_theta, sigma_d, sigma_theta =  utils.create_uniform_radial_assembly(**kwargs)
-        elif self.cell_arrangement == "diverging_manifold":
+        elif self.cell_arrangement == "diverging_manifold": #radial assembly diverging width of all cells 
             mu_d, mu_theta, sigma_d, sigma_theta =  utils.create_diverging_radial_assembly(**kwargs)
         else:
             raise ValueError("cell_arrangement must be either 'uniform_manifold' or 'diverging_manifold' or a function")
@@ -1220,9 +1254,11 @@ class VectorCells(Neurons):
         """Visualises the current firing rate of these cells relative to the Agent. 
         Essentially this plots the "manifold" ontop of the Agent. 
         Each cell is plotted as an ellipse where the alpha-value of its facecolor reflects the current firing rate 
-        (normalised against the approximate maximum firing rate for all cells, but, take this just as a visualisation)
+        (normalised against the approximate maximum firing rate for all cells, but, take this just as a visualisation).
+        Each ellipse is an approximation of the receptive field of the cell which is a von Mises distribution in angule and a Gaussian in distance.
+        The width of the ellipse in r and theta give 1 sigma of these distributions (for von Mises: kappa ~= 1/sigma^2).
 
-        This assumes the X-axis in the Agent's frame of reference is the heading direction. 
+        This assumes the x-axis in the Agent's frame of reference is the heading direction. 
         (Or the heading diection is the X-axis for egocentric frame of reference). IN this case the Y-axis is the towards the "left" of the agent.
 
         Args:
@@ -1255,7 +1291,7 @@ class VectorCells(Neurons):
             # head direction angle (CCW from true North)
             head_direction_angle = (180 / np.pi) * ratinabox.utils.get_angle(head_direction)  
             
-            # this is the "y" direction" in egocentric coords
+            # this assumes the "x" dimension is the agents head direction and "y" is to its left
             x_axis_wrt_agent = head_direction / np.linalg.norm(head_direction)  
             y_axis_wrt_agent = utils.rotate(x_axis_wrt_agent, np.pi / 2)
 
@@ -1293,55 +1329,27 @@ class VectorCells(Neurons):
         ec.set_facecolors(facecolor_array)
         ax.add_collection(ec) 
 
-
-
-
         return fig, ax
 
 
 class BoundaryVectorCells(VectorCells):
-    """The BoundaryVectorCells class defines a population of Boundary Vector Cells. This class 
-    is a subclass of Neurons() and inherits it properties/plotting functions.
+    """The BoundaryVectorCells class defines a population of Boundary Vector Cells.
+    These are a subclass of VectorCells() which are selective to walls and boundaries in the environment.
 
-    Must be initialised with an Agent and a 'params' dictionary.
-
-    BoundaryVectorCells defines a set of 'n' BVCs cells with random orientations preferences, 
-    distance preferences  (these can be set non-randomly of course). 
-    We use the model described firstly by Hartley et al. (2000) and more recently de Cothi and Barry (2000).
-
-    Distance preferences of each BVC are drawn fro ma random distribution which can be any of the utils.distribution_sampler() 
-    accepted distributions. pass parameters in as a tuple e.g.
-        • params{'pref_wall_dist':(0.1,0.4), 'pref_wall_dist_distribution':'uniform'} samples from a uniform distribution between [0.1,0.4]
-        • params{'pref_wall_dist':(0.4), 'pref_wall_dist_distribution':'rayleigh'} samples from a rayleigh distribution with scale 0.4
-        • params{'pref_wall_dist':(0.4), 'pref_wall_dist_distribution':'delta'} samples gives all a constant value of 0.4
-        • etc. there are others
-
-    BVCs can have allocentric (mec,subiculum) OR egocentric (ppc, retrosplenial cortex) reference frames. 
-    In the egocentric case they could be arranged to act like "field of view" cells. We have a seperate class for this.
+    By default cell tuning params are initialised randomly and are "allocentric" (see VecTorCells doc string for more details).
+    
+    BVCs can be arranged in an egocentric "field of view" (see FieldOfViewBVCs subclass). 
 
     List of functions:
         • get_state()
         • boundary_vector_preference_function()
-
-    default_params = {
-            "n": 10,
-            "reference_frame": "allocentric",
-            "pref_wall_dist": (0.1,0.3)
-            "pref_wall_dist_distribution": "uniform",
-            "angle_spread_degrees": 11.25,
-            "xi": 0.08,  # as in de cothi and barry 2020
-            "dtheta":2, #angular resolution in degrees
-            "min_fr": 0,
-            "max_fr": 1,
-        }
+        • plot_BVC_receptive_field()
     """
 
     default_params = {
         "n": 10,
         "name": "BoundaryVectorCells",
-        "reference_frame": "allocentric",
-        "angle_spread_degrees": 11.25,
-        "dtheta": 2,
+        "dtheta": 2, #angular resolution in degrees used for integration over all angles (smaller is more accurate but slower)
     }
 
     def __init__(self, Agent, params={}):
@@ -1635,32 +1643,26 @@ class BoundaryVectorCells(VectorCells):
 
 
 class FieldOfViewBVCs(BoundaryVectorCells):
-    """FieldOfViewNeurons are collection of boundary vector cells or object vector cells 
-    organised so as to represent the local field of view i.e. what walls or objects the 
-    agent can "see" in the local vicinity. They work as follow:
+    """FieldOfViewBVCs  are collection of boundary vector cells organised so as to represent
+    the local field of view i.e. what walls agent can "see" in the local vicinity. They work as follow:
 
-    A "manifold" of boundary vector cells (BVCs) tiling the agents FoV is initialised. 
-    Users define the radius and angular extent of this manifold 
-    which determine the distances and angles available in the FoV. These default to a 180 
-    degree FoV from distance of 0 to 20cm. Each point on this manifold is therefore defined  
-    by tuple (angle and radius), or (θ,r). Egocentric cells are initialised which tile this 
-    manifold (uniformly or growing with radius), the cell at position (θ,r) will fire with a 
-    preference for boundaries (in the case of BVCs) or objects (for OVCs) a distance r 
-    from the agent at an angle θ relative to the current heading direction (they are "egocentric"). 
-    Thus only if the part of the manifold where the cell sits crosses a wall or object, will that cell fire. 
-    Thus only the cells on the part of a manifold touching or close to a wall/object will fire.
+    General FieldOfView cell description (also applies to FieldOfViewOVCs):
+        A radial assembly of vector cells tiling the agents field of view (FoV) is created. Users define
+        the extent of the FoV (distance_range nad angle_range) then concentric rows of egocentric cells
+        at increasing distances from the Agent are placed to tile this FoV. If a feature (object or boundary) 
+        is located in the agents FoV then cells tiling this section of the FoV will fire. Each cell is roughly
+        circular so its angular width (in meters at the corresponding radius) matches its radial width.
+        The size of the receptive field either diverge with radius params["cell_arrangement"] = "diverging_manifold"
+        (as observed in the brain, default here) or stay the same "uniform_manifold".
 
-
-    The tiling resolution (the spatial and angular tuning sizes of the smallest cells receptive fields) 
-    is given by the `spatial_resolution` param in the input dictionary.
-
-    In order to visuale the manifold, we created a plotting function. First make a trajectory figure, 
-    then pass this into the plotting func:
-        >>> fig, ax = Ag.plot_trajectory()
-        >>> fig, ax = my_FoVNeurons.display_manifold(fig, ax)
-    or animate it with
-        >>> fig, ax = Ag.animate_trajectory(additional_plot_func=my_FoVNeurons.display_manifold)
-
+        In order to visuale the assembly, we created a plotting function. First make a trajectory figure, 
+        then pass this into the plotting func:
+            >>> fig, ax = Ag.plot_trajectory()
+            >>> fig, ax = my_FoVNeurons.display_vector_cells(fig, ax)
+        or animate it with
+            >>> fig, ax = Ag.animate_trajectory(additional_plot_func=my_FoVNeurons.display_vector_cells)
+        (this plotting function lives in the vector cell parent class so actually non-field of view cells can be plotted like this too)
+        We have a demo showing how this works. 
     """
 
     default_params = {
@@ -1669,10 +1671,10 @@ class FieldOfViewBVCs(BoundaryVectorCells):
             0,
             90,
         ],  # angluar FoV in degrees (will be symmetric on both sides, so give range in 0 (forwards) to 180 (backwards)
-        "spatial_resolution": 0.04,  # resolution of each BVC tiling FoV
-        "beta": 5, # smaller means larger rate of increase of cell size with radius in hartley type manifolds
-        "cell_arrangement": "diverging_manifold",  # whether all cells have "uniform" receptive field sizes or they grow ("hartley") with radius.
-    }
+        "spatial_resolution": 0.04,  # resolution of the inner row of cells (in meters)
+        "cell_arrangement": "diverging_manifold",  # cell receptive field widths can diverge with radius "diverging_manifold" or stay constant "uniform_manifold".
+        "beta": 5, # smaller means larger rate of increase of cell size with radius in diverging type manifolds
+        }
 
     def __init__(self,Agent,params={}):
 
@@ -1680,49 +1682,31 @@ class FieldOfViewBVCs(BoundaryVectorCells):
         self.params.update(params)
 
         self.params["reference_frame"] = "egocentric"
-        assert self.params["cell_arrangement"] is not None, "cell_arrangement must be set for FOV Neurons"
+        assert self.params["cell_arrangement"] is not None, "cell_arrangement must be set for FoV Neurons"
 
         super().__init__(Agent, self.params)
 
+
+
+
 class ObjectVectorCells(VectorCells):
-    """Initialises ObjectVectorCells(), takes as input a parameter dictionary. Any values 
-    not provided by the params dictionary are taken from a default dictionary below.
+    """The ObjectVectorCells class defines a population of Object Vector Cells.
+    These are a subclass of VectorCells() which are selective to objects in the environment.
 
-    ObjectVectorCells respond to Objects inside the Environment (2D only). Add objects to the 
-    environment using the `Env.add_object()` method. Each OVC has a prefrerred type 
-    (which "type" of object it responds to), tuning angle, and tuning distance 
-    (direction and distance from object cell will preferentially fire at).
+    By default cell tuning params are initialised randomly and are "allocentric" (see VectorCells doc string for more details). Which "type" of object these are selective for can be specified with the "object_tuning_type" param.
+    
+    OVCs can be arranged in an egocentric "field of view" (see FieldOfViewOVCs subclass). 
 
-    Reference frame can be allocentric or egocentric. In the latter case the tuning 
-    angle is relative to the heading direction of the agent.
-
-    default_params = {
-        "n": 10, #each will be randomly assigned an object type, tuning angle and tuning distance
-        "name": "ObjectVectorCell",
-        "walls_occlude":True, #whether walls occlude OVC firing
-        "reference_frame":"allocentric", #"or "egocentric" (equivalent to field of view neurons)
-        "angle_spread_degrees":15, #spread of von Mises angular preferrence functinon for each OVC, 
-                                    you can also set this array manually after initialisation
-        "pref_object_dist": 0.25, # distance preference drawn from a Rayleigh with this sigma. 
-                                    How far away from object the OVC fires. Can set this array manually 
-                                    after initialisation.
-        "xi": 0.08, #parameters determining the distance preferrence function std given the preferred distance. 
-                    See BoundaryVectorCells or de cothi and barry 2020
-        "beta": 12,
-        "max_fr":1, # likely max firing rate of an OVC
-        "min_fr":0, # likely min firing rate
-        "object_tuning_type" : None #Can be a list of length n, int or None.
-                                    if None, will randomly assign object types to each OVC
-    }
+    List of functions:
+        • get_state()
+        • set_tuning_types()
     """
 
     default_params = {
         "n": 10,
         "name": "ObjectVectorCell",
-        "walls_occlude": True,
-        "reference_frame": "allocentric",
-        "object_tuning_type" : None, #if None, will randomly assign object types to each OVC
-        
+        "walls_occlude": True, #objects behind walls cannot be seen
+        "object_tuning_type" : "random", #can be "random", any integer, or a list of integers of length n. The tuning types of the OVCs. 
     }
 
     def __init__(self, Agent, params={}):
@@ -1778,7 +1762,12 @@ class ObjectVectorCells(VectorCells):
         This is called automatically when the OVCs are initialised.
         """
 
-        if tuning_types is not None:
+        if tuning_types == "random":
+            self.object_types = self.Agent.Environment.objects["object_types"]
+            self.tuning_types = np.random.choice(
+                np.unique(self.object_types), replace=True, size=(self.n,)
+            )
+        else:
             if isinstance(tuning_types, int):
                 tuning_types = np.repeat(tuning_types, self.n)
             elif isinstance(tuning_types, list):
@@ -1788,11 +1777,7 @@ class ObjectVectorCells(VectorCells):
             assert tuning_types.shape[0] == self.n, f"Tuning types must be a vector of length of the number of neurons: ({self.n},)"
 
             self.tuning_types = tuning_types
-        else:
-            self.object_types = self.Agent.Environment.objects["object_types"]
-            self.tuning_types = np.random.choice(
-                np.unique(self.object_types), replace=True, size=(self.n,)
-            )
+
 
     
     def get_state(self, evaluate_at="agent", **kwargs):
@@ -1924,50 +1909,33 @@ class ObjectVectorCells(VectorCells):
 
 
 class FieldOfViewOVCs(ObjectVectorCells):
-    """FieldOfViewOVCells are collection of object vector cells organised so as to represent the 
-    local field of view i.e. what walls or objects the agent can "see" in the local vicinity. 
+    """FieldOfViewOVCs  are collection of boundary vector cells organised so as to represent
+    the local field of view i.e. what walls agent can "see" in the local vicinity. They work as follow:
+
+    General FieldOfView cell description (also applies to FieldOfViewOVCs):
+        Please see fieldOfViewBVCs doc string
     
-    They work as follow:
-
-    A "manifold" of object vector cells (OVCs) tiling the agents FoV is initialised. 
-    Users define the radius and angular extent of this manifold which determine the distances and angles 
-    available in the FoV. These default to a 180 degree FoV from distance of 0 to 20cm. Each point on this 
-    manifold is therefore defined  by tuple (angle and radius), or (θ,r). 
-    
-    Egocentric cells are initialised which tile this manifold (uniformly or growing with radius),
-    the cell at position (θ,r) will fire with a preference for objects (for OVCs) a distance r from 
-    the agent at an angle θ relative to the current heading direction (they are "egocentric"). Thus only if 
-    the part of the manifold where the cell sits crosses a wall or object, will that cell fire. Thus only 
-    the cells on the part of a manifold touching or close to a wall/object will fire.
-
-    One object vector cell is initialised for each object in the environment. Each cell has a preferred
-    object type, distance and angle.
-
-    The tiling resolution (the spatial and angular tuning sizes of the smallest cells receptive fields) is 
-    given by the `spatial_resolution` param in the input dictionary.
-
-    In order to visuale the manifold, we created a plotting function. First make a trajectory figure, then pass this into the plotting func:
-        >>> fig, ax = Ag.plot_trajectory()
-        >>> fig, ax = my_FoVNeurons.display_manifold(fig, ax)
-    or animate it with
-        >>> fig, ax = Ag.animate_trajectory(additional_plot_func=my_FoVNeurons.display_manifold)
-
+    Users should specify the object type they are selective for with the "object_tuning_type" parameter. 
     """
+
     default_params = {
         "distance_range": [0.01, 0.2],  # min and max distances the agent can "see"
-        "angle_range": [
-            0,
-            90,
-        ],  # angluar FoV in degrees (will be symmetric on both sides, so give range in 0 (forwards) to 180 (backwards)
+        "angle_range": [0,90,],  # angluar FoV in degrees (will be symmetric on both sides, so give range in 0 (forwards) to 180 (backwards)
         "spatial_resolution": 0.04,  # resolution of each BVC tiling FoV
         "beta": 5, # smaller means larger rate of increase of cell size with radius in hartley type manifolds
         "cell_arrangement": "diverging_manifold",  # whether all cells have "uniform" receptive field sizes or they grow ("hartley") with radius.
+        "object_tuning_type" : None, #can be "random", any integer, or a list of integers of length n. The tuning types of the OVCs.
     }
 
     def __init__(self,Agent,params={}):
 
         self.params = copy.deepcopy(__class__.default_params)
         self.params.update(params)
+
+        if params["object_tuning_type"] is None:
+            warnings.warn("For FieldOfViewOVCs you must specify the object type they are selective for with the 'object_tuning_type' parameter. This can be 'random' (each cell in the field of view chooses a random object type) or any integer (all cells have the same preference for this type). For now defaulting to params['object_tuning_type'] = 0.")
+            params["object_tuning_type"] = 0
+
 
         self.params["reference_frame"] = "egocentric"
         assert self.params["cell_arrangement"] is not None, "cell_arrangement must be set for FOV Neurons"

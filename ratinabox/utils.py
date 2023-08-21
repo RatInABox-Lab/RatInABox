@@ -973,7 +973,8 @@ def create_uniform_radial_assembly(distance_range: list = [0.0, 0.2],
                         spatial_resolution = 0.04,
                         **kwargs):
     '''
-    Get the parameters for a uniform manifold of vector cells.
+    Geometrically, think of radial assemblys look like the US Congress. Each politian (arranged in radial rows) describes a neuron (or whatever it is we're using this function for).  
+    For this radial manifold, all receptive fields have equal angular and distance widths equal to spatial resolution. 
 
     Args:
         • distance_range (list): [min,max] distance from the agent to tile the manifold
@@ -1010,8 +1011,8 @@ def create_diverging_radial_assembly(distance_range: list = [0.01, 0.2],
                         beta: float = 5,
                         **kwargs):
     '''
-    Get the parameters for a hartley manifold of vector cells. 
-    (further away receptive fields are larger in line with Hartley et al. 2000 eqn (1))
+    Geometrically, think of radial assemblys look like the US Congress. Each politian (arranged in radial rows) describes a neuron (or whatever it is we're using this function for).  
+    For this radial manifold, further away receptive fields are larger in line with Hartley et al. 2000 eqn (1))
 
     Args:
         • distance_range (list): [min,max] distance from the agent to tile the manifold
@@ -1058,21 +1059,30 @@ def create_diverging_radial_assembly(distance_range: list = [0.01, 0.2],
     return mu_d, mu_theta, sigma_d, sigma_theta
 
 
-def create_random_assembly(pref_distance_distribution: str = "uniform",
-                        pref_distance: list| tuple = [0.0, 0.3],
+def create_random_assembly(distance_distribution: str = "uniform",
+                        distance_distribution_params: list| tuple = [0.0, 0.3],
                         angle_spread_degrees: float = 15,
                         beta: float = 12,
-                        xi: float = 0.08,
+                        xi: float = 0.08, 
                         n: int = 10,
                         **kwargs):
     '''
     Get the parameters for a random manifold of vector cells. 
-    (randomly sample from the space of possible parameters)
+    (randomly sample from the space of possible parameters). 
+    xi and beta control how the radial width of the receptive field changes with distance from the agent.
+     
+    Args:
+        • distance_distribution (str): name of the distribution to sample from for preferred distance
+        • distance_distribution_params (list|tuple): parameters for the preferred distance distribution
+        • angle_spread_degrees (float): angular width of each receptive field in degrees
+        • beta (float): 
+        • xi (float): beta and xi control how the radial width of the receptive field changes with distance from the agent as in de Cothi and Barry 2020
+        • n (int): number of cells in the assembly
     '''
     # define tuning distances from specific distribution in params dict
     mu_d =  distribution_sampler(
-            distribution_name=pref_distance_distribution,
-            distribution_parameters=pref_distance,
+            distribution_name=distance_distribution,
+            distribution_parameters=distance_distribution_params,
             shape=(n,),
         )
     mu_d = np.abs(mu_d) # hard bound at zero
