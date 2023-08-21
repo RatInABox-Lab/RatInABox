@@ -1754,7 +1754,7 @@ class ObjectVectorCells(VectorCells):
         # list of colors for each cell, just used by `.display_vector_cells()` plotting function
             color = np.array(matplotlib.colors.to_rgba("C1")).reshape(1,-1)
         self.cell_colors = []
-        cmap = matplotlib.colormaps[self.Agent.Environment.object_cmap]
+        cmap = matplotlib.colormaps[self.Agent.Environment.object_colormap]
         for i in range(self.n):
             c = cmap(self.tuning_types[i] /  (self.Agent.Environment.n_object_types - 1 + 1e-8))
             self.cell_colors.append(np.array(matplotlib.colors.to_rgba(c)))
