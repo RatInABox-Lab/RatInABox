@@ -101,6 +101,7 @@ class Neurons:
         """Initialise Neurons(), takes as input a parameter dictionary. Any values not provided by the params dictionary are taken from a default dictionary below.
 
         Args:
+            Agent. The RatInABox Agent these cells belong to. 
             params (dict, optional). Defaults to {}.
 
         Typically you will not actually initialise a Neurons() class, instead you will initialised by one of it's subclasses.
@@ -1078,19 +1079,25 @@ class GridCells(Neurons):
 class VectorCells(Neurons):
     """
     The VectorCells class defines a population of VectorCells. This class is a 
-    subclass of Neurons() and inherits it properties/plotting functions.
+    subclass of Neurons() and inherits it properties/plotting functions.Must be initialised with an Agent and a 'params' dictionary.
+    Typical VectorCells include BoundaryVectorCells and ObjectVectorCells. These are similar in that each cell within these
+    classes has a preferred tuning_distance, tuning_angle, sigma_distances (i.w. width of receptive field in distance) and sigma_angle. 
+    They are different in theat the former, cells respond to walls whereas in the latter cells respond to objects (which may come in different types) 
 
-    Must be initialised with an Agent and a 'params' dictionary.
-
-    This class should be used as a parent class for specific subclasses of vector cells and 
-    is a helper class to create the manifolds and appropriate parameters for the subclasses.
+    This class should be only be used as a parent class for specific subclasses of vector cells and 
+    is a helper class to set the cell tuning parameters (angular and distance preferences) for the subclasses.
     Inheriting this class will allow you to use the plotting functions and some out of the box 
-    manifold functions.(See set_tuning_parameters() for more details)
+    manifold functions. (See set_tuning_parameters() for more details)
 
+    Use the plotting function self.display_vector_cells() to show the "receptive field" of each vector cell on the environment with its color
+    scaled by its firing rate. 
 
     Examples of VectorCells subclasses:
-        • BoundaryVectorCells
-        • ObjectVectorCells
+        • BoundaryVectorCells ("BVCs")
+            • FieldOfViewBVCs
+        • ObjectVectorCells ("OVCs")
+            • FieldOfViewOVCs
+
     
     """
     default_params = {
@@ -1104,7 +1111,11 @@ class VectorCells(Neurons):
     }
 
     def __init__(self, Agent, params={}):
-
+        """Initialise VectorCells(), takes as input an Agent and a parameter dictionary. Any values not provided by the params dictionary are taken from a default dictionary.
+        Args:
+            Agent. The RatInABox Agent these cells belong to. 
+            params (dict, optional). Defaults to {}.
+        """
         assert (
             self.Agent.Environment.dimensionality == "2D"
         ), "Vector cells only possible in 2D"
@@ -1120,32 +1131,31 @@ class VectorCells(Neurons):
         self.sigma_distances = None
         
 
-
-        manifold = self.set_tuning_parameters(**self.params)
-        self.n = manifold["n"]
+        # set the parameters of each cell. 
+        (self.tuning_distances, 
+         self.tuning_angles, 
+         self.sigma_distances, 
+         self.sigma_angles) = self.set_tuning_parameters(**self.params)
+        self.n = len(self.tuning_distances) 
         self.firingrate = np.zeros(self.n)
         self.noise = np.zeros(self.n)
+        self.cell_colors = None 
 
-        self.tuning_angles = manifold["tuning_angles"]
-        self.tuning_distances = manifold["tuning_distances"]
-        self.sigma_angles = manifold["sigma_angles"]
-        self.sigma_distances = manifold["sigma_distances"]
 
 
     
     
     def set_tuning_parameters(self, **kwargs):
-        """Get the manifold paramaters for the vector cells.
-
+        """Get the tuning parameters for the vector cells.
          Args:
-            • cell_arrangement (str | function ): "uniform_manifold" (all receptive fields the same size or 
-                                                  "diverging_manifold" (basd on the hartley manifolds) or
-                                                  "random_manifold" (randomly generated manifolds) or
-                                                a function that returns 4 lists of the same length corresponding to 
-                                                the tuning distances, tuning angles, sigma distances and sigma angles
+            • cell_arrangement (str | function ): "random_manifold" (randomly generated manifolds) or
+                                                  "uniform_manifold" (all receptive fields the same size or 
+                                                  "diverging_manifold" (receptive fields are bigger, the further away from the agent they are)
+                                                  OR any function that returns 4 lists of the same length corresponding to 
+                                                  the tuning distances, tuning angles, sigma distances and sigma angles
 
         Returns:
-            • manifold (dict): a dictionary containing all details of the manifold of cells including
+            • manifold (dict): a tuple containing all details of the manifold of cells including
                 • "tuning_distances" : distance preferences
                 • "tuning_angles" : angular preferences (radians)
                 • "sigma_distances" : distance tunings - variance for the von miss distribution
@@ -1188,14 +1198,8 @@ class VectorCells(Neurons):
         #ensure correct shape of the arrays all the same length
         assert len(mu_d) == len(mu_theta) == len(sigma_d) == len(sigma_theta), "All manifold tuning parameters must be of the same length"
 
+        return mu_d, mu_theta, sigma_d, sigma_theta
 
-        return {
-            "tuning_angles": mu_theta,
-            "tuning_distances": mu_d,
-            "sigma_angles": sigma_theta,
-            "sigma_distances": sigma_d,
-            "n" : len(mu_d)
-        }
 
     def display_manifold(self,
                         fig=None,
@@ -1276,13 +1280,17 @@ class VectorCells(Neurons):
                                 edgecolor="dimgrey",
                                 zorder = 2.1,
                                 )
-        
-        facecolor_array = np.tile(np.array(facecolor), (self.n, 1))
+        if self.cell_colors is None: 
+            facecolor = self.color or "C1"
+            facecolor = np.array(matplotlib.colors.to_rgba(facecolor))
+            facecolor_array = np.tile(np.array(facecolor), (self.n, 1))
+        else:
+            facecolor_array = self.cell_colors #made in child class init. Each cell can have a different plot color. 
+            # e.g. if cells are slective to different object types or however you like 
         facecolor_array[:, -1] = np.maximum(
             0, np.minimum(1, fr / (0.5 * self.max_fr))
-        )
+        ) # scale alpha so firing rate shows as how "solid" to color of this vector cell is. 
         ec.set_facecolors(facecolor_array)
-        # ec.set_array(fr)
         ax.add_collection(ec) 
 
 
@@ -1383,6 +1391,10 @@ class BoundaryVectorCells(VectorCells):
             warnings.simplefilter("ignore")
             # ignores the warning raised during initialisation of the BVCs
             self.cell_fr_norm = np.max(self.get_state(evaluate_at=None, pos=locs), axis=1)
+
+        # list of colors for each cell, just used by `.display_vector_cells()` plotting function
+        color = np.array(matplotlib.colors.to_rgba("C1")).reshape(1,-1)
+        self.cell_colors = np.tile(color,(self.n,1))
 
         if ratinabox.verbose is True:
             print(
@@ -1739,6 +1751,15 @@ class ObjectVectorCells(VectorCells):
             self.wall_geometry = "euclidean"
 
 
+        # list of colors for each cell, just used by `.display_vector_cells()` plotting function
+            color = np.array(matplotlib.colors.to_rgba("C1")).reshape(1,-1)
+        self.cell_colors = []
+        cmap = matplotlib.colormaps[self.Agent.Environment.object_cmap]
+        for i in range(self.n):
+            c = cmap(self.tuning_types[i] /  (self.Agent.Environment.n_object_types - 1 + 1e-8))
+            self.cell_colors.append(np.array(matplotlib.colors.to_rgba(c)))
+        self.cell_colors = np.array(self.cell_colors)
+
         if ratinabox.verbose is True:
             print(
                 "ObjectVectorCells (OVCs) successfully initialised. \
@@ -1777,11 +1798,16 @@ class ObjectVectorCells(VectorCells):
     def get_state(self, evaluate_at="agent", **kwargs):
         """Returns the firing rate of the ObjectVectorCells.
 
-        The way we do this is a little complex. We will describe how it works from a single position to a single OVC (but remember this can be called in a vectorised manner from an array of positons in parallel and there are in principle multiple OVCs)
-            1. A vector from the position to the OVC is calculated.
-            2. The bearing of this vector is calculated and its length. Note if self.field_of_view == True then the bearing is relative to the heading direction of the agent (along its current velocity), not true-north.
-            3. Since the distance to the OVC is calculated taking the environment into account if there is a wall occluding the agent from the obvject this object will not fire.
-            4. It is now simple to calculate the firing rate of the cell. Each OVC has a preferred distance and angle away from it which cause it to fire. Its a multiple of a gaussian (distance) and von mises (for angle) which creates teh eventual firing rate.
+        The way we do this is a little complex. We will describe how it works from a single position to a single OVC
+        (but remember this can be called in a vectorised manner from an array of positons in parallel and there are 
+        in principle multiple OVCs)
+            1. A vector from the position to the object is calculated.
+            2. The bearing of this vector is calculated and its length. Note if self.reference_frame == "egocentric" 
+               then the bearing is relative to the heading direction of the agent (along its current velocity), not true-north.
+            3. Since the distance to the object is calculated taking the environment into account if there is a wall 
+               occluding the agent from the obvject this object will not fire.
+            4. It is now simple to calculate the firing rate of the cell. Each OVC has a preferred distance and angle
+               away from it which cause it to fire. Its a multiple of a gaussian (distance) and von mises (for angle) which creates the eventual firing rate.
 
         By default position is taken from the Agent and used to calculate firing rates. This can also by passed directly (evaluate_at=None, pos=pass_array_of_positions) or you can use all the positions in the environment (evaluate_at="all").
 
@@ -1802,10 +1828,12 @@ class ObjectVectorCells(VectorCells):
         N_cells = self.n
         N_objects = len(object_locations)
 
+
         if N_objects == 0:
             # no objects in the environment
             return np.zeros((N_cells, N_pos))
 
+        # 1. GET VECTORS FROM POSITIONS TO OBJECTS 
         (
             distances_to_objects,
             vectors_to_objects,
@@ -1824,6 +1852,8 @@ class ObjectVectorCells(VectorCells):
                 N_pos, N_objects
             )
         )  # (N_pos,N_objects) 
+
+        # 2. ACCOUNT FOR HEAD DIRECTION IF EGOCENTRIC. THEN CALCULATE BEARINGS TO OBJECTS
         if self.reference_frame == "egocentric":
             if evaluate_at == "agent":
                 head_direction = self.Agent.head_direction
@@ -1841,6 +1871,7 @@ class ObjectVectorCells(VectorCells):
             head_bearing = utils.get_angle(head_direction)
             bearings_to_objects -= head_bearing  # account for head direction
 
+        # 3. COLLECT TUNING DETAILS OF EACH CELL AND PUT IN THE RIGHT SHAPE 
         tuning_distances = np.tile(
             np.expand_dims(np.expand_dims(self.tuning_distances, axis=0), axis=0),
             reps=(N_pos, N_objects, 1),
@@ -1859,10 +1890,10 @@ class ObjectVectorCells(VectorCells):
         )  # (N_pos,N_objects,N_cell)
         tuning_types = np.tile(
             np.expand_dims(self.tuning_types, axis=0), reps=(N_objects, 1)
-        )
+        ) # (N_objects,N_cell)
         object_types = np.tile(
             np.expand_dims(self.Agent.Environment.objects["object_types"], axis=-1), reps=(1, N_cells)
-        )
+        ) # (N_objects,N_cell)
 
         distances_to_objects = np.tile(
             np.expand_dims(distances_to_objects, axis=-1), reps=(1, 1, N_cells)
