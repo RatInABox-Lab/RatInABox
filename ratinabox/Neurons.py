@@ -1726,9 +1726,6 @@ class ObjectVectorCells(VectorCells):
         super().__init__(Agent, self.params)
 
         self.object_locations = self.Agent.Environment.objects["objects"]
-        assert len(self.object_locations) > 0, print(
-            "No objects in Environments, add objects using `Env.add_object(object_position=[x,y]) method"
-        )
 
         self.tuning_types = None
 
@@ -1797,24 +1794,31 @@ class ObjectVectorCells(VectorCells):
             pos = self.Agent.Environment.flattened_discrete_coords
         else:
             pos = kwargs["pos"]
+
+        object_locations = self.Agent.Environment.objects["objects"]
         pos = np.array(pos)
         pos = pos.reshape(-1, pos.shape[-1])  # (N_pos, 2)
         N_pos = pos.shape[0]
         N_cells = self.n
-        N_objects = len(self.object_locations)
+        N_objects = len(object_locations)
+
+        if N_objects == 0:
+            # no objects in the environment
+            return np.zeros((N_cells, N_pos))
 
         (
             distances_to_objects,
             vectors_to_objects,
         ) = self.Agent.Environment.get_distances_between___accounting_for_environment(
             pos,
-            self.object_locations,
+            object_locations,
             return_vectors=True,
             wall_geometry=self.wall_geometry,
         )  # (N_pos,N_objects) (N_pos,N_objects,2)
         flattened_vectors_to_objects = -1 * vectors_to_objects.reshape(
             -1, 2
         )  # (N_pos x N_objects, 2) #vectors go from pos2 to pos1 so must multiply by -1 
+        # flatten is just for the get angle API, reshaping it later
         bearings_to_objects = (
             utils.get_angle(flattened_vectors_to_objects, is_array=True).reshape(
                 N_pos, N_objects
