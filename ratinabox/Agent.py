@@ -64,7 +64,7 @@ class Agent:
         "rotational_velocity_std": (
             120 * (np.pi / 180)
         ),  # std of rotational speed, σ_w wall following parameter
-        "head_direction_smoothing_timescale" : 0.0, # timescale over which head direction is smoothed (head dir = smoothed velocity vector) 
+        "head_direction_smoothing_timescale" : 0.0, # timescale over which head direction is smoothed (head dir = smoothed velocity vector).
         "thigmotaxis": 0.5,  # tendency for agents to linger near walls [0 = not at all, 1 = max]
         "wall_repel_distance": 0.1,
         "walls_repel": True,  # whether or not the walls repel
@@ -86,13 +86,6 @@ class Agent:
 
         utils.update_class_params(self, self.params, get_all_defaults=True)
         utils.check_params(self, params.keys())
-
-        # check if dt < coherence times and warn if not
-        if self.head_direction_smoothing_timescale!= 0 and self.dt >= self.head_direction_smoothing_timescale:
-            warnings.warn("WARNING: dt >= head_direction_smoothing_timescale. This will break the head direction smoothing. \
-                          Set head_direction_smoothing_timescale to 0 to disable head direction smoothing OR \
-                          set dt < head_direction_smoothing_timescale")
-
 
         # initialise history dataframes
         self.history = {}
@@ -465,17 +458,19 @@ class Agent:
 
         tau_head_direction = self.head_direction_smoothing_timescale
         immediate_head_direction = self.velocity / np.linalg.norm(self.velocity)
-        
-        if dt > tau_head_direction:
-            warnings.warn("dt >= head_direction_smoothing_timescale. This will break the head direction smoothing.")
 
         if self.head_direction is None:
             self.head_direction = self.velocity
         
-        if tau_head_direction == 0: 
+        if tau_head_direction <= dt: 
             self.head_direction = immediate_head_direction
-        else:
-            self.head_direction = self.head_direction * ( 1 - dt / tau_head_direction ) + dt / tau_head_direction * immediate_head_direction
+            return
+        
+        if dt > tau_head_direction:
+            warnings.warn("dt > head_direction_smoothing_timescale. This will break the head direction smoothing.")
+
+        
+        self.head_direction = self.head_direction * ( 1 - dt / tau_head_direction ) + dt / tau_head_direction * immediate_head_direction
 
         # normalize the head direction
         self.head_direction = self.head_direction / np.linalg.norm(self.head_direction)
@@ -484,7 +479,7 @@ class Agent:
         self.history["t"].append(self.t)
         self.history["pos"].append(list(self.pos))
         self.history["vel"].append(list(self.save_velocity))
-        self.history["head_direction"].append(self.head_direction)
+        self.history["head_direction"].append(list(self.head_direction))
         if self.Environment.dimensionality == "2D":
             self.history["rot_vel"].append(self.rotational_velocity)     
         return

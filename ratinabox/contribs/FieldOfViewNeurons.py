@@ -11,6 +11,7 @@ import copy
 import numpy as np
 import math
 import types
+from warnings import warn
 
 
 class FieldOfViewNeurons(Neurons):
@@ -42,6 +43,11 @@ class FieldOfViewNeurons(Neurons):
     }
 
     def __init__(self, Agent, params={}):
+
+        """This throws a deprecation warning on initialization."""
+        warn(f'{self.__class__.__name__} will be deprecated. Please use the new class that can be imported using: from ratinabox.Neurons import FieldOfViewOVCs, FieldOfViewBVCs', DeprecationWarning, stacklevel=2)
+        
+
         self.params = copy.deepcopy(__class__.default_params)
         self.params.update(params)
 
