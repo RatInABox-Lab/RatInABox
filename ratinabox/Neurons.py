@@ -134,9 +134,13 @@ class Neurons:
             pprint.pprint(all_default_params)
         return all_default_params
 
-    def update(self):
-        """Update the firing rate of the Neurons() class. This is called by the Agent.update() function. This core function should be called by the user on each loop in order to refresh the firing rate of the Neurons() class in line with the Agent's current state. It will also save the firing rate and spikes to the Agent.history dictionary if self.save_history is True."""
+    def update(self, **kwargs):
+        """Update the firing rate of the Neurons() class. This is called by the Agent.update() function. This core function should be called by the user on each loop in order to refresh the firing rate of the Neurons() class in line with the Agent's current state. It will also save the firing rate and spikes to the Agent.history dictionary if self.save_history is True.
         
+        Args: 
+            • kwargs will be passed into get_state()  
+        """
+
         # update noise vector
         dnoise = utils.ornstein_uhlenbeck(
             dt=self.Agent.dt,
@@ -151,7 +155,7 @@ class Neurons:
         if np.isnan(self.Agent.pos[0]):
             firingrate = np.zeros(self.n)  # returns zero if Agent position is nan
         else:
-            firingrate = self.get_state()
+            firingrate = self.get_state(**kwargs)
         self.firingrate = firingrate.reshape(-1)
         self.firingrate = self.firingrate + self.noise
         if self.save_history is True:

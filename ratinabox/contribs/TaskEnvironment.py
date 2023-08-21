@@ -64,7 +64,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
     **kws :
         Keyword arguments to pass to Environment
     """
-
+    default_params = {} #for RatInABox 
     metadata = {"render_modes": ["matplotlib", "none"], "name": "TaskEnvironment-RiaB"}
 
     def __init__(
@@ -322,11 +322,12 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         # If teleport on reset, randomly pick new location for agents
         if self.teleport_on_reset:
             for agent_name, agent in self.Ags.items():
-                agent.update()
+                # agent.update()
                 agent.pos = self.sample_positions(1)[
                     0
                 ]  # random position in the environment
-                agent.history["pos"][-1] = agent.pos
+                if len(agent.history["pos"]) > 0:
+                    agent.history["pos"][-1] = agent.pos
 
         # Increment episode counter
         if len(self.episodes["duration"]) and self.episodes["duration"][-1] == 0:
@@ -1389,6 +1390,8 @@ class SpatialGoalEnvironment(TaskEnvironment):
 
     See `TaskEnvronment` for more kws
     """
+
+    default_params = {} #for RatInABox 
 
     # --------------------------------------
     # Some reasonable default render settings
