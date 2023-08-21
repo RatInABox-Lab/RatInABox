@@ -1809,7 +1809,8 @@ class ObjectVectorCells(VectorCells):
             4. It is now simple to calculate the firing rate of the cell. Each OVC has a preferred distance and angle
                away from it which cause it to fire. Its a multiple of a gaussian (distance) and von mises (for angle) which creates the eventual firing rate.
 
-        By default position is taken from the Agent and used to calculate firing rates. This can also by passed directly (evaluate_at=None, pos=pass_array_of_positions) or you can use all the positions in the environment (evaluate_at="all").
+        By default position is taken from the Agent and used to calculate firing rates. This can also by passed directly 
+        (evaluate_at=None, pos=pass_array_of_positions) or you can use all the positions in the environment (evaluate_at="all").
 
         Returns:
             firingrates: an array of firing rates

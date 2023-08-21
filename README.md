@@ -239,7 +239,7 @@ We provide a list of premade `Neurons` subclasses. These include (but are not li
 * `PlaceCells` 
 * `GridCells`
 * `BoundaryVectorCells` (can be egocentric or allocentric)
-* `ObjectVectorCells` (can be used as visual cues, i.e. only fire when `Agent` is looking towards them)
+* `ObjectVectorCells` (can be used as visual cues, i.e. only fire when `Agent` is looking towards them) (can be egocentric or allocentric)
 * `HeadDirectionCells`
 * `VelocityCells`
 * `SpeedCells`
@@ -311,14 +311,18 @@ Choose how you want `PlaceCells` to interact with walls in the `Environment`. We
 Most `RatInABox` cell classes are allocentric (e.g. `PlaceCells`, `GridCells` etc. do not depend on the agents point of view) not egocentric. `BoundaryVectorCells` (BVCs) and `ObjectVectorCells` (OVCs) can be either. `FieldOfViewNeurons` exploit this by arranging sets of egocentric BVC or OVCs to tile to agents local field of view creating a comprehensive egocentric encoding of what boundaries or objects the agent can 'see' from it's current point of view. A custom plotting function displays the tiling and the firing rates as shown below. With an adequately defined field of view these can make, for example, "whisker cells". 
 
 ```python
-FoV_BVCs = FieldOfViewNeurons(Ag)
-FoV_OVCs = FieldOfViewNeurons(Ag,params={
-    'cell_type':'OVC',
-    })
-FoV_whiskers = FieldOfViewNeurons(Ag,params={
-    "FoV_angles":[75,105],
-    "FoV_distance":[0.1,0.2],
-    "spatial_resolution":0.02,})
+FoV_BVCs = FieldOfViewBVCs(Ag)
+FoV_OVCs = FieldOfViewOVCs(Ag)
+BVCs_whiskers = FieldOfViewBVCs(Ag,params={
+        "distance_range": [0.01, 0.2],  
+        "angle_range": [
+            75,
+            105,
+        ],  
+        "spatial_resolution": 0.02,  # resolution of each OVC tiling FoV
+        "cell_arrangement": "uniform_manifold",
+        
+})
 ```
 
 <img src=".images/readme/field_of_view.gif" width=600>
