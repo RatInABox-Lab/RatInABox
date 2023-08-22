@@ -123,6 +123,8 @@ class Neurons:
         self.history["firingrate"] = []
         self.history["spikes"] = []
 
+        self.colormap = "inferno" # default colormap for plotting ratemaps 
+
         if ratinabox.verbose is True:
             print(
                 f"\nA Neurons() class has been initialised with parameters f{self.params}. Use Neurons.update() to update the firing rate of the Neurons to correspond with the Agent.Firing rates and spikes are saved into the Agent.history dictionary. Plot a timeseries of the rate using Neurons.plot_rate_timeseries(). Plot a rate map of the Neurons using Neurons.plot_rate_map()."
@@ -429,7 +431,7 @@ class Neurons:
                         rate_map = rate_maps[chosen_neurons[i], :].reshape(
                             self.Agent.Environment.discrete_coords.shape[:2]
                         )
-                        im = ax_.imshow(rate_map, extent=ex, zorder=0, cmap="inferno")
+                        im = ax_.imshow(rate_map, extent=ex, zorder=0, cmap=self.colormap)
                     elif method == "history":
                         rate_timeseries_ = rate_timeseries[chosen_neurons[i], :]
                         rate_map = utils.bin_data_for_histogramming(
@@ -442,7 +444,7 @@ class Neurons:
                         im = ax_.imshow(
                             rate_map,
                             extent=ex,
-                            cmap="inferno",
+                            cmap=self.colormap,
                             interpolation="bicubic",
                             zorder=0,
                         )
