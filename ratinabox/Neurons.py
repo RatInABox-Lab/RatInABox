@@ -453,6 +453,10 @@ class Neurons:
                         min(vmin, np.min(rate_map)),
                         max(vmax, np.max(rate_map)),
                     )
+                if "zero_center" in kwargs.keys(): #good for diverging colormaps, makes sure the colorbar is centered on zero
+                    if kwargs["zero_center"] == True:
+                        vmax = max(abs(vmin), abs(vmax))
+                        vmin = -vmax
                 for im in ims:
                     im.set_clim((vmin, vmax))
                 if colorbar == True:
@@ -1938,7 +1942,7 @@ class FieldOfViewOVCs(ObjectVectorCells):
         self.params = copy.deepcopy(__class__.default_params)
         self.params.update(params)
 
-        if params["object_tuning_type"] is None:
+        if self.params["object_tuning_type"] is None:
             warnings.warn("For FieldOfViewOVCs you must specify the object type they are selective for with the 'object_tuning_type' parameter. This can be 'random' (each cell in the field of view chooses a random object type) or any integer (all cells have the same preference for this type). For now defaulting to params['object_tuning_type'] = 0.")
             params["object_tuning_type"] = 0
 
