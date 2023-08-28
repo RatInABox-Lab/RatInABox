@@ -219,8 +219,8 @@ def get_distances_between(pos1=None, pos2=None, vectors=None):
 
 
 def get_angle(segment, is_array=False):
-    """Given a 'segment' (either 2x2 start and end positions or 2x1 direction bearing)
-         returns the 'angle' of this segment modulo 2pi
+    """Given a 'segment' (either 2x2 start and end positions or 2x1 direction vector)
+         returns the 'angle' of this segment modulo 2pi measured ANTICLOCKwise from x-axis e.g. [1,0]--> 0, [0,1] --> pi/2 etc, ...[0,-1] --> 3pi/2
     Args:
         segment (array): The segment, (2,2) or (2,) array
         is_array(bool): If array is True the first dimension is taken as the list dimension while the next 1 or 2 as the segment/vector dimensions. So, for example, you can pass in a list of vectors shape (5,2) or a list of segments shape (5,2,2,) as long as you set this True (or else a list of 2 vectors might get confused with a single segment!)
@@ -262,9 +262,25 @@ def get_angle(segment, is_array=False):
 
     return angs
 
+def get_bearing(segment, is_array=False):
+    """Given a 'segment' (either 2x2 start and end positions or 2x1 direction vector)
+         returns the 'bearing' of this segment modulo 2pi measured CLOCKwise from North e.g. [0,1]--> 0, [1,0]--> pi/2, ...[-1,0] --> 3pi/2. This uses the get_angle() function since...
+         
+         bearing = (pi/2 - angle) modulo 2pi
+
+    Args:
+        segment (array): The segment, (2,2) or (2,) array
+        is_array(bool): If array is True the first dimension is taken as the list dimension while the next 1 or 2 as the segment/vector dimensions. So, for example, you can pass in a list of vectors shape (5,2) or a list of segments shape (5,2,2,) as long as you set this True (or else a list of 2 vectors might get confused with a single segment!)
+    Returns:
+        float: bearing of segment
+         """
+    angle = get_angle(segment, is_array=is_array)
+    bearing = np.mod((np.pi/2 - angle), 2*np.pi)
+    return bearing
+
 
 def rotate(vector, theta):
-    """rotates a vector shape (2,) by angle theta.
+    """rotates a vector shape (2,) anticlockwise by angle theta .
     Args:
         vector (array): the 2d vector
         theta (flaot): the rotation angle

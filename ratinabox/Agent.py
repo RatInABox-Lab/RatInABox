@@ -106,6 +106,7 @@ class Agent:
 
         # motion model stufff
         self.walls_repel = True  # over ride to switch of wall repulsion
+        self.distance_to_closest_wall = np.inf #this attribute is updated by the update() function and can be used by the user if you need to know how close the agent is to the walls
 
         # initialise starting positions and velocity
         if self.Environment.dimensionality == "2D":
@@ -226,6 +227,7 @@ class Agent:
                     )  # shape=(N_walls,2)
                     if len(self.Environment.walls) > 0:
                         distance_to_walls = np.linalg.norm(vectors_from_walls, axis=-1)
+                        self.distance_to_closest_wall = np.min(distance_to_walls) #in case user needs this
                         normalised_vectors_from_walls = (
                             vectors_from_walls
                             / np.expand_dims(distance_to_walls, axis=-1)

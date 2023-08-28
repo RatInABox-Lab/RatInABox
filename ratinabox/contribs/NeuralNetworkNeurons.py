@@ -11,7 +11,7 @@ import warnings
 class NeuralNetworkNeurons(Neurons):
     """The NeuralNetworkNeurons class takes as inputs other RiaB Neurons classes and uses these to compute its own firing rates by concatenating the firing rates of all the inputs and passing them through a neural network model provided by the user.  
 
-    For example a MLPNeurons class could be used to create a layer of neurons which take the firing rates of a set of place cells and a set of grid cells as inputs and passes these through the deep neural network to estimate the output as follows: 
+    For example a NeuralNetworkNeurons could take the firing rates of a set of place cells and a set of grid cells as inputs and passes these through the deep neural network. This would go as follows: 
         
         Env = Environment()
         Ag = Agent(Env)
@@ -21,6 +21,8 @@ class NeuralNetworkNeurons(Neurons):
 
     Training the neural network: In order to maintain compatibility with other RiaB functionalities the .get_state() method returns a numpy array of firing rates detached from the pytorch graph (which cannot then be used for training). However, when called in the standard update()-loop it also saves an attribute called .firingrate_torch which is an attached pytorch tensor and can be used to take gradients for training etc., if this is needed. 
     
+    Users either provide a "NeuralNetworkModule" and no "n" (in which case self.n is set to be the output size of the NN) or "n" and no "NeuralNetworkModule" (in which case a default ReLU MLP with two hidden layers is used with self.n_out = self.n). If both are provided then a warning is raised and the user provided "n" is overwritten by the output size of the NN.
+
     Args:
         input_layers (list): a list of input layers, these are RatInABox.Neurons classes and must all be provided at initialisation.
         
@@ -28,7 +30,7 @@ class NeuralNetworkNeurons(Neurons):
     """
 
     default_params = {
-        "n":10, #number of neurons in this layer
+        "n":None, #number of neurons in this layer, must match output size of NeuralNetworkModule. Typically leave this as None and let it be set by the output size of the NeuralNetworkModule
         "input_layers": [],  # a list of input layers, each must be a ratinabox.Neurons class
         "NeuralNetworkModule": None, #Any torch nn.Sequential or nn.Module with a .forward() method
         "name": "NeuralNetworkNeurons",}
@@ -41,13 +43,32 @@ class NeuralNetworkNeurons(Neurons):
         super().__init__(Agent, self.params)
 
         assert isinstance(self.input_layers, list), "param['input_layers'] must be a list of Neurons."
-        if len(self.input_layers) == 0:
-            warnings.warn("No input layers have been provided. Hand them in in the params dictionary params['input_layers']=[list,of,inputs]")
-    
+        assert len(self.input_layers) > 0, "No input layers have been provided. Hand them in in the params dictionary params['input_layers']=[list,of,inputs]"
+        
         self.n_in = sum([layer.n for layer in self.input_layers])
-        if self.NeuralNetworkModule == None:
-            warnings.warn(f"No NeuralNetworkModule has been provided. Hand it in in the params dictionary params['NeuralNetworkModule']=<any-torch-nn.Module>. Instead a default ReLU MLP with {self.n_in} inputs, {self.n} outputs and 2 hidden layers of size 20 will be used.")
+
+        # Check the number of output of the NeuralNetworkModule and self.n are compatible 
+        # in order of preference...
+        if (self.n is None) and (self.NeuralNetworkModule is not None): 
+            self.n = self.NeuralNetworkModule(torch.zeros(1,self.n_in)).shape[1]
+        
+        elif (self.n is not None) and (self.NeuralNetworkModule is None):
             self.NeuralNetworkModule = MultiLayerPerceptron(n_in=self.n_in, n_out=self.n, n_hidden=[20,20])
+            warnings.warn(f"No NeuralNetworkModule was provided so a default MLP with {self.n_in} inputs, {self.n} outputs and 2 hidden ReLU layers of size 20 will be used. Alternatively provide one in the params['NeuralNetworkModule']=<any-torch-nn.Module-with-a-.forward()-method> and don't set 'n'.")
+
+        elif (self.n is not None) and (self.NeuralNetworkModule is not None):
+            raise ValueError(f"You provided both 'n' and `NeuralNetworkModule` as parameters. These are mutually exclusive. Either provide 'NeuralNetworkModule' and no 'n' (the output size of the NeuralNetworkModule will be used as the number of neurons in this layer) or 'n' and no 'NeuralNetworkModule (a default MLP will be initialised)")
+
+        elif (self.n is None) and (self.NeuralNetworkModule is None):
+            raise ValueError("You provided neither a 'NeuralNetworkModule' nor 'n' as parameters. Either provide 'NeuralNetworkModule' and no 'n' (the output size of the NeuralNetworkModule will be used as the number of neurons in this layer) or 'n' and no 'NeuralNetworkModule (a default MLP will be initialised)")
+
+
+        #Finally, check that the NeuralNetworkModule accepts the right sized inputs
+        try:
+            self.NeuralNetworkModule(torch.zeros(1,self.n_in))
+        except: 
+            raise ValueError(f"You provided inputs layers with a total of {self.n_in} neurons but the NeuralNetworkModule you provided does not accept inputs of size (1,{self.n_in}) so they are incompatible")
+        
         return
 
     def get_state(self, evaluate_at="last", save_torch=False, **kwargs):
