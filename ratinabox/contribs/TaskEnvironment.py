@@ -369,7 +369,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
         """
             step()
 
-        step() functions in Gymasium paradigm usually take an action space
+        step() functions in Gymnasium paradigm usually take an action space
         action, and return the next state, reward, whether the state is
         terminal, and an information dict
 
@@ -497,7 +497,7 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             The agent(s) to change the observation space for
         spaces: List, gym.Space
             The observation space(s) to change to. If a list, then it
-            must be a list of gymasium spaces (these just describe the
+            must be a list of gymnasium spaces (these just describe the
             full range of values an observation can take, and RL libraries
             often use these to sample the space.)
         observation_lambdass: List, Function
