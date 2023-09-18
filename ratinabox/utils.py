@@ -7,6 +7,7 @@ import os
 import warnings
 from datetime import datetime
 from scipy import stats as stats
+from typing import Union
 import ratinabox
 
 """OTHER USEFUL FUNCTIONS"""
@@ -1076,7 +1077,7 @@ def create_diverging_radial_assembly(distance_range: list = [0.01, 0.2],
 
 
 def create_random_assembly(distance_distribution: str = "uniform",
-                        distance_distribution_params: list| tuple = [0.0, 0.3],
+                        distance_distribution_params: Union[list, tuple] = [0.0, 0.3],
                         angle_spread_degrees: float = 15,
                         beta: float = 12,
                         xi: float = 0.08, 
