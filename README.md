@@ -245,9 +245,10 @@ We provide a list of premade `Neurons` subclasses. These include (but are not li
 * `SpeedCells`
 * `FeedForwardLayer` - calculates activated weighted sum of inputs from a provide list of input `Neurons` layers.
 * `FieldOfViewNeurons` - Egocentric encoding of what the `Agent` can see 
-* `SuccessorFeatures` - Learns the successor features for a set of features under teh current motion policy
+* `NeuralNetworkNeurons` - Maps inputs from a user provided list of input `Neurons` through a user-provided `pytorch` neural network. Can be used to create arbitrary and learnable representations.
+* `SuccessorFeatures` - Learns the successor features for a set of features under the current motion policy
 
-`FeedForwardLayer` deserves special mention. Instead of its firing rate being determined explicitly by the state of the `Agent` it summates synaptic inputs from a provided list of input layers (which can be any `Neurons` subclass). This layer is the building block for how more complex networks can be studied using `RatInABox`. 
+`FeedForwardLayer` deserves special mention. Instead of its firing rate being determined explicitly by the state of the `Agent` it summates synaptic inputs from a provided list of input layers (which can be any `Neurons` subclass). This layer is the building block for how more complex networks can be studied using `RatInABox`. `NeuralNetworkNeurons` is the same except instead of linearly summating it passes inputs through any arbitrary deep neural network.
 
 
 #### **Noise** 
@@ -290,7 +291,7 @@ Place cells come in multiple types (given by `params['description']`), or it wou
 * `"gaussian_threshold"`: gaussian thresholded at 1 sigma
 * `"diff_of_gaussians"`: gaussian(sigma) - gaussian(1.5 sigma)
 * `"top_hat"`: circular receptive field, max firing rate within, min firing rate otherwise
-* `"one_hot"`: the closest palce cell to any given location is established. This and only this cell fires. 
+* `"one_hot"`: the closest place cell to any given location is established. This and only this cell fires. 
 
 This last place cell type, `"one_hot"` is particularly useful as it essentially rediscretises space and tabularises the state space (gridworld again). This can be used to  contrast and compare learning algorithms acting over continuous vs discrete state spaces. This figure compares the 5 place cell models for population of 9 place cells (top left shows centres of place cells, and in all cases the `"widths"` parameters is set to  0.2 m, or irrelevant in the case of `"one_hot"`s)
 
@@ -400,16 +401,18 @@ fig, ax = PCs.plot_rate_timeseries()
 * [successor_features_example.ipynb](./successor_features_example.ipynb): RatInABox is use to learn and visualise successor features under random and biased motion policies.
 * [path_integration_example.ipynb](./demos/path_integration_example.ipynb): RatInABox is use to construct, train and visualise a large multi-layer network capable of learning a "ring attractor" capable of path integrating a position estimate using only velocity inputs.
 
-## Contribute 
-`RatInABox` is an open source project, and we actively encourage community contributions, for example bug fixes, new cells types, new features, new plotting functions, new motion datasets, documentation, citations of relevant work, or additional experiment notebooks. Typically the best way to go about this is by opening an issue or feel free to make a pull request. 
+## Contribute [![](https://img.shields.io/github/contributors/TomGeorge1234/RatInAbox.svg?logo=github)](https://github.com/TomGeorge1234/RatInABox/graphs/contributors) [![](https://img.shields.io/github/issues-closed/TomGeorge1234/RatInAbox.svg?logo=github)](https://github.com/TomGeorge1234/RatInABox/graphs/issues-closed) [![](https://img.shields.io/github/issues-pr-closed/TomGeorge1234/RatInAbox.svg?logo=github)](https://github.com/TomGeorge1234/RatInABox/pulls) [![](https://img.shields.io/github/commit-activity/y/TomGeorge1234/RatInABox.svg?logo=git&logoColor=white)](https://github.com/TomGeorge1234/RatInABox/graphs/commit-activity)
+`RatInABox` is open source project and we actively encourage  all contributions from example bug fixes to documentation or new cell types. Feel free to make a pull request (you will need to fork the repository first) or raise and issue. 
 
 We have a dedicated [contribs](./ratinabox/contribs/) directory where you can safely add awesome scripts and new `Neurons` classes etc.
 
-*Questions?* If you can't figure out how something works from the readme, demos, code comments etc. then ask! Open an issue, I'm usually pretty quick to respond. Here's our [official theme tune](https://www.youtube.com/watch?v=dY-FOI-9SOE) by the way. 
+Questions? Just ask! Ideally via opening an issue so others can see the answer too. 
 
+Thanks to all contributors so far:
+![GitHub Contributors Image](https://contrib.rocks/image?repo=TomGeorge1234/RatInABox)
 
+## Cite [![](http://img.shields.io/badge/bioRxiv-10.1101/2022.08.10.503541-B31B1B.svg)](https://doi.org/10.1101/2022.08.10.503541) 
 
-## Cite
 If you use `RatInABox` in your research or educational material, please cite the work as follows: 
 Bibtex:
 ```
@@ -429,3 +432,5 @@ Formatted:
 Tom M George, William de Cothi, Claudia Clopath, Kimberly Stachenfeld, Caswell Barry. "RatInABox: A toolkit for modelling locomotion and neuronal activity in continuous environments" (2022).
 ``` 
 The research paper corresponding to the above citation can be found [here](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v3).
+
+
