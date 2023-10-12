@@ -134,7 +134,7 @@ Env = Environment(params={
     'boundary':[[0,-0.2],[0,0.2],[1.5,0.5],[1.5,-0.5]],
     })
 
-#An environment with two holes makign a figure of 8
+#An environment with two holes making a figure of 8
 Env = Environment(params={
     'aspect':1.8,
     'holes' : [[[0.2,0.2],[0.8,0.2],[0.8,0.8],[0.2,0.8]],
