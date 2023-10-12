@@ -53,7 +53,7 @@ class Agent:
     """
 
     default_params = {
-        "dt": 0.01,
+        "dt": 0.05,
         # Speed params (leave empty if you are importing trajectory data)
         # These defaults are fit to match data from Sargolini et al. (2016)
         # also given are the parameter names as refered to in the methods section of the paper
@@ -64,7 +64,7 @@ class Agent:
         "rotational_velocity_std": (
             120 * (np.pi / 180)
         ),  # std of rotational speed, σ_w wall following parameter
-        "head_direction_smoothing_timescale" : 0.0, # timescale over which head direction is smoothed (head dir = smoothed velocity vector).
+        "head_direction_smoothing_timescale" : 0.15, # timescale over which head direction is smoothed (head dir = normalised smoothed velocity).
         "thigmotaxis": 0.5,  # tendency for agents to linger near walls [0 = not at all, 1 = max]
         "wall_repel_distance": 0.1,
         "walls_repel": True,  # whether or not the walls repel
@@ -641,15 +641,14 @@ class Agent:
         fig=None,
         ax=None,
         plot_all_agents=False,
+        plot_head_direction=False,
         point_size=15,
         decay_point_size=False,
         decay_point_timescale=10,
-        plot_agent=True,
         color=None,
+        colorbar=False,
         alpha=0.7,
         xlim=None,
-        background_color=None,
-        axis_labels=True,
         autosave=None,
         **kwargs,
     ):
@@ -661,16 +660,16 @@ class Agent:
             • fig, ax: the fig, ax to plot on top of, optional, if not provided used self.Environment.plot_Environment().
               This can be used to plot trajectory on top of receptive fields etc.
             • plot_all_agents: if True, this will plot the trajectory of all agents in the list self.Environment.Agents
+            • plot_head_direction: if True, will plot a triangle showing the head direction of the agent
             • point_size: size of scatter points
             • decay_point_size: decay trajectory point size over time (recent times = largest)
             • decay_point_timescale: if decay_point_size is True, this is the timescale over which sizes decay
-            • plot_agent: dedicated point show agent current position
             • color: plot point color, if color == 'changing' will smoothly change trajectory color from start to finish
+            • colorbar: if True, will add a colorbar to the plot (only valid if color == 'changing')
             • alpha: plot point opaqness
             • xlim: In 1D, forces the xlim to be a certain time (minutes) (useful if animating this function)
-            • background_color: color of the background if not matplotlib default, only for 1D (probably white)
-            • axis_labels: whether to show axes labels
             • autosave: if True, will try to save the figure to the figure directory `ratinabox.figure_directory`. Defaults to None in which case looks for global constant ratinabox.autosave_plots
+            • **kwargs: passed to self.Environment.plot_environment()
 
         Returns:
             fig, ax
@@ -690,6 +689,7 @@ class Agent:
             )
             time = np.array(self_.history["t"])[slice]
             trajectory = np.array(self_.history["pos"])[slice]
+            head_direction = np.array(self_.history["head_direction"])[slice]
             if color is None:
                 color_list = [f"C{i}"] * len(time)
             elif color == "changing":
@@ -704,7 +704,7 @@ class Agent:
             if self_.Environment.dimensionality == "2D":
                 if replot_env == True:
                     fig, ax = self_.Environment.plot_environment(
-                        fig=fig, ax=ax, autosave=False
+                        fig=fig, ax=ax, autosave=False, **kwargs
                     )
                 replot_env = False
                 s = point_size * np.ones_like(time)
@@ -712,29 +712,56 @@ class Agent:
                     s = point_size * np.exp((time - time[-1]) / decay_point_timescale)
                     s[(time[-1] - time) > (1.5 * decay_point_timescale)] *= 0
 
-                if plot_agent == True:
-                    s[-1] = 40
-                    color_list[-1] = "r"
-
-                ax.scatter(
-                    trajectory[:, 0],
-                    trajectory[:, 1],
-                    s=s,
+                #plot trajectory 
+                trajectory_ = ax.scatter(
+                    trajectory[:-1, 0],
+                    trajectory[:-1, 1],
+                    s=s[:-1],
                     alpha=alpha,
                     zorder=1.1,
-                    c=color_list,
+                    c=color_list[:-1],
                     linewidth=0,
                 )
-                # #plot the rat? TODO haha probably never gonna do this
-                # ratpath = os.path.join(
-                #     os.path.abspath(os.path.join(ratinabox.__file__, os.pardir)),
-                #         "data/rat.png",
-                #     )
-                # rat = plt.imread(ratpath)
-                # rect = 0.5, 0.4, 0.4, 0.4 # What should these values be?
-                # newax = fig.add_axes(rect, anchor='NE', zorder=1)
-                # newax.axis('off')
-                # newax.imshow(rat)
+
+                #plot agent
+                agent_ = ax.scatter(
+                    trajectory[-1, 0],
+                    trajectory[-1, 1],
+                    s=40,
+                    zorder=1.1,
+                    c="r",
+                    linewidth=0,
+                    marker="o",
+                )
+
+                #plot head direction 
+                if plot_head_direction == True:
+                    rotated_agent_marker = matplotlib.markers.MarkerStyle(marker=[(-1,0),(1,0),(0,4)]) # a triangle
+                    rotated_agent_marker._transform = rotated_agent_marker.get_transform().rotate_deg(-ratinabox.utils.get_bearing(head_direction[-1])*180/np.pi)
+                    hd_ = ax.scatter(
+                        trajectory[-1, 0],
+                        trajectory[-1, 1],
+                        s=200,
+                        alpha=alpha,
+                        zorder=1.1,
+                        c="r",
+                        linewidth=0,
+                        marker=rotated_agent_marker,
+                    )
+
+                if colorbar == True and color == "changing": 
+                    #add colorbar to the ax
+                    from mpl_toolkits.axes_grid1 import make_axes_locatable
+                    divider = make_axes_locatable(ax)
+                    cax = divider.append_axes("right", size="5%", pad=0.05)
+                    sm = plt.cm.ScalarMappable(cmap=trajectory_cmap, norm=plt.Normalize(vmin=0, vmax=len(time)))
+                    cbar = plt.colorbar(sm, cax=cax)
+                    cbar.set_label("Time / min",labelpad=-12) #<--padding depends of label rounding
+                    cbar.set_ticks([0, len(time)])
+                    cbar.set_ticklabels([round(t_start / 60, 2), round(t_end / 60, 2)])
+                    cbar.outline.set_visible(False)
+                    cbar.ax.tick_params(length=0)
+                    
 
             if self_.Environment.dimensionality == "1D":
                 if fig is None and ax is None:
@@ -755,9 +782,8 @@ class Agent:
                     time / 60, trajectory, alpha=alpha, linewidth=0, c=color_list, s=5
                 )
                 ax.spines["left"].set_position(("data", t_start / 60))
-                if axis_labels == True:
-                    ax.set_xlabel("Time / min")
-                    ax.set_ylabel("Position / m")
+                ax.set_xlabel("Time / min")
+                ax.set_ylabel("Position / m")
                 ax.set_xlim([t_start / 60, t_end / 60])
                 if xlim is not None:
                     ax.set_xlim(right=xlim)
@@ -769,9 +795,7 @@ class Agent:
                 ax.set_xticklabels([round(t_start / 60, 2), round(t_end / 60, 2)])
                 ex = self_.Environment.extent
                 ax.set_yticks([ex[1]])
-                if background_color is not None:
-                    ax.set_facecolor(background_color)
-                    fig.patch.set_facecolor(background_color)
+
 
         ratinabox.utils.save_figure(fig, "trajectory", save=autosave)
 

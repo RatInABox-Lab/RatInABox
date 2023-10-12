@@ -251,10 +251,15 @@ class Environment:
         self.n_object_types = len(np.unique(self.objects["object_types"]))
         return
 
-    def plot_environment(self, fig=None, ax=None, autosave=None):
+    def plot_environment(self, 
+                         fig=None, 
+                         ax=None, 
+                         gridlines=False,
+                         autosave=None):
         """Plots the environment on the x axis, dark grey lines show the walls
         Args:
             fig,ax: the fig and ax to plot on (can be None)
+            gridlines: if True, plots gridlines
             autosave: if True, will try to save the figure to the figure directory `ratinabox.figure_directory`. Defaults to None in which case looks for global constant ratinabox.autosave_plots
         Returns:
             fig, ax: the environment figures, can be used for further downstream plotting.
@@ -286,7 +291,7 @@ class Environment:
                 )
             # plot background/arena
             background = matplotlib.patches.Polygon(
-                xy=np.array(self.boundary), facecolor="lightgrey", zorder=-1
+                xy=np.array(self.boundary), facecolor=ratinabox.LIGHTGREY, zorder=-1
             )
             setattr(background, "name", "background")
             ax.add_patch(background)
@@ -339,7 +344,7 @@ class Environment:
                 ax.plot(
                     [wall[0][0], wall[1][0]],
                     [wall[0][1], wall[1][1]],
-                    color="grey",
+                    color=ratinabox.GREY,
                     linewidth=4.0,
                     solid_capstyle="round",
                     zorder=2,
@@ -363,11 +368,24 @@ class Environment:
                         marker="o",
                     )
 
+            #plot grid lines
             ax.set_aspect("equal")
-            ax.grid(False)
-            ax.axis("off")
-            ax.set_xlim(left=extent[0] - 0.03, right=extent[1] + 0.03)
-            ax.set_ylim(bottom=extent[2] - 0.03, top=extent[3] + 0.03)
+            if gridlines == True:
+                ax.grid(True, color=ratinabox.DARKGREY, linewidth=0.5, linestyle="--")
+                #turn off the grid lines on the edges
+                ax.spines["left"].set_color("none")
+                ax.spines["right"].set_color("none")
+                ax.spines["bottom"].set_color("none")
+                ax.spines["top"].set_color("none")
+                ax.tick_params(length=0)
+
+            else: 
+                ax.grid(False)
+                ax.axis("off")
+            ax.set_xlim(left=extent[0] - 0.02, right=extent[1] + 0.02)
+            ax.set_ylim(bottom=extent[2] - 0.02, top=extent[3] + 0.02)
+            # ax.set_xlim(left=extent[0], right=extent[1])
+            # ax.set_ylim(bottom=extent[2], top=extent[3])
 
         ratinabox.utils.save_figure(fig, "Environment", save=autosave)
 

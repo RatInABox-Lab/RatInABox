@@ -171,7 +171,7 @@ class Neurons:
 
     def plot_rate_timeseries(
         self,
-        t_start=0,
+        t_start=0.0,
         t_end=None,
         chosen_neurons="all",
         spikes=False,
@@ -461,9 +461,11 @@ class Neurons:
                     im.set_clim((vmin, vmax))
                 if colorbar == True:
                     cbar = plt.colorbar(ims[-1], cax=cax)
+                    cbar.ax.tick_params(length=0)
+                    cbar.set_label("Firing rate / Hz",labelpad=-10)
                     lim_v = vmax if vmax > -vmin else vmin
                     cbar.set_ticks([0, lim_v])
-                    cbar.set_ticklabels([0, round(lim_v, 1)])
+                    cbar.set_ticklabels([0.0, round(lim_v, 1)])
                     cbar.outline.set_visible(False)
 
             if spikes is True:

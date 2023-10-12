@@ -17,6 +17,10 @@ MOUNTAIN_PLOT_WIDTH_MM = (
 MOUNTAIN_PLOT_SHIFT_MM = 2  # this is the shift between the nth mountain plot line and the (n+1)th mountain plot line
 MOUNTAIN_PLOT_OVERLAP = 2.2  # this is the max fraction the nth mountain plot line will over lap into the (n+1)th mountain plot line
 
+DARKGREY = [0.3,0.3,0.3,1]
+GREY = [0.5,0.5,0.5,1]
+LIGHTGREY = [0.92,0.92,0.92,1]
+
 from .Environment import *
 from .Agent import *
 from .Neurons import *
@@ -31,17 +35,16 @@ def stylize_plots():
     from matplotlib import rcParams, rc
     from cycler import cycler
 
-    darkgrey = [0.3, 0.3, 0.3, 1]
     # FONT
     # for now we leave the font formatting out since it throws warnings on some systems and doesn't really add much. TODO: fix this
     # matplotlib.rcParams['pdf.fonttype'] = 42 #this is super weird, see http://phyletica.org/matplotlib-fonts/
     # matplotlib.rcParams['pdf.fonttype'] = 3
     # rcParams['font.family'] = 'sans-serif'
     # rcParams['font.sans-serif'] = 'Helvetica'
-    rcParams["text.color"] = darkgrey
-    rcParams["axes.labelcolor"] = darkgrey
-    rcParams["xtick.color"] = darkgrey
-    rcParams["ytick.color"] = darkgrey
+    rcParams["text.color"] = DARKGREY
+    rcParams["axes.labelcolor"] = DARKGREY
+    rcParams["xtick.color"] = DARKGREY
+    rcParams["ytick.color"] = DARKGREY
     # FIGURE
     rcParams["figure.dpi"] = 200
     rcParams["figure.figsize"] = [1, 1]  # 2 x 2 inches
@@ -54,13 +57,13 @@ def stylize_plots():
     rcParams["axes.xmargin"] = 0
     rcParams["axes.ymargin"] = 0
     rcParams["axes.facecolor"] = [1, 1, 1, 0]
-    rcParams["axes.edgecolor"] = darkgrey
+    rcParams["axes.edgecolor"] = DARKGREY
     rcParams["axes.linewidth"] = 1
     # TICKS
     rcParams["xtick.major.width"] = 1
-    rcParams["xtick.color"] = darkgrey
+    rcParams["xtick.color"] = DARKGREY
     rcParams["ytick.major.width"] = 1
-    rcParams["ytick.color"] = darkgrey
+    rcParams["ytick.color"] = DARKGREY
     rcParams["xtick.labelsize"] = 8
     rcParams["ytick.labelsize"] = 8
     rcParams["xtick.major.pad"] = 2
@@ -72,7 +75,7 @@ def stylize_plots():
     # LEGEND
     rcParams["legend.fontsize"] = 6
     rcParams["legend.facecolor"] = [1, 1, 1, 0.3]
-    rcParams["legend.edgecolor"] = darkgrey
+    rcParams["legend.edgecolor"] = DARKGREY
     # LINES
     rcParams["lines.linewidth"] = 1
     rcParams["lines.markersize"] = 1
