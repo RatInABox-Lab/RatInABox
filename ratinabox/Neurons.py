@@ -191,7 +191,7 @@ class Neurons:
             • t_end (int, optional): _description_. Defaults to end of data.
             • chosen_neurons: Which neurons to plot. string "10" or 10 will plot ten of them, "all" will plot all of them, "12rand" will plot 12 random ones. A list like [1,4,5] will plot cells indexed 1, 4 and 5. Defaults to "all".
             chosen_neurons (str, optional): Which neurons to plot. string "10" will plot 10 of them, "all" will plot all of them, a list like [1,4,5] will plot cells indexed 1, 4 and 5. Defaults to "10".
-            • spikes (bool, optional): If True, scatters exact spike times underneath each curve of firing rate. Defaults to True.
+            • spikes (bool, optional): If True, scatters exact spike times underneath each curve of firing rate. Defaults to False.
             the below params I just added for help with animations
             • imshow - if True will not dispaly as mountain plot but as an image (plt.imshow). Thee "extent" will be (t_start, t_end, 0, 1) in case you want to plot on top of this
             • fig, ax: the figure, axis to plot on (can be None)
@@ -819,6 +819,7 @@ class PlaceCells(Neurons):
             firingrate * (self.max_fr - self.min_fr) + self.min_fr
         )  # scales from being between [0,1] to [min_fr, max_fr]
         return firingrate
+
 
     def plot_place_cell_locations(
         self,
@@ -2362,3 +2363,99 @@ class FeedForwardLayer(Neurons):
                 V, other_args=self.activation_params, deriv=True
             )
         return firingrate
+
+
+
+
+
+
+
+class RandomSpatialNeurons(Neurons):
+    """This RandomSpatialNeurons class defines a population of Neurons with smooth random spatial tunings. 
+    
+    The model is non-parameteric: for each neuron a smooth random function is sampled from a prior (a Gaussian process) over smooth random functions with the desired lengthscale. For a deeper understanding we recommend reading David Mackay's textbook chapter 45. Note that to be well defined over the whole domain we must sample locations _at least_ as densely than the lengthscale, so this simulation slows down for small lengthscales < 0.05. The covariance function is a squared exponential kernel and the output is passed through a sigmoid to scale it between max_fr and min_fr.
+
+    We envisage this Neuron being used to support modelling efforts where the spatial tuning of neurons is not known or where you require spatially tuned feautres but don't want to assume place cells, grid cells etc.
+
+    List of functions:
+        • kernel() 
+    """
+    default_params = {'lengthscale':0.1, #lengthscale of the random function 
+                      'max_fr':1, #maximum firing rate 
+                      'min_fr':0, #minimum firing rate
+                      'n':10, #number of neurons
+                      'wall_geometry':'geodesic' #how to account for walls when calculating distance between points (only relevant in 2D)
+                      }
+
+    def __init__(self, Agent, params={}):
+        """Initialise the RandomSpatialNeurons class. Takes an Agent object and a dictionary of parameters which defaults to the default_parametets dictionary."""
+        
+        self.params = copy.deepcopy(__class__.default_params)
+        self.params.update(params)
+        super().__init__(Agent, params)
+
+        if self.Agent.Environment.dimensionality == "2D":
+            if self.wall_geometry == "geodesic":
+                if len(self.Agent.Environment.walls) > 5:
+                    print("Geodesic wall geometry only possible in environments with one or no additional walls. Using 'line_of_sight' instead. If this is slow, consider trying 'euclidean'")
+                    self.wall_geometry = 'line_of_sight'
+
+        # We densely sample locations across the environment and then distance covariance matrix using a squared exponential kernel. Using this covariance we sample targets   (according to an exponential because it is way too expensive to use the default dx=0.01 we have to initially create a lower resolution array of poionts. We will sample from the prior over these points and then, for any other points, "infer" the firing rate from these samples. For all other points we'll take the mean of the posterior based on these samples.
+
+        assert self.lengthscale >= 0.02, "lengthscale must be greater than 0.02 m"
+        self.X = self.Agent.Environment.discretise_environment(dx=min(0.05,self.lengthscale)) 
+        self.X = self.X.reshape(-1, self.X.shape[-1])
+        self.Q = self.kernel(self.X, self.X)
+        # If doing full Bayes: Diagonalise and add a small amount of noise to the diagonal to ensure invertibility (if doing full Bayes) then precalculate some inverses 
+        # self.Q = 0.5 * (self.Q + self.Q.T)
+        # self.Q += 1e-6*np.eye(n_samples)
+        #self.Qinv_on_target = self.Qinv @ self.targets
+        #self.Qinv = np.linalg.inv(self.Q)
+
+        #Sample targets (eqn 45.33 in Mackay textbook)
+        warnings.filterwarnings("ignore", category=RuntimeWarning)
+        self.targets = np.random.multivariate_normal(mean=np.zeros(self.Q.shape[0]), cov=self.Q, size=self.n).T # targets
+        warnings.filterwarnings("default", category=RuntimeWarning)
+        self.targets = ratinabox.utils.activate(self.targets, activation="sigmoid",
+                                                other_args = {"max_fr": self.max_fr, "min_fr": self.min_fr, "mid_x": 0, "width_x": 2}) # activation function
+        return 
+
+    def get_state(self, evaluate_at="agent", **kwargs):
+        """At inference time any position in the Environment can be queried and its firing rate will be returned. This is done by taking the mean of the targets weights by how close those targets are to the position (as measured by the covariance) - we note that this isn't the "full" Bayesian way to estimate the posterior of unseen points but since we have densely samples target locations it should be good enough. The full Bayesian way (Mackay Eqn. 45.42) is provided but commented out for now due to instabilities when there are additional walls.
+        
+        By default position is taken from the Agent and used to calculate firinf rates. This can also by passed directly (evaluate_at=None, pos=pass_array_of_positions) or ou can use all the positions in the environment (evaluate_at="all").
+
+        Returns:
+            firingrates: an array of firing rates"""
+        if evaluate_at == "all":
+            pos = self.Agent.Environment.flattened_discrete_coords
+        elif evaluate_at == "agent":
+            pos = self.Agent.pos
+        else:
+            pos = kwargs["pos"]
+        pos = pos.reshape(-1, pos.shape[-1])
+        k = self.kernel(pos, self.X)
+
+        #this is the "poorman's" way of doing this. It just uses the kernel values to weights the target values and sets the firing rate to their mean. Since our targets have been estimated quite densely this is a good approximation the full Bayesian way given below but, for numerical reasons, is unstable in environments with lots of walls.
+        #LOCAL AVERAGE OF TARGETS 
+        k = k / np.sum(k, axis=1, keepdims=True)
+        mean = k @ self.targets
+
+        #FULL BAYES (UNSTABLE WITH WALLS) 
+        # mean = k @ self.Qinv_on_target
+        # return k 
+        firingrate = mean.T 
+        return firingrate
+    
+
+    def kernel(self, x1, x2):
+        """Returns the covariance matrix of shape (len(x1),len(x2)) between all locations in lists x1 and x2. For now this is just the squared exponential kernel where the "distance" between two points is the "environmental distance" (this may account for any walls etc.). In future we may consider adding more types of kernels. 
+        Args: 
+            x1: (N1, D) array of N1 points in D dimensions
+            x2: (N2, D) array of N2 points in D dimensions
+        Returns:
+            (N1, N2) kernel between all points in x1 and all points in x2 
+        """
+        d_mat = self.Agent.Environment.get_distances_between___accounting_for_environment(x1,x2,wall_geometry=self.wall_geometry)
+        kernel_matrix = np.exp(-(d_mat**2)/(2*self.lengthscale**2))
+        return kernel_matrix

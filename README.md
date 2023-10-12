@@ -24,8 +24,11 @@ With `RatInABox` you can:
     * `ObjectVectorCells()`
     * `VelocityCells()`
     * `SpeedCells()`
+    * `FieldOfViewNeurons()` (egocentric encoding of what the `Agent` can see)
+    * `RandomSpatialNeurons()`
     * `HeadDirectionCells()`
     * `FeedForwardLayer()` (a generic class analagous to a feedforward layer in a deep neural network)
+    * `NeuralNetworkNeurons()` (a generic class analagous to a deep neural network)
     * `SuccessorFeatures()` 
     * ...
 
@@ -76,8 +79,8 @@ Here is a list of features loosely organised into those pertaining to
 
 (i) the [`Environment`](#i-environment-features)
 * [Adding walls](#walls)
-* [Polygon-shaped Environments](#polygon-shaped-environments)
-* [Holes](#holes)
+* [Complex Environments: Polygons, curves and holes](#complex-environments-polygons-curves-and-holes)
+* [Objects](#objects)
 * [Boundary conditions](#boundary-conditions)
 * [1- or 2-dimensions](#1--or-2-dimensions) 
 
@@ -97,8 +100,9 @@ Here is a list of features loosely organised into those pertaining to
 * [Place cell models](#place-cell-models) 
 * [Place cell geometry](#geometry-of-placecells)
 * [Egocentric encodings](#egocentric-encodings)
-* [Successor features and reinforcement learning](#successor-features-and-reinforcement-learning)
-* [Deep neural networks](#more-complex-neuron-types-and-networks-of-neurons)
+* [Reinforcement learning and successor features](#reinforcement-learning-and-successor-features)
+* [Deep neural networks](#neurons-as-function-approximators)
+* [Create your own `Neuron` types](#creating-your-own-neuron-types)
 
 (iv) [Figures and animations plotting](#iv-figures-and-animations)
 
@@ -146,6 +150,17 @@ Env = Environment(params = {
 
 <img src=".images/readme/complex_envs.png" width=1000>
 
+#### **Objects**
+
+`Environment`s can contain objects. These are used by `ObjectVectorCells` as visual cues but in theory you can hijack these to respresent many things in your `Environment` (reward ports, goal locations etc.). Objects have a `type` and a `position`
+Objects are defined by a list of points and a position. Objects can be used as visual cues (e.g. for `ObjectVectorCells`) or as obstacles (e.g. for `BoundaryVectorCells`). 
+
+```python
+Envirnoment.add_object(object=[0.3,0.3],type=0)
+Envirnoment.add_object(object=[0.7,0.3],type=0)
+Envirnoment.add_object(object=[0.5,0.7],type=1)
+```
+<img src=".images/readme/objects.png" width=300>
 
 
 #### **Boundary conditions**
@@ -243,12 +258,12 @@ We provide a list of premade `Neurons` subclasses. These include (but are not li
 * `HeadDirectionCells`
 * `VelocityCells`
 * `SpeedCells`
+* `RandomSpatialNeurons` - smooth but random spatially tuned neurons
 * `FeedForwardLayer` - calculates activated weighted sum of inputs from a provide list of input `Neurons` layers.
 * `FieldOfViewNeurons` - Egocentric encoding of what the `Agent` can see 
 * `NeuralNetworkNeurons` - Maps inputs from a user provided list of input `Neurons` through a user-provided `pytorch` neural network. Can be used to create arbitrary and learnable representations.
-* `SuccessorFeatures` - Learns the successor features for a set of features under the current motion policy
 
-`FeedForwardLayer` deserves special mention. Instead of its firing rate being determined explicitly by the state of the `Agent` it summates synaptic inputs from a provided list of input layers (which can be any `Neurons` subclass). This layer is the building block for how more complex networks can be studied using `RatInABox`. `NeuralNetworkNeurons` is the same except instead of linearly summating it passes inputs through any arbitrary deep neural network.
+`FeedForwardLayer` and `NeuralNetworkNeurons` deserves special mention. Instead of its firing rate being determined explicitly by the state of the `Agent` it summates synaptic inputs from a provided list of input layers (which can be any `Neurons` subclass). This layer is the building block for how more complex networks can be studied using `RatInABox`. `NeuralNetworkNeurons` is the same except instead of linearly summating it passes inputs through any arbitrary deep neural network.
 
 
 #### **Noise** 
@@ -328,18 +343,32 @@ BVCs_whiskers = FieldOfViewBVCs(Ag,params={
 
 <img src=".images/readme/field_of_view.gif" width=600>
 
-#### **Successor Features and Reinforcement Learning**
-A dedicated `Neurons` class called `SuccessorFeatures` learns the successor features for a given feature set under teh current policy. See [this demo](./demos/successor_features_example.ipynb) for more info. 
+#### **Reinforcement Learning and Successor Features**
+A dedicated `Neurons` class called `SuccessorFeatures` learns the successor features for a given feature set under the current policy. See [this demo](./demos/successor_features_example.ipynb) for more info. 
 <img src=".images/demos/SF_development.gif" width=600>
 
 `SuccessorFeatures` are a specific instance of a more general class of neurons called `ValueNeuron`s which learn value function for any reward density under the `Agent`s motion policy. This can be used to do reinforcement learning tasks such as finding rewards hidden behind walls etc as shown in [this demo](./demos/reinforcement_learning_example.ipynb). 
 
-Finally, we are working on making an OpenAI `Gym` environment wrapper for `RatInABox`. This should be available soon, keep an eye on [this issue](https://github.com/TomGeorge1234/RatInABox/issues/30). 
+We also have a working examples of and actor critic algorithm using deep neural networks [here](./demos/actor_critic_example.ipynb)
 
-#### **More complex Neuron types and networks of Neurons**
-We encourage users to create their own subclasses of `Neurons`. This is easy to do, see comments in the `Neurons` class within the [code](./ratinabox/Neurons.py) for explanation. By forming these classes from the parent `Neurons` class, the plotting and analysis features described above remain available to these bespoke Neuron types. Additionally we provide a `Neurons` subclass called `FeedForwardLayer`. This neuron sums inputs from any provied list of other `Neurons` classes and can be used as the building block for constructing complex multilayer networks of `Neurons`, as we do [here (path integration)](./demos/path_integration_example.ipynb), [here (reinforcement learning)](./demos/reinforcement_learning_example.ipynb) and [here (successor features)](./demos/successor_features_example.ipynb). 
+Finally, we are working on a dedicated subpackage -- (`RATS`: RL Agent Toolkit and Simulator) -- to host all this RL stuff and more so keep  an eye out. 
+
+#### **`Neurons` as function approximators**
+
+Perhaps you want to generate really complex cell types (more complex than just `PlaceCells`, `GridCells` etc.). No problem. For this we provide two `Neurons` subclass useful for constructing complex Neuron types. For these classes instead of firing rates being determined explicitly by the state of the `Agent`, they recieve inputs from one or many other `RatInABox.Neurons` classes and pass these inputs through a function to calculate the firing rate.
+
+* `FeedForwardLayer` linearly sums their inputs with a set of weights.
+* `NeuralNetworkNeurons` are more general, they pass their inputs through a user-provided deep neural network (for this we use `pytorch`).
+
+<img src=".images/readme/functionapproximators.gif" width=800>
 
 
+Both of these classes can be used as the building block for constructing complex multilayer networks of `Neurons` (e.g. `FeedForwardLayers` are `RatInABox.Neurons` in their own right so can be used as inputs to other `FeedForwardLayers`). Their parameters can be accessed and set (or "trained") to create neurons with complex receptive fields. In the case of `DeepNeuralNetwork` neurons the firing rate attached to the computational graph is stored so gradients can be taken. Examples can be found [here (path integration)](./demos/path_integration_example.ipynb), [here (reinforcement learning)](./demos/reinforcement_learning_example.ipynb), [here (successor features)](./demos/successor_features_example.ipynb) and [here (actor_critic_demo)](./demos/actor_critic_example.ipynb). 
+
+
+
+#### **Creating your own `Neuron` types**
+We encourage users to create their own subclasses of `Neurons`. This is easy to do, see comments in the `Neurons` class within the [code](./ratinabox/Neurons.py) for explanation. By forming these classes from the parent `Neurons` class, the plotting and analysis features described above remain available to these bespoke Neuron types. 
 
 ### (iv) Figures and animations 
 `RatInABox` is built to be highly visual. It is easy to plot or animate data and save these plots/animations. Here are some tips
@@ -397,7 +426,9 @@ fig, ax = PCs.plot_rate_timeseries()
 * [readme_figures.ipynb](./demos/readme_figures.ipynb): (Almost) all plots/animations shown in the root readme are produced from this script (plus some minor formatting done afterwards in powerpoint).
 * [paper_figures.ipynb](./demos/paper_figures.ipynb): (Almost) all plots/animations shown in the paper are produced from this script (plus some major formatting done afterwards in powerpoint).
 * [decoding_position_example.ipynb](./demos/decoding_position_example.ipynb): Postion is decoded from neural data generated with RatInABox. Place cells, grid cell and boundary vector cells are compared. 
+* [splitter_cells_example.ipynb](./demos/splitter_cells_example.ipynb): A simple simultaion demonstrating how `Splittre` cell data could be create in a figure-8 maze.
 * [reinforcement_learning_example.ipynb](./demos/reinforcement_learning_example.ipynb): RatInABox is use to construct, train and visualise a small two-layer network capable of model free reinforcement learning in order to find a reward hidden behind a wall. 
+* [actor_critic_example.ipynb](./demos/actor_critic_example.ipynb): RatInABox is use to implement the actor critic algorithm using deep neural networks.
 * [successor_features_example.ipynb](./successor_features_example.ipynb): RatInABox is use to learn and visualise successor features under random and biased motion policies.
 * [path_integration_example.ipynb](./demos/path_integration_example.ipynb): RatInABox is use to construct, train and visualise a large multi-layer network capable of learning a "ring attractor" capable of path integrating a position estimate using only velocity inputs.
 

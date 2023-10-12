@@ -14,4 +14,5 @@ __pycache__
 *.egg-info
 */.ipynb_checkpoints
 ratinabox/contribs/not_yet_ready/
+community_use_cases.md
 .vscode/

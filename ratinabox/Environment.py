@@ -538,7 +538,7 @@ class Environment:
                 ), "geodesic geometry is not available for periodic boundary conditions"
                 assert (
                     len(walls) <= 5
-                ), """unfortunately geodesic geometry is only defined in closed rooms with one additional wall
+                ), """unfortunately geodesic geometry is only defined in closed rooms with one additional wall. Try using "line_of_sight" or "euclidean" instead. 
                 (efficient geometry calculations with more than 1 wall are super hard I have discovered!)"""
                 distances = utils.get_distances_between(vectors=vectors)
                 if len(walls) == 4:
