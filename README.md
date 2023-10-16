@@ -349,7 +349,7 @@ A dedicated `Neurons` class called `SuccessorFeatures` learns the successor feat
 
 `SuccessorFeatures` are a specific instance of a more general class of neurons called `ValueNeuron`s which learn value function for any reward density under the `Agent`s motion policy. This can be used to do reinforcement learning tasks such as finding rewards hidden behind walls etc as shown in [this demo](./demos/reinforcement_learning_example.ipynb). 
 
-We also have a working examples of and actor critic algorithm using deep neural networks [here](./demos/actor_critic_example.ipynb)
+We also have a working examples of an actor critic algorithm using deep neural networks [here](./demos/actor_critic_example.ipynb)
 
 Finally, we are working on a dedicated subpackage -- (`RATS`: RL Agent Toolkit and Simulator) -- to host all this RL stuff and more so keep  an eye out. 
 
