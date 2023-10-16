@@ -463,3 +463,10 @@ Formatted:
 Tom M George, William de Cothi, Claudia Clopath, Kimberly Stachenfeld, Caswell Barry. "RatInABox: A toolkit for modelling locomotion and neuronal activity in continuous environments" (2022).
 ``` 
 The research paper corresponding to the above citation can be found [here](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v3).
+
+```{toctree}
+:maxdepth: 2
+:hidden:
+
+why-riab
+```
