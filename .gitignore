@@ -16,3 +16,5 @@ __pycache__
 ratinabox/contribs/not_yet_ready/
 community_use_cases.md
 .vscode/
+
+.idea/
