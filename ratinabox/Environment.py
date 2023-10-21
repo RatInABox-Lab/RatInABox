@@ -151,7 +151,6 @@ class Environment:
             }
             self.n_object_types = 0
             self.object_colormap = "rainbow"
-            self.plot_objects = True
 
             # make some other attributes
             left = min([c[0] for c in b])
@@ -255,7 +254,8 @@ class Environment:
                          fig=None, 
                          ax=None, 
                          gridlines=False,
-                         autosave=None):
+                         autosave=None,
+                         **kwargs,):
         """Plots the environment on the x axis, dark grey lines show the walls
         Args:
             fig,ax: the fig and ax to plot on (can be None)
@@ -264,7 +264,6 @@ class Environment:
         Returns:
             fig, ax: the environment figures, can be used for further downstream plotting.
         """
-
         if self.dimensionality == "1D":
             extent = self.extent
             if fig is None and ax is None:
@@ -350,8 +349,10 @@ class Environment:
                     zorder=2,
                 )
 
-            # plot objects
-            if self.plot_objects == True:
+            # plot objects if there isn't a kwarg setting it to false
+            if 'plot_objects' in kwargs and kwargs['plot_objects'] == False:
+                pass
+            else: 
                 object_cmap = matplotlib.colormaps[self.object_colormap]
                 for i, object in enumerate(self.objects["objects"]):
                     object_color = object_cmap(

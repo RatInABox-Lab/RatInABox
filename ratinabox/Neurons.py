@@ -27,13 +27,16 @@ class Neurons:
     • GridCells()
     • BoundaryVectorCells()
     • ObjectVectorCells()
+    • FieldOfViewBVCs()
+    • FieldOfViewOVCs()
     • VelocityCells()
     • HeadDirectionCells()
     • SpeedCells()
     • FeedForwardLayer()
+    • RandomSpatialNeurons()
     as well as (in  the contribs)
     • ValueNeuron()
-    • FieldOfViewNeurons()
+    • NeuralNetworkNeurons()
 
     The unique function in each child classes is get_state(). Whenever Neurons.update() is called Neurons.get_state() is then called to calculate and return the firing rate of the cells at the current moment in time. This is then saved. In order to make your own Neuron subclass you will need to write a class with the following mandatory structure:
 
@@ -381,7 +384,7 @@ class Neurons:
                 else:
                     Nx, Ny = shape[0], shape[1]
                 env_fig, env_ax = self.Agent.Environment.plot_environment(
-                    autosave=False
+                    autosave=False, **kwargs,
                 )
                 width, height = env_fig.get_size_inches()
                 plt.close(env_fig)
@@ -415,7 +418,7 @@ class Neurons:
                         cax = divider.append_axes("right", size="5%", pad=0.05)
             for i, ax_ in enumerate(axes):
                 _, ax_ = self.Agent.Environment.plot_environment(
-                    fig, ax_, autosave=False
+                    fig, ax_, autosave=False, **kwargs
                 )
             if len(chosen_neurons) != axes.size:
                 print(
@@ -463,9 +466,9 @@ class Neurons:
                     cbar = plt.colorbar(ims[-1], cax=cax)
                     cbar.ax.tick_params(length=0)
                     cbar.set_label("Firing rate / Hz",labelpad=-10)
-                    lim_v = vmax if vmax > -vmin else vmin
-                    cbar.set_ticks([0, lim_v])
-                    cbar.set_ticklabels([0.0, round(lim_v, 1)])
+                    # lim_v = vmax if vmax > -vmin else vmin
+                    cbar.set_ticks([vmin,vmax])
+                    cbar.set_ticklabels([f"{vmin:.1f}", f"{vmax:.1f}"])
                     cbar.outline.set_visible(False)
 
             if spikes is True:
@@ -2386,7 +2389,8 @@ class RandomSpatialNeurons(Neurons):
                       'max_fr':1, #maximum firing rate 
                       'min_fr':0, #minimum firing rate
                       'n':10, #number of neurons
-                      'wall_geometry':'geodesic' #how to account for walls when calculating distance between points (only relevant in 2D)
+                      'wall_geometry':'geodesic', #how to account for walls when calculating distance between points (only relevant in 2D)
+                      'name':'RandomSpatialNeurons', #name of the class
                       }
 
     def __init__(self, Agent, params={}):

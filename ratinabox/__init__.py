@@ -19,7 +19,7 @@ MOUNTAIN_PLOT_OVERLAP = 2.2  # this is the max fraction the nth mountain plot li
 
 DARKGREY = [0.3,0.3,0.3,1]
 GREY = [0.5,0.5,0.5,1]
-LIGHTGREY = [0.92,0.92,0.92,1]
+LIGHTGREY = [0.9,0.9,0.9,1]
 
 from .Environment import *
 from .Agent import *

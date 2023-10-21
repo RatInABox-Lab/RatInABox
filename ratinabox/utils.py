@@ -569,6 +569,7 @@ def mountain_plot(
     fig=None,
     ax=None,
     norm_by="max",
+    linewidth=1,
     width=ratinabox.MOUNTAIN_PLOT_WIDTH_MM,
     overlap=ratinabox.MOUNTAIN_PLOT_OVERLAP,
     shift=ratinabox.MOUNTAIN_PLOT_SHIFT_MM,
@@ -590,6 +591,8 @@ def mountain_plot(
         ax (_type_, optional): ax to plot on if desider. Defaults to None.
         norm_by: what to normalise each line of the mountainplot by.
            If "max", norms by the maximum firing rate found across all the neurons. Otherwise, pass a float (useful if you want to compare different neural datsets apples-to-apples)
+        linewidth: width of lines
+        width: width of figure in mm
         overlap: how much each plots overlap by (> 1 = overlap, < 1 = no overlap) (overlap is not relevant if you also set "norm_by")
         shift: distance between lines in mm
 
@@ -615,7 +618,7 @@ def mountain_plot(
 
     zorder = 1
     for i in range(len(NbyX)):
-        ax.plot(X, NbyX[i] + i + 1, c=c, zorder=zorder)
+        ax.plot(X, NbyX[i] + i + 1, c=c, zorder=zorder, lw=linewidth)
         zorder -= 0.01
         ax.fill_between(
             X, NbyX[i] + i + 1, i + 1, color=fc, zorder=zorder, alpha=0.8, linewidth=0
