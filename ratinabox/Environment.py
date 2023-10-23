@@ -154,7 +154,8 @@ class Environment:
                 "object_types": np.empty(0, int),
             }
             self.n_object_types = 0
-            self.object_colormap = "rainbow"
+            self.object_colormap = "rainbow_r"
+
 
             # make some other attributes
             left = min([c[0] for c in b])

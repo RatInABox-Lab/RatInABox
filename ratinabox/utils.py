@@ -599,7 +599,7 @@ def mountain_plot(
     Returns:
         fig, ax: _description_
     """
-    c = color or "C1"
+    c = color if color is not None else "C1"
     c = np.array(matplotlib.colors.to_rgb(c))
     fc = 0.3 * c + (1 - 0.3) * np.array([1, 1, 1])  # convert rgb+alpha to rgb
 

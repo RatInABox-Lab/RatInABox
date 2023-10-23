@@ -248,7 +248,7 @@ class Neurons:
                     ax.scatter(
                         time_when_spiked,
                         h,
-                        color=(self.color or "C1"),
+                        color=(self.color if self.color is not None else "C1"),
                         alpha=0.5,
                         s=5,
                         linewidth=0,
@@ -483,7 +483,7 @@ class Neurons:
                         linewidth=0,
                         alpha=0.7,
                         zorder=1.2,
-                        color=(self.color or "C1"),
+                        color=(self.color if self.color is not None else "C1"),
                     )
 
         # PLOT 1D
@@ -531,7 +531,7 @@ class Neurons:
                     ax.scatter(
                         pos_where_spiked,
                         h,
-                        color=(self.color or "C1"),
+                        color=(self.color if self.color is not None else "C1"),
                         alpha=0.5,
                         s=2,
                         linewidth=0,
@@ -1318,8 +1318,6 @@ class VectorCells(Neurons):
 
 
         fr = np.array(self.history["firingrate"][t_id])
-        facecolor = self.color or "C1"
-        facecolor = list(matplotlib.colors.to_rgba(facecolor))
 
         x = self.tuning_distances * np.cos(self.tuning_angles)
         y = self.tuning_distances * np.sin(self.tuning_angles)
@@ -1338,15 +1336,15 @@ class VectorCells(Neurons):
                                 zorder = 2.1,
                                 )
         if self.cell_colors is None: 
-            facecolor = self.color or "C1"
+            facecolor = self.color if self.color is not None else "C1"
             facecolor = np.array(matplotlib.colors.to_rgba(facecolor))
             facecolor_array = np.tile(np.array(facecolor), (self.n, 1))
         else:
             facecolor_array = self.cell_colors #made in child class init. Each cell can have a different plot color. 
             # e.g. if cells are slective to different object types or however you like 
-        facecolor_array[:, -1] = np.maximum(
+        facecolor_array[:, -1] = 0.7*np.maximum(
             0, np.minimum(1, fr / (0.5 * self.max_fr))
-        ) # scale alpha so firing rate shows as how "solid" to color of this vector cell is. 
+        ) # scale alpha so firing rate shows as how "solid" (up to 0.7 so you can _just_ seen whats beneath) to color of this vector cell is. 
         ec.set_facecolors(facecolor_array)
         ax.add_collection(ec) 
 
@@ -1422,7 +1420,7 @@ class BoundaryVectorCells(VectorCells):
             self.cell_fr_norm = np.max(self.get_state(evaluate_at=None, pos=locs), axis=1)
 
         # list of colors for each cell, just used by `.display_vector_cells()` plotting function
-        color = np.array(matplotlib.colors.to_rgba("C1")).reshape(1,-1)
+        color = np.array(matplotlib.colors.to_rgba(self.color if self.color is not None else "C1")).reshape(1,-1)
         self.cell_colors = np.tile(color,(self.n,1))
 
         if ratinabox.verbose is True:
@@ -1764,7 +1762,7 @@ class ObjectVectorCells(VectorCells):
             c = cmap(self.tuning_types[i] /  (self.Agent.Environment.n_object_types - 1 + 1e-8))
             self.cell_colors.append(np.array(matplotlib.colors.to_rgba(c)))
         self.cell_colors = np.array(self.cell_colors)
-
+        self.color = self.cell_colors[0] #this will obviously not work if you have different colors for each cell but most of the time itll work great.
         if ratinabox.verbose is True:
             print(
                 "ObjectVectorCells (OVCs) successfully initialised. \
@@ -1970,7 +1968,7 @@ class AgentVectorCells(VectorCells):
 
     By default cell tuning params are initialised randomly and are "allocentric" (see VectorCells doc string for more details).
     This is one of the few riab classes which takes another agent as an argument. This is the agent which the cells are selective for. It must be passed as the second argument to the constructor, "Other_Agent".
-     
+
     AVCs can be arranged in an egocentric "field of view" (see FieldOfViewAVCs subclass). 
 
     List of functions:
@@ -1979,6 +1977,7 @@ class AgentVectorCells(VectorCells):
 
 
     default_params = {
+        "name":'AgentVectorCell',
         "reference_frame" : "egocentric",
         "walls_occlude": True, #objects behind walls cannot be seen
     }
