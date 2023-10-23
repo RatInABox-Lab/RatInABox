@@ -45,7 +45,7 @@ class Agent:
             "head_direction_smoothing_timescale" : 0.0,
             "thigmotaxis": 0.5,
             "wall_repel_distance": 0.1,
-            "walls_repel": True,
+            "wall_repel_strength": 1.0,
             "save_history":True,
 
 
@@ -67,8 +67,8 @@ class Agent:
         ),  # std of rotational speed, σ_w wall following parameter
         "head_direction_smoothing_timescale" : 0.15, # timescale over which head direction is smoothed (head dir = normalised smoothed velocity).
         "thigmotaxis": 0.5,  # tendency for agents to linger near walls [0 = not at all, 1 = max]
-        "wall_repel_distance": 0.1,
-        "walls_repel": True,  # whether or not the walls repel
+        "wall_repel_distance": 0.1, # distance from wall at which wall repulsion starts
+        "wall_repel_strength": 1.0, # wall repulsion strength when agent is within wall_repel_distance (0 = no repulsion)
         "save_history": True,  # whether to save position and velocity history as you go
     }
 
@@ -116,7 +116,6 @@ class Agent:
         self.use_imported_trajectory = False
 
         # motion model stufff
-        self.walls_repel = True  # over ride to switch of wall repulsion
         self.distance_to_closest_wall = np.inf #this attribute is updated by the update() function and can be used by the user if you need to know how close the agent is to the walls
 
         # initialise starting positions and velocity
@@ -232,7 +231,7 @@ class Agent:
                     )
 
                 # Deterministically drift the velocity away from any nearby walls
-                if (self.walls_repel == True) and (len(self.Environment.walls > 0)):
+                if (self.wall_repel_strength > 0.0) and (len(self.Environment.walls > 0)):
                     vectors_from_walls = self.Environment.vectors_from_walls(
                         self.pos
                     )  # shape=(N_walls,2)
@@ -246,7 +245,7 @@ class Agent:
                         x, d, v = (
                             distance_to_walls,
                             self.wall_repel_distance,
-                            self.speed_mean,
+                            self.wall_repel_strength * self.speed_mean,
                         )
 
                         """Wall repulsion and wall following works as follows:
