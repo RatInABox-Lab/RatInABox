@@ -1,0 +1,9 @@
+# So this just stops the below folders from being including in the source distributin (the `.tar.gz` files) but honestly I don't know why its needed I never used to pre v1.9.3 and all of a sudden it just exploded in size.
+# I'd like to remove this file so TODO is to figure out whats going wrong. 
+
+prune .github
+prune .gitignore
+prune .images
+prune demos
+prune docs
+prune ratinabox/contribs/TaskEnv_example_files
