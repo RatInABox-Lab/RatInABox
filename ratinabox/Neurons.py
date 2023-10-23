@@ -27,8 +27,10 @@ class Neurons:
     • GridCells()
     • BoundaryVectorCells()
     • ObjectVectorCells()
+    • AgentVectorCells()
     • FieldOfViewBVCs()
     • FieldOfViewOVCs()
+    • FieldOfViewAVCs()
     • VelocityCells()
     • HeadDirectionCells()
     • SpeedCells()
@@ -1096,7 +1098,7 @@ class VectorCells(Neurons):
     """
     The VectorCells class defines a population of VectorCells. This class is a 
     subclass of Neurons() and inherits it properties/plotting functions.Must be initialised with an Agent and a 'params' dictionary.
-    Typical VectorCells include BoundaryVectorCells and ObjectVectorCells. These are similar in that each cell within these
+    Typical VectorCells include BoundaryVectorCells, ObjectVectorCells and AgentVectorCells. These are similar in that each cell within these
     classes has a preferred tuning_distance, tuning_angle, sigma_distances (i.w. width of receptive field in distance) and sigma_angle. 
     They are different in that the former, cells respond to walls whereas in the latter cells respond to objects (which may come in different types) 
 
@@ -1117,7 +1119,7 @@ class VectorCells(Neurons):
             • etc. there are others
         Distance preference width 
         Angular preferences of each BVC are drawn from a uniform distribution on [0, 2pi] and angular prefernce widths all have the constant value of "angle_spread_degrees". 
-    • Arranged in the form of a radial assembly so as to simulate a "field of view".  This is handled by the `FieldOfViewOVCs/BVCs` subclasses.
+    • Arranged in the form of a radial assembly so as to simulate a "field of view".  This is handled by the `FieldOfViewOVCs/BVCs/AVCs` subclasses.
         ["cell_arrangement": "uniform_manifold" or "diverging_manifold"].
         Think of these like the US house of representatives where each politician is a neuron. 
     • User defined: pass a function that returns 4 lists of the same length corresponding to the tuning distances, tuning angles, sigma distances
@@ -1132,6 +1134,9 @@ class VectorCells(Neurons):
             • FieldOfViewBVCs
         • ObjectVectorCells ("OVCs")
             • FieldOfViewOVCs
+        • AgentVectorCells ("AVCs")
+            • FieldOfViewAVCs
+        
 
     
     """
@@ -1690,6 +1695,7 @@ class FieldOfViewBVCs(BoundaryVectorCells):
         "spatial_resolution": 0.04,  # resolution of the inner row of cells (in meters)
         "cell_arrangement": "diverging_manifold",  # cell receptive field widths can diverge with radius "diverging_manifold" or stay constant "uniform_manifold".
         "beta": 5, # smaller means larger rate of increase of cell size with radius in diverging type manifolds
+        "color":ratinabox.DARKGREY,
         }
 
     def __init__(self,Agent,params={}):
@@ -1924,8 +1930,8 @@ class ObjectVectorCells(VectorCells):
 
 
 class FieldOfViewOVCs(ObjectVectorCells):
-    """FieldOfViewOVCs  are collection of boundary vector cells organised so as to represent
-    the local field of view i.e. what walls agent can "see" in the local vicinity. They work as follow:
+    """FieldOfViewOVCs  are collection of object vector cells organised so as to represent
+    the local field of view i.e. what objects agent can "see" in the local vicinity. They work as follow:
 
     General FieldOfView cell description (also applies to FieldOfViewOVCs):
         Please see fieldOfViewBVCs doc string
@@ -1959,53 +1965,51 @@ class FieldOfViewOVCs(ObjectVectorCells):
 
 
 class AgentVectorCells(VectorCells):
+    """The AgentVectorCells class defines a population of Agent Vector Cells.
+    These are a subclass of VectorCells() which are selective to other agents in the environment.
+
+    By default cell tuning params are initialised randomly and are "allocentric" (see VectorCells doc string for more details).
+    This is one of the few riab classes which takes another agent as an argument. This is the agent which the cells are selective for. It must be passed as the second argument to the constructor, "Other_Agent".
+     
+    AVCs can be arranged in an egocentric "field of view" (see FieldOfViewAVCs subclass). 
+
+    List of functions:
+        • get_state()
+    """
+
 
     default_params = {
-        "distance_range": [0.01, 0.2],  # min and max distances the agent can "see"
-        "angle_range": [0,90,],  # angluar FoV in degrees (will be symmetric on both sides, so give range in 0 (forwards) to 180 (backwards)
-        "spatial_resolution": 0.04,  # resolution of each BVC tiling FoV
-        "beta": 5, # smaller means larger rate of increase of cell size with radius in hartley type manifolds
-        "cell_arrangement": "diverging_manifold",  # whether all cells have "uniform" receptive field sizes or they grow ("hartley") with radius.
         "reference_frame" : "egocentric",
         "walls_occlude": True, #objects behind walls cannot be seen
     }
 
-    def __init__(self, Agent, Other_Agent = None , params={}):
+    def __init__(self, 
+                 Agent,
+                 Other_Agent = None, #this must be another riab Agent object
+                 params={}):
 
         self.Agent = Agent
-
         self.params = copy.deepcopy(__class__.default_params)
         self.params.update(params)
 
-
-        assert self.params["cell_arrangement"] is not None, "cell_arrangement must be set for FOV Neurons"
-
         super().__init__(Agent, self.params)
-
-        # assert target_agent is not None, "You must specify a target agent for AgentVectorCells"
 
         # have a list to detect which agent will the cell detect 
         self.tuning_type_agent = Other_Agent
-
-
 
         if self.walls_occlude == True:
             self.wall_geometry = "line_of_sight"
         else:
             self.wall_geometry = "euclidean"
 
-
         # list of colors for each cell, just used by `.display_vector_cells()` plotting function
-
         color = np.array(matplotlib.colors.to_rgba(f"C{self.tuning_type_agent.agent_idx}")).reshape(1,-1) #TODO: colours 
         self.cell_colors = np.repeat(color, self.n, axis=0)
-
 
         if ratinabox.verbose is True:
             print(
                 "AgentVectorCells (OVCs) successfully initialised."
             )
-        
         
         return
 
@@ -2015,7 +2019,7 @@ class AgentVectorCells(VectorCells):
         The way we do this is a little complex. We will describe how it works from a single position to a single VC
         (but remember this can be called in a vectorised manner from an array of positons in parallel and there are 
         in principle multiple VCs)
-            1. A vector from the position to the object is calculated.
+            1. A vector from the position to the agent is calculated.
             2. The bearing of this vector is calculated and its length. Note if self.reference_frame == "egocentric" 
                then the bearing is relative to the heading direction of the agent (along its current velocity), not true-north.
             3. Since the distance to the object is calculated taking the environment into account if there is a wall 
@@ -2046,7 +2050,6 @@ class AgentVectorCells(VectorCells):
         N_pos = pos.shape[0]
         N_cells = self.n
         N_objects = 1
-
 
         # 1. GET VECTORS FROM POSITIONS TO OBJECTS 
         (
@@ -2128,6 +2131,36 @@ class AgentVectorCells(VectorCells):
         )  # scales from being between [0,1] to [min_fr, max_fr]
         return firingrate
 
+
+class FieldOfViewAVCs(AgentVectorCells):
+    """FieldOfViewAVCs are collection of object vector cells organised so as to represent
+    the local field of view i.e. what agents the agent can "see" in the local vicinity. They work as follow:
+
+    General FieldOfView cell description (also applies to FieldOfViewOVCs and BVCs):
+        Please see FieldOfViewBVCs doc string
+    
+    Users should specify the agent type they are selective for with the "Other_Agent" argument. 
+    """
+
+    default_params = {
+        "distance_range": [0.01, 0.2],  # min and max distances the agent can "see"
+        "angle_range": [0,90,],  # angluar FoV in degrees (will be symmetric on both sides, so give range in 0 (forwards) to 180 (backwards)
+        "spatial_resolution": 0.04,  # resolution of each BVC tiling FoV
+        "beta": 5, # smaller means larger rate of increase of cell size with radius in hartley type manifolds
+        "cell_arrangement": "diverging_manifold",  # whether all cells have "uniform" receptive field sizes or they grow ("hartley") with radius.
+    }
+
+    def __init__(self,Agent,Other_Agent,params={}):
+
+        self.params = copy.deepcopy(__class__.default_params)
+        self.params.update(params)
+
+
+        self.params["reference_frame"] = "egocentric"
+
+        assert self.params["cell_arrangement"] is not None, "cell_arrangement must be set for FOV Neurons"
+
+        super().__init__(Agent,Other_Agent,self.params)
 
 
     
