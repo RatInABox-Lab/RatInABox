@@ -53,6 +53,7 @@ class Agent:
     """
 
     default_params = {
+        "name": None,
         "dt": 0.05,
         # Speed params (leave empty if you are importing trajectory data)
         # These defaults are fit to match data from Sargolini et al. (2016)
@@ -78,14 +79,24 @@ class Agent:
         Args:
             params (dict, optional). Defaults to {}.
         """
-        self.Environment = Environment
-        self.Environment.Agents.append(self)
-
+       
         self.params = copy.deepcopy(__class__.default_params)
         self.params.update(params)
 
         utils.update_class_params(self, self.params, get_all_defaults=True)
         utils.check_params(self, params.keys())
+
+        
+        self.Environment = Environment
+
+        # decide the name of the agent 
+        self.agent_idx = len(self.Environment.Agents)
+
+        if self.name is None:
+            self.name = f"agent_{self.agent_idx}"
+
+        self.Environment.add_agent(self) #will raise an warning(/error) if the agent name is not unique
+
 
         # initialise history dataframes
         self.history = {}
@@ -691,7 +702,7 @@ class Agent:
             trajectory = np.array(self_.history["pos"])[slice]
             head_direction = np.array(self_.history["head_direction"])[slice]
             if color is None:
-                color_list = [f"C{i}"] * len(time)
+                color_list = [f"C{self_.agent_idx}"] * len(time)
             elif color == "changing":
                 trajectory_cmap = matplotlib.colormaps["viridis_r"]
                 color_list = [trajectory_cmap(t / len(time)) for t in range(len(time))]

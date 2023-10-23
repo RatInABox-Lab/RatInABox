@@ -7,9 +7,12 @@ import matplotlib
 from matplotlib import pyplot as plt
 import shapely
 
+
 import warnings
+from typing import Union
 
 from ratinabox import utils
+from ratinabox.Agent import Agent
 
 """ENVIRONMENT"""
 
@@ -83,7 +86,8 @@ class Environment:
         utils.update_class_params(self, self.params, get_all_defaults=True)
         utils.check_params(self, params.keys())
 
-        self.Agents = []  # each new Agent will append itself to this list
+        self.Agents : list[Agent] = []  # each new Agent will append itself to this list
+        self.agents_dict = {} # this is a dictionary which allows you to lookup a agent by name
 
         if self.dimensionality == "1D":
             self.D = 1
@@ -183,6 +187,123 @@ class Environment:
             pprint.pprint(all_default_params)
         return all_default_params
 
+    
+    def agent_lookup(self, agent_names:Union[str, list[str]]  = None) -> list[Agent]:
+        '''
+        This function will lookup a agent by name and return it. This assumes that the agent has been 
+        added to the Environment.agents list and that each agent object has a unique name associated with it.
+
+
+        Args:
+            agent_names (str, list[str]): the name of the agent you want to lookup. 
+        
+        Returns:
+            agents (list[Agent]): a list of agents that match the agent_names. If agent_names is a string, then a list of length 1 is returned. If agent_names is None, then None is returned
+
+        '''
+
+        if agent_names is None:
+            return None
+        
+        if isinstance(agent_names, str):
+            agent_names = [agent_names]
+
+        agents: list[Agent] = []
+
+        for agent_name in agent_names:
+            agent = self._agent_lookup(agent_name)
+            agents.append(agent)
+
+        return agents
+    
+    def _agent_lookup(self, agent_name: str) -> Agent:
+
+        """
+        Helper function for agent lookup. 
+
+        The procedure will work as follows:-
+        1. If agent_name is None, the function will return None
+        2. if the agent_name is found in self.agents_dict, then   self.agents_dict[agent_name] is returned
+        3. Else
+            - a loop over self.agents list is performed and each agent.name is checked against agent_name
+            - if found the agent is added to the self.agents_dict and returned
+            - if not found None is returned
+
+        Args:
+            agent_name: the name of the agent you want to lookup
+        """
+
+        if agent_name is None:
+            return None
+        
+        if agent_name in self.agents_dict:
+            return self.agents_dict[agent_name]
+        else:
+            for agent in self.Agents:
+                if agent.name == agent_name:
+                    self.agents_dict[agent_name] = agent
+                    return agent
+        
+        raise ValueError('Agent name not found in Environment.agents list. Make sure the there no typos. agent name is case sensitive')
+    
+    def add_agent(self, agent: Agent = None):
+        """
+        This function adds a agent to the Envirnoment.Agents list and also adds it to the Agent.agents_dict dictionary
+        which allows you to lookup a agent by name.
+
+        This also ensures that the agent is associated with this Agent and has a unique name. 
+        Otherwise a warning is raised.
+
+        Args:
+            agent: the agent object you want to add to the Agent.Agent list
+
+        """
+
+        assert agent is not None and isinstance(agent, Agent), TypeError("agent must be a Agent type" )
+
+        #check if a agent with this name already exists
+        if agent.name in self.agents_dict:
+            
+            # we try with the name of the agent + a number
+
+            idx = len(self.Agents)
+            name = f"agent_{idx}"
+
+            if name in self.agents_dict:
+                raise ValueError(f"A agent with the name {agent.name}  and  {name} already exists. Please choose a unique name for each agent.\n\
+                            This can cause trouble with lookups")
+                
+            else:
+                agent.name = name 
+                warnings.warn(f"A agent with the name {agent.name} already exists. Renaming to {name}")
+        
+
+        self.Agents.append(agent)
+        self.agents_dict[agent.name] = agent
+
+
+    def remove_agent(self, agent: Union[str, Agent]  = None):
+
+        """
+            A function to remove a agent from the Environment.Agents list and the Environment.agents_dict dictionary
+
+            Args:
+                agent (str|Agent): the name of the agent you want to remove or the agent object itself
+        """
+
+        if isinstance(agent, str):
+            agent = self._agent_lookup(agent)
+        
+        if agent is None:
+            return None
+
+        self.Agents.remove(agent)
+        self.agents_dict.pop(agent.name)
+        
+    
+
+
+    
     def add_wall(self, wall):
         """Add a wall to the (2D) environment.
         Extends self.walls array to include one new wall.

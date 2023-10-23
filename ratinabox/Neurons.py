@@ -1752,7 +1752,6 @@ class ObjectVectorCells(VectorCells):
 
 
         # list of colors for each cell, just used by `.display_vector_cells()` plotting function
-            color = np.array(matplotlib.colors.to_rgba("C1")).reshape(1,-1)
         self.cell_colors = []
         cmap = matplotlib.colormaps[self.Agent.Environment.object_colormap]
         for i in range(self.n):
@@ -1957,6 +1956,181 @@ class FieldOfViewOVCs(ObjectVectorCells):
         assert self.params["cell_arrangement"] is not None, "cell_arrangement must be set for FOV Neurons"
 
         super().__init__(Agent, self.params)
+
+
+class AgentVectorCells(VectorCells):
+
+    default_params = {
+        "distance_range": [0.01, 0.2],  # min and max distances the agent can "see"
+        "angle_range": [0,90,],  # angluar FoV in degrees (will be symmetric on both sides, so give range in 0 (forwards) to 180 (backwards)
+        "spatial_resolution": 0.04,  # resolution of each BVC tiling FoV
+        "beta": 5, # smaller means larger rate of increase of cell size with radius in hartley type manifolds
+        "cell_arrangement": "diverging_manifold",  # whether all cells have "uniform" receptive field sizes or they grow ("hartley") with radius.
+        "reference_frame" : "egocentric",
+        "walls_occlude": True, #objects behind walls cannot be seen
+    }
+
+    def __init__(self, Agent, Other_Agent = None , params={}):
+
+        self.Agent = Agent
+
+        self.params = copy.deepcopy(__class__.default_params)
+        self.params.update(params)
+
+
+        assert self.params["cell_arrangement"] is not None, "cell_arrangement must be set for FOV Neurons"
+
+        super().__init__(Agent, self.params)
+
+        # assert target_agent is not None, "You must specify a target agent for AgentVectorCells"
+
+        # have a list to detect which agent will the cell detect 
+        self.tuning_type_agent = Other_Agent
+
+
+
+        if self.walls_occlude == True:
+            self.wall_geometry = "line_of_sight"
+        else:
+            self.wall_geometry = "euclidean"
+
+
+        # list of colors for each cell, just used by `.display_vector_cells()` plotting function
+
+        color = np.array(matplotlib.colors.to_rgba(f"C{self.tuning_type_agent.agent_idx}")).reshape(1,-1) #TODO: colours 
+        self.cell_colors = np.repeat(color, self.n, axis=0)
+
+
+        if ratinabox.verbose is True:
+            print(
+                "AgentVectorCells (OVCs) successfully initialised."
+            )
+        
+        
+        return
+
+    def get_state(self, evaluate_at="agent", **kwargs):
+        """Returns the firing rate of the AgentVectorCells.
+
+        The way we do this is a little complex. We will describe how it works from a single position to a single VC
+        (but remember this can be called in a vectorised manner from an array of positons in parallel and there are 
+        in principle multiple VCs)
+            1. A vector from the position to the object is calculated.
+            2. The bearing of this vector is calculated and its length. Note if self.reference_frame == "egocentric" 
+               then the bearing is relative to the heading direction of the agent (along its current velocity), not true-north.
+            3. Since the distance to the object is calculated taking the environment into account if there is a wall 
+               occluding the agent from the obvject this object will not fire.
+            4. It is now simple to calculate the firing rate of the cell. Each OVC has a preferred distance and angle
+               away from it which cause it to fire. Its a multiple of a gaussian (distance) and von mises (for angle) which creates the eventual firing rate.
+
+        By default position is taken from the Agent and used to calculate firing rates. This can also by passed directly 
+        (evaluate_at=None, pos=pass_array_of_positions) or you can use all the positions in the environment (evaluate_at="all").
+
+        Returns:
+            firingrates: an array of firing rates
+        """
+        if evaluate_at == "agent":
+            pos = self.Agent.pos
+        elif evaluate_at == "all":
+            pos = self.Agent.Environment.flattened_discrete_coords
+        else:
+            pos = kwargs["pos"]
+
+        if self.tuning_type_agent is None:
+            return np.zeros_like(self.firingrate)
+
+        agent_location = self.tuning_type_agent.pos
+
+        pos = np.array(pos)
+        pos = pos.reshape(-1, pos.shape[-1])  # (N_pos, 2)
+        N_pos = pos.shape[0]
+        N_cells = self.n
+        N_objects = 1
+
+
+        # 1. GET VECTORS FROM POSITIONS TO OBJECTS 
+        (
+            distances_to_other_agent, # (N_pos,N_objects)
+            vectors_to_agents, # (N_pos,N_objects,2)
+        ) = self.Agent.Environment.get_distances_between___accounting_for_environment(
+            pos,
+            agent_location,
+            return_vectors=True,
+            wall_geometry=self.wall_geometry,
+        )  
+        flattened_vectors_to_objects = -1 * vectors_to_agents.reshape(
+            -1, 2
+        )  # (N_pos x N_objects, 2) #vectors go from pos2 to pos1 so must multiply by -1 
+        # flatten is just for the get angle API, reshaping it later
+        bearings_to_objects = (
+            utils.get_angle(flattened_vectors_to_objects, is_array=True).reshape(
+                N_pos, N_objects
+            )
+        )  # (N_pos,N_objects) 
+
+        # 2. ACCOUNT FOR HEAD DIRECTION IF EGOCENTRIC. THEN CALCULATE BEARINGS TO OBJECTS
+        if self.reference_frame == "egocentric":
+            if evaluate_at == "agent":
+                head_direction = self.Agent.head_direction
+            elif "head_direction" in kwargs.keys():
+                head_direction = kwargs["head_direction"]
+            elif "vel" in kwargs.keys():
+                # just to make backwards compatible
+                warnings.warn("'vel' kwarg deprecated in favour of 'head_direction'")
+                head_direction = kwargs["vel"]
+            else:
+                head_direction = np.array([1, 0])
+                warnings.warn(
+                    "OVCs in egocentric plane require a head direction vector but none was passed. Using [1,0]"
+                )
+            head_bearing = utils.get_angle(head_direction)
+            bearings_to_objects -= head_bearing  # account for head direction
+
+        # 3. COLLECT TUNING DETAILS OF EACH CELL AND PUT IN THE RIGHT SHAPE 
+        tuning_distances = np.tile(
+            np.expand_dims(np.expand_dims(self.tuning_distances, axis=0), axis=0),
+            reps=(N_pos, N_objects, 1),
+        )  # (N_pos,N_objects,N_cell)
+        sigma_distances = np.tile(
+            np.expand_dims(np.expand_dims(self.sigma_distances, axis=0), axis=0),
+            reps=(N_pos, N_objects, 1),
+        )  # (N_pos,N_objects,N_cell)
+        tuning_angles = np.tile(
+            np.expand_dims(np.expand_dims(self.tuning_angles, axis=0), axis=0),
+            reps=(N_pos, N_objects, 1),
+        )  # (N_pos,N_objects,N_cell)
+        sigma_angles = np.tile(
+            np.expand_dims(np.expand_dims(self.sigma_angles, axis=0), axis=0),
+            reps=(N_pos, N_objects, 1),
+        )  # (N_pos,N_objects,N_cell)
+        object_types = np.tile(
+            np.expand_dims(self.Agent.Environment.objects["object_types"], axis=-1), reps=(1, N_cells)
+        ) # (N_objects,N_cell)
+
+        distances_to_other_agent = np.tile(
+            np.expand_dims(distances_to_other_agent, axis=-1), reps=(1, 1, N_cells)
+        )  # (N_pos,N_objects,N_cells)
+        bearings_to_objects = np.tile(
+            np.expand_dims(bearings_to_objects, axis=-1), reps=(1, 1, N_cells)
+        )  # (N_pos,N_objects,N_cells)
+
+        firingrate = utils.gaussian(
+            distances_to_other_agent, tuning_distances, sigma_distances, norm=1
+        ) * utils.von_mises(
+            bearings_to_objects, tuning_angles, sigma_angles, norm=1
+        )  # (N_pos,N_objects,N_cell)
+
+        firingrate = np.sum(
+            firingrate, axis=1
+        ).T  # (N_cell,N_pos), sum over objects which this cell is selective to #TODO: a single cell can fire with 2 types of objects 
+        firingrate = (
+            firingrate * (self.max_fr - self.min_fr) + self.min_fr
+        )  # scales from being between [0,1] to [min_fr, max_fr]
+        return firingrate
+
+
+
+    
 
       
 class HeadDirectionCells(Neurons):
