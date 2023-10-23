@@ -363,7 +363,7 @@ Perhaps you want to generate really complex cell types (more complex than just `
 <img src=".images/readme/functionapproximators.gif" width=800>
 
 
-Both of these classes can be used as the building block for constructing complex multilayer networks of `Neurons` (e.g. `FeedForwardLayers` are `RatInABox.Neurons` in their own right so can be used as inputs to other `FeedForwardLayers`). Their parameters can be accessed and set (or "trained") to create neurons with complex receptive fields. In the case of `DeepNeuralNetwork` neurons the firing rate attached to the computational graph is stored so gradients can be taken. Examples can be found [here (path integration)](./demos/path_integration_example.ipynb), [here (reinforcement learning)](./demos/reinforcement_learning_example.ipynb), [here (successor features)](./demos/successor_features_example.ipynb) and [here (actor_critic_demo)](./demos/actor_critic_example.ipynb). 
+Both of these classes can be used as the building block for constructing complex multilayer networks of `Neurons` (e.g. `FeedForwardLayers` are `RatInABox.Neurons` in their own right so can be used as inputs to other `FeedForwardLayers`). Their parameters can be accessed and set (or "trained") to create neurons with complex receptive fields. In the case of `DeepNeuralNetwork` neurons the firing rate attached to the computational graph is stored so gradients can be taken. Examples can be found [here (deep learning with `NeuralNewtworkNeurons`)](./demos/deel_learning_example.ipynb) as well as [here (path integration)](./demos/path_integration_example.ipynb), [here (reinforcement learning)](./demos/reinforcement_learning_example.ipynb), [here (successor features)](./demos/successor_features_example.ipynb) and [here (actor critic deep RL)](./demos/actor_critic_example.ipynb). 
 
 
 
@@ -427,6 +427,7 @@ fig, ax = PCs.plot_rate_timeseries()
 * [paper_figures.ipynb](./demos/paper_figures.ipynb): (Almost) all plots/animations shown in the paper are produced from this script (plus some major formatting done afterwards in powerpoint).
 * [decoding_position_example.ipynb](./demos/decoding_position_example.ipynb): Postion is decoded from neural data generated with RatInABox. Place cells, grid cell and boundary vector cells are compared. 
 * [splitter_cells_example.ipynb](./demos/splitter_cells_example.ipynb): A simple simultaion demonstrating how `Splittre` cell data could be create in a figure-8 maze.
+* [deep_learning_example.ipynb](./deep_learning_example.ipynb): Here we showcase `NeuralNetworkNeurons` a class of `Neurons` which has a small neural network embedded inside. We train them to take grid cells as inputs and output an arbitrary function  as their rate map.
 * [reinforcement_learning_example.ipynb](./demos/reinforcement_learning_example.ipynb): RatInABox is use to construct, train and visualise a small two-layer network capable of model free reinforcement learning in order to find a reward hidden behind a wall. 
 * [actor_critic_example.ipynb](./demos/actor_critic_example.ipynb): RatInABox is use to implement the actor critic algorithm using deep neural networks.
 * [successor_features_example.ipynb](./successor_features_example.ipynb): RatInABox is use to learn and visualise successor features under random and biased motion policies.
