@@ -95,7 +95,7 @@ class Agent:
         if self.name is None:
             self.name = f"agent_{self.agent_idx}"
 
-        self.Environment.add_agent(self) #will raise an warning(/error) if the agent name is not unique
+        self.Environment.add_agent(agent=self) #will raise an warning(/error) if the agent name is not unique
 
 
         # initialise history dataframes
@@ -139,7 +139,8 @@ class Agent:
         # normally this will just be a low pass filter over the velocity vector
         # this is done to smooth out head turning and make it more realistic 
         # (potentially stablize behaviours associated with head direction)
-        self.head_direction = self.velocity
+        self.head_direction = self.velocity / np.linalg.norm(self.velocity)
+
 
         if ratinabox.verbose is True:
             print(
@@ -467,25 +468,27 @@ class Agent:
 
         The head direction is updated by a low pass filter of the the current velocity vector.
         """
+        if self.Environment.dimensionality == "1D": #its just the sign of the velocity
+            self.head_direction = np.sign(self.velocity)
 
-        tau_head_direction = self.head_direction_smoothing_timescale
-        immediate_head_direction = self.velocity / np.linalg.norm(self.velocity)
+        elif self.Environment.dimensionality == "2D":
+            tau_head_direction = self.head_direction_smoothing_timescale
+            immediate_head_direction = self.velocity / np.linalg.norm(self.velocity)
 
-        if self.head_direction is None:
-            self.head_direction = self.velocity
-        
-        if tau_head_direction <= dt: 
-            self.head_direction = immediate_head_direction
-            return
-        
-        if dt > tau_head_direction:
-            warnings.warn("dt > head_direction_smoothing_timescale. This will break the head direction smoothing.")
+            if self.head_direction is None:
+                self.head_direction = self.velocity
+            
+            if tau_head_direction <= dt: 
+                self.head_direction = immediate_head_direction
+                return
+            
+            if dt > tau_head_direction:
+                warnings.warn("dt > head_direction_smoothing_timescale. This will break the head direction smoothing.")
+     
+            self.head_direction = self.head_direction * ( 1 - dt / tau_head_direction ) + dt / tau_head_direction * immediate_head_direction
 
-        
-        self.head_direction = self.head_direction * ( 1 - dt / tau_head_direction ) + dt / tau_head_direction * immediate_head_direction
-
-        # normalize the head direction
-        self.head_direction = self.head_direction / np.linalg.norm(self.head_direction)
+            # normalize the head direction
+            self.head_direction = self.head_direction / np.linalg.norm(self.head_direction)
 
     def save_to_history(self):
         self.history["t"].append(self.t)

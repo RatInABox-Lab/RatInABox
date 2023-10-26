@@ -253,14 +253,13 @@ class Environment:
         which allows you to lookup a agent by name.
 
         This also ensures that the agent is associated with this Agent and has a unique name. 
-        Otherwise a warning is raised.
+        Otherwise an index is appended to the name to make it unique and a warning is raised.
 
         Args:
             agent: the agent object you want to add to the Agent.Agent list
 
         """
-
-        assert agent is not None and isinstance(agent, Agent), TypeError("agent must be a Agent type" )
+        assert agent is not None and isinstance(agent, Agent), TypeError("agent must be a ratinabox Agent type" )
 
         #check if a agent with this name already exists
         if agent.name in self.agents_dict:
