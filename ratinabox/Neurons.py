@@ -367,7 +367,7 @@ class Neurons:
                 if len(spike_data) == 0:
                     print("No historical data with which to plot spikes.")
 
-        if self.color == None:
+        if self.color is None:
             coloralpha = None
         else:
             coloralpha = list(matplotlib.colors.to_rgba(self.color))
