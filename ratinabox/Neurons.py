@@ -1763,6 +1763,8 @@ class ObjectVectorCells(VectorCells):
             self.cell_colors.append(np.array(matplotlib.colors.to_rgba(c)))
         self.cell_colors = np.array(self.cell_colors)
         self.color = self.cell_colors[0] #this will obviously not work if you have different colors for each cell but most of the time itll work great.
+
+
         if ratinabox.verbose is True:
             print(
                 "ObjectVectorCells (OVCs) successfully initialised. \
@@ -2227,32 +2229,51 @@ class HeadDirectionCells(Neurons):
                 f"HeadDirectionCells successfully initialised. Your environment is {self.Agent.Environment.dimensionality}, you have {self.n} head direction cells"
             )
 
-    def get_state(self, evaluate_at="agent", **kwargs):
+    def get_state(self, evaluate_at="agent", use_velocity=False, **kwargs):
         """In 2D n head direction cells encode the head direction of the animal. By default velocity 
-        (which determines head direction) is taken from the agent but this can also be passed as a kwarg 'vel'"""
-
-        if evaluate_at == "agent":
-            head_direction = self.Agent.head_direction
-        elif "head_direction" in kwargs.keys():
-            head_direction = kwargs["head_direction"]
-        elif "vel" in kwargs.keys():
-            head_direction = np.array(kwargs["vel"])
-            warnings.warn("'vel' kwarg deprecated in favour of 'head_direction'")
-        else:
-            print("HeadDirection cells need a head direction but not was given, taking...")
-            if self.Agent.Environment.dimensionality == "2D":
-                head_direction = np.array([1, 0])
-                print("...[1,0] as default")
-            if self.Agent.Environment.dimensionality == "1D":
-                head_direction = np.array([1])
-                print("...[1] as default")
-
+        (which determines head direction) is taken from the agent but this can also be passed as a kwarg 'head_direction'
+        
+        If use_velocity is True, will use the normalised velocity of the agent instead of the head direction. In this instance uset he kwarg "velocity" to manually passin a velocity vector."""
+        
+        #Head direction uses actual head direction of agent
+        if use_velocity is False: 
+            if evaluate_at == "agent":
+                direction = self.Agent.head_direction
+            elif "head_direction" in kwargs.keys():
+                direction = kwargs["head_direction"]
+            elif "vel" in kwargs.keys():
+                direction = np.array(kwargs["vel"])
+                warnings.warn("'vel' kwarg deprecated in favour of 'head_direction'")
+            else:
+                print("HeadDirection cells need a head direction but not was given, taking...")
+                if self.Agent.Environment.dimensionality == "2D":
+                    direction = np.array([1, 0])
+                    print("...[1,0] as default")
+                if self.Agent.Environment.dimensionality == "1D":
+                    direction = np.array([1])
+                    print("...[1] as default")
+        # Head direction uses normalised velocity of agent
+        elif use_velocity is True:
+            if evaluate_at == "agent":
+                vel = self.Agent.velocity
+            elif "velocity" in kwargs.keys():
+                vel = kwargs["velocity"]
+            else:
+                print("HeadDirection cells need a head direction but not was given, taking...")
+                if self.Agent.Environment.dimensionality == "2D":
+                    vel = np.array([1, 0])
+                    print("...[1,0] as default")
+                if self.Agent.Environment.dimensionality == "1D":
+                    vel = np.array([1])
+                    print("...[1] as default")
+            direction = vel / np.linalg.norm(vel)
+        
         if self.Agent.Environment.dimensionality == "1D":
-            hdleft_fr = max(0, np.sign(head_direction[0]))
-            hdright_fr = max(0, -np.sign(head_direction[0]))
+            hdleft_fr = max(0, np.sign(direction[0]))
+            hdright_fr = max(0, -np.sign(direction[0]))
             firingrate = np.array([hdleft_fr, hdright_fr])
         if self.Agent.Environment.dimensionality == "2D":
-            current_angle = utils.get_angle(head_direction)
+            current_angle = utils.get_angle(direction)
             firingrate = utils.von_mises(
                 current_angle, self.preferred_angles, self.angular_tunings, norm=1
             )
@@ -2353,7 +2374,7 @@ class VelocityCells(HeadDirectionCells):
     def get_state(self, evaluate_at="agent", **kwargs):
         """Takes firing rate of equivalent set of head direction cells and scales by how fast teh speed is realtive to one_sigma_speed (likely rough maximum speed)"""
 
-        HDC_firingrates = super().get_state(evaluate_at, **kwargs)
+        HDC_firingrates = super().get_state(evaluate_at, use_velocity=True, **kwargs)
         speed_scale = np.linalg.norm(self.Agent.velocity) / self.one_sigma_speed
         firingrate = HDC_firingrates * speed_scale
         return firingrate
