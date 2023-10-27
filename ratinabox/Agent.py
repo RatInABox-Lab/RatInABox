@@ -341,7 +341,7 @@ class Agent:
                     last_pos = np.array(self.history["pos"][-1])
                     shift = self.Environment.get_vectors_between___accounting_for_environment(
                         pos1=self.pos, pos2=last_pos
-                    )
+                    ) #TODO this recalculation of velocity might be slowing things down more than it's worth
                     self.save_velocity = (
                         shift.reshape(-1) / self.dt
                     )  # accounts for periodic
