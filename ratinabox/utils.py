@@ -1079,41 +1079,100 @@ def create_diverging_radial_assembly(distance_range: list = [0.01, 0.2],
     return mu_d, mu_theta, sigma_d, sigma_theta
 
 
-def create_random_assembly(distance_distribution: str = "uniform",
-                        distance_distribution_params: Union[list, tuple] = [0.0, 0.3],
-                        angle_spread_degrees: float = 15,
-                        beta: float = 12,
-                        xi: float = 0.08, 
+def create_random_assembly(
+                        tuning_distance_distribution: str = "uniform",
+                        tuning_distance: Union[np.ndarray, list, tuple] = (0.0, 0.3),
+                        tuning_angle_distribution: str = "uniform",
+                        tuning_angle: Union[np.ndarray, list, tuple] = (0.0, 360.0),
+                        sigma_angle_distribution: str = "uniform",
+                        sigma_angle: Union[np.ndarray, list, tuple] = (10, 30),
+                        sigma_distance_distribution: str = "diverging",
+                        sigma_distance: Union[np.ndarray, list, tuple] = (0.08, 12),
                         n: int = 10,
                         **kwargs):
     '''
-    Get the parameters for a random manifold of vector cells. 
-    (randomly sample from the space of possible parameters). 
-    xi and beta control how the radial width of the receptive field changes with distance from the agent.
-     
+    Gets the parameters for a random manifold of vector cells. 
+    
+    tuning_distance, tuning_angle, sigma_distance and sigma_angle can be handed in as lists/arrays (in which case they are set to these exact values, one per cell) or tuples where the values inside the tuples define the parameters of a distribution (the string defined by <param>_distribution) from which the parameters are sampled. An up to date list of avaiable distributions and their parameters in utils.distribution_sampler(), currently avaiable distributions are:
+    - uniform ------------------------------- (low, high) or just a single param p which gives (0.5*p, 1.5*p)
+    - rayleigh ------------------------------ (scale)
+    - normal -------------------------------- (loc, scale)
+    - logarithmic --------------------------- (low, high)
+    - delta --------------------------------- (the_single_value)
+    - modules ------------------------------- (module1_val, module2_val, module3_val, ...)
+    - truncnorm ----------------------------- (low, high, loc, scale)
+
+    The only diversion is that, in addition to the above, sigma_distance_distribution which can be set to "diverging" in which case the radial width of the receptive field is set according to the Hartley model (Hartley et al. 2000). In this case the parameters give (xi, beta) the (offset, inverse-slope) of the linear relationship between sigma and tuning_distance.
+    
     Args:
-        • distance_distribution (str): name of the distribution to sample from for preferred distance
-        • distance_distribution_params (list|tuple): parameters for the preferred distance distribution
-        • angle_spread_degrees (float): angular width of each receptive field in degrees
-        • beta (float): 
-        • xi (float): beta and xi control how the radial width of the receptive field changes with distance from the agent as in de Cothi and Barry 2020
-        • n (int): number of cells in the assembly
+    * tuning_distance_distribution (str): name of the distribution from which to sample the tuning_distance parameter
+    * tuning_distance (tuple or array): if tuple, parameters of the distribution from which to sample the tuning_distance parameter. If array, the exact values of the tuning_distance parameter for each cell
+    * tuning_angle_distribution (str): name of the distribution from which to sample the tuning_angle parameter
+    * tuning_angle (tuple or array): if tuple, parameters of the distribution from which to sample the tuning_angle parameter. If array, the exact values of the tuning_angle parameter for each cell
+    * sigma_distance_distribution (str): name of the distribution from which to sample the sigma_distance parameter
+    * sigma_distance (tuple or array): if tuple, parameters of the distribution from which to sample the sigma_distance parameter. If array, the exact values of the sigma_distance parameter for each cell
+    * sigma_angle_distribution (str): name of the distribution from which to sample the sigma_angle parameter
+    * sigma_angle (tuple or array): if tuple, parameters of the distribution from which to sample the sigma_angle parameter. If array, the exact values of the sigma_angle parameter for each cell
+    * n (int): number of cells (if any params are passed in as lists or arrays, this is overwritten) 
     '''
-    # define tuning distances from specific distribution in params dict
-    mu_d =  distribution_sampler(
-            distribution_name=distance_distribution,
-            distribution_parameters=distance_distribution_params,
+    # Handle cases where some params are handed in as lists and others are sampled from distributions
+    params = [tuning_distance, tuning_angle, sigma_distance, sigma_angle]
+    params_types = [type(p) for p in params]
+    params_which_are_lists = []
+    for (i,p) in enumerate(params):
+        if params_types[i] in [list, np.ndarray]:
+            params_which_are_lists.append(p)
+    if len(params_which_are_lists) == 0: # no params have been handed in as lists
+        pass
+    elif len(params_which_are_lists) == 1: # one param has been set as a list, make
+        n = len(params_which_are_lists[0])
+    else: # more than one param is 
+        list_lengths = [len(p) for p in params_which_are_lists]
+        assert len(set(list_lengths)) == 1, "If more than one parameter is passed as a list, they must all have the same length"
+        n = list_lengths[0]
+    
+
+    # DISTANCE TUNING
+    if type(tuning_distance) in [list, np.ndarray]: tuning_distance = np.array(tuning_distance)
+    elif type(tuning_distance) is tuple:
+        tuning_distance =  distribution_sampler(
+            distribution_name=tuning_distance_distribution,
+            distribution_parameters=tuning_distance,
             shape=(n,),
         )
-    mu_d = np.abs(mu_d) # hard bound at zero
-
-    mu_theta = np.random.uniform(0, 2 * np.pi, size=n)
-
-
-    sigma_d = mu_d / beta + xi
-
-    sigma_theta = np.array(
-            [(angle_spread_degrees / 360) * 2 * np.pi] * n
-        )
+    tuning_distance = np.abs(tuning_distance) # hard bound at zero
     
-    return mu_d, mu_theta, sigma_d, sigma_theta
+    # DISTANCE SPREAD
+    if type(sigma_distance) in [list, np.ndarray]: sigma_distance = np.array(sigma_distance)
+    elif type(sigma_distance) is tuple:
+        if sigma_distance_distribution == "diverging":
+            xi = sigma_distance[0] 
+            beta = sigma_distance[1]
+            sigma_distance = xi + tuning_distance / beta
+        else:
+            sigma_distance =  distribution_sampler(
+                distribution_name=sigma_distance_distribution,
+                distribution_parameters=sigma_distance,
+                shape=(n,),)
+    
+    # ANGLE TUNING
+    if type(tuning_angle) in [list, np.ndarray]: tuning_angle = np.array(tuning_angle)
+    elif type(tuning_angle) is tuple:
+        tuning_angle =  distribution_sampler(
+            distribution_name=tuning_angle_distribution,
+            distribution_parameters=tuning_angle,
+            shape=(n,),)
+    
+    # ANGLE SPREAD
+    if type(sigma_angle) in [list, np.ndarray]: sigma_angle = np.array(sigma_angle)
+    elif type(sigma_angle) is tuple:
+        sigma_angle =  distribution_sampler(
+            distribution_name=sigma_angle_distribution,
+            distribution_parameters=sigma_angle,
+            shape=(n,),)
+
+    #Convert angles to radians
+    tuning_angle *= np.pi / 180 # convert to radians
+    sigma_angle *= np.pi / 180 # convert to radians
+
+    return tuning_distance, tuning_angle, sigma_distance, sigma_angle
