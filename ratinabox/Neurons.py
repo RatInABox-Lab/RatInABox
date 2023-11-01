@@ -85,12 +85,6 @@ class Neurons:
             • save_to_history()
             • reset_history()
             • boundary_vector_preference_function()
-
-    default_params = {
-            "n": 10,
-            "name": "Neurons",
-            "color": None,  # just for plotting
-        }
     """
 
     default_params = {
@@ -99,6 +93,8 @@ class Neurons:
         "color": None,  # just for plotting
         "noise_std": 0,  # 0 means no noise, std of the noise you want to add (Hz)
         "noise_coherence_time": 0.5,
+        "min_fr":0.0, #not all cells use max_fr nd min_fr but we define them here in the parent class for those that do 
+        "max_fr":1.0,
         "save_history": True,  # whether to save history (set to False if you don't intend to access Neuron.history for data after, for better memory performance)
     }
 
@@ -879,51 +875,35 @@ class PlaceCells(Neurons):
 
 
 class GridCells(Neurons):
-    """The GridCells class defines a population of GridCells. This class is a subclass of Neurons() and inherits it properties/plotting functions.
+    """The GridCells class defines a population of 'n' grid cells with orientations, grid scales and offsets (these can be set randomly or non-randomly). Grids are modelled as the rectified or shifted sum of three cosine waves at 60 degrees to each other.
 
-    Must be initialised with an Agent and a 'params' dictionary.
-
-    GridCells defines a set of 'n' grid cells with random orientations, grid scales and offsets (these can be set non-randomly of course). Grids are modelled as the rectified or shifted sum of three cosine waves at 60 degrees to each other.
-
-    To initialise grid cells you specify three things: (i) params['gridscale'], (ii) params['orientation'] and (iii) params['phase_offset']. gridscale, orientations and phase_offsets of all 'n' grid cells are then sampled from a distribution (specified as, e.g. params['phase_offset_distribution']). For each, the value is a parameter of the distribution from which it is sampled. For example
-        • params = {'gridscale':(0.5,0.6),'gridscale_distribution':'uniform'} will pull gridscales from a uniform distribution between 0.5 m and 0.6 m.
-        • params = {'gridscale':0.4,'gridscale_distribution':'rayleigh'} will draw from a Rayleigh distribution of scale 'n'
-        • params {'gridscale':(0.1,0.4,1.0),'gridscale_distribution':'modules') will mkae 3 evenly sized modules of scales 0.1,0.4 and 1.0 m respectively.
-        • params = {'gridscale':0.3,'gridscale_distribution':'delta'} will make all grid cells have the same gridscale of 0.3 m.
-    For a full list of distributions, see ratinabox.utils.distribution_sampler(). For distributions which take multiple params these must be give in a tuple (not list or array, see next paragraph).
-
-    For all three of these you can optionally just pass a list or array array of length GridCells.n (in which case the corresponding distribution parameter is ignored). This array is set a the value for each grid cell.
+    To initialise grid cells you specify their (i) params['gridscale'], (ii) params['orientation'] and (iii) params['phase_offset']. These can be handed in as lists/arrays (in which case they are set to these exact values, one per cell) or tuples where the values inside the tuples define the parameters of a distribution (the string defined by params['<param>_distribution']) from which the parameters are sampled. An up-to-date list of avaiable distributions and their parameters in utils.distribution_sampler(), currently avaiable distributions are:
+    - uniform ------------------------------- (low, high) or just a single param p which gives (0.5*p, 1.5*p)
+    - rayleigh ------------------------------ (scale)
+    - normal -------------------------------- (loc, scale)
+    - logarithmic --------------------------- (low, high)
+    - delta --------------------------------- (the_single_value)
+    - modules ------------------------------- (module1_val, module2_val, module3_val, ...)
+    - truncnorm ----------------------------- (low, high, loc, scale)
+    For example to get three modules of gridcells I could set params = {'gridscale_distribution':'modules', 'gridscale':(0.5, 1, 1.5)} which would give me three modules of grid cells with grid scales 0.5, 1 and 1.5. 
 
     params['description'] gives the place cells model being used. Currently either rectified sum of three cosines "three_rectified_cosines" or a shifted sum of three cosines "three_shifted_cosines" (which is similar, just a little softer at the edges, see Solstad et al. 2006)
-
+    
     List of functions:
         • get_state()
         • set_phase_offsets()
 
-
-    default_params = {
-            "n": 10,
-            "gridscale": (0.50,1),
-            "gridscale_distribution": "uniform",
-            "orientation": (0,2*np.pi),
-            "orientation_distribution": "uniform",
-            "phase_offset": (0,2*np.pi),
-            "phase_offset_distribution": "uniform",
-            "description":"three_rectified_cosines",
-            "min_fr": 0,
-            "max_fr": 1,
-            "name": "GridCells",
         }
     """
 
     default_params = {
         "n": 10,
-        "gridscale": (0.50, 1),
         "gridscale_distribution": "uniform",
-        "orientation": (0, 2 * np.pi),
+        "gridscale": (0.50, 1),
         "orientation_distribution": "uniform",
-        "phase_offset": (0, 2 * np.pi),
+        "orientation": (0, 2 * np.pi), #radians 
         "phase_offset_distribution": "uniform",
+        "phase_offset": (0, 2 * np.pi), #degrees 
         "description": "three_rectified_cosines",  # can also be "three_shifted_cosines" as in Solstad 2006 Eq. (2)
         "min_fr": 0,
         "max_fr": 1,
@@ -973,12 +953,7 @@ class GridCells(Neurons):
         super().__init__(Agent, self.params)
 
         # Initialise phase offsets for each grid cell
-        if (
-            type(self.params["phase_offset"])
-            in (
-                list,
-                np.ndarray,
-            )
+        if (type(self.params["phase_offset"]) in (list,np.ndarray,)
             and len(np.array(self.params["phase_offset"]).shape) == 2
         ):
             self.phase_offsets = np.array(self.params["phase_offset"])
@@ -1096,63 +1071,62 @@ class GridCells(Neurons):
 
 class VectorCells(Neurons):
     """
-    The VectorCells class defines a population of VectorCells. This class is a 
-    subclass of Neurons() and inherits it properties/plotting functions.Must be initialised with an Agent and a 'params' dictionary.
-    Typical VectorCells include BoundaryVectorCells, ObjectVectorCells and AgentVectorCells. These are similar in that each cell within these
-    classes has a preferred tuning_distance, tuning_angle, sigma_distances (i.w. width of receptive field in distance) and sigma_angle. 
-    They are different in that the former, cells respond to walls whereas in the latter cells respond to objects (which may come in different types) 
-
-    This class should be only be used as a parent class for specific subclasses of vector cells and 
-    is a helper class to set the cell tuning parameters (angular and distance preferences) for the subclasses.
-    Inheriting this class will allow you to use the plotting functions and some out of the box 
-    manifold functions. (See set_tuning_parameters() for more details)
-
-    All vector cells have receptive fields which is a von Mises distributions in angle (mean = tuning_angle, 1/sqrt_kappa ~= std = sigma_angle) and 
-    a Gaussian in distance (mean = tuning_distance, std = sigma_distance). There are many ways we might like to set these parameters for each neuron...e.g.
-
-    • Randomly ["cell_arrangement": "random"] 
-        Distance preferences of each cell are drawn from a random distribution which can be any of the utils.distribution_sampler() 
-        accepted distributions. pass parameters in as a tuple e.g.
-            • params{'distance_distribution_params':(0.1,0.4), 'distance_distribution':'uniform'} samples from a uniform distribution between [0.1,0.4]
-            • params{'distance_distribution_params':(0.4), 'distance_distribution':'rayleigh'} samples from a rayleigh distribution with scale 0.4
-            • params{'distance_distribution_params':(0.4), 'distance_distribution':'delta'} samples gives all a constant value of 0.4
-            • etc. there are others
-        Distance preference width 
-        Angular preferences of each BVC are drawn from a uniform distribution on [0, 2pi] and angular prefernce widths all have the constant value of "angle_spread_degrees". 
-    • Arranged in the form of a radial assembly so as to simulate a "field of view".  This is handled by the `FieldOfViewOVCs/BVCs/AVCs` subclasses.
-        ["cell_arrangement": "uniform_manifold" or "diverging_manifold"].
-        Think of these like the US house of representatives where each politician is a neuron. 
-    • User defined: pass a function that returns 4 lists of the same length corresponding to the tuning distances, tuning angles, sigma distances
-        and sigma angles ["cell_arrangement": my_funky_tuning_parameter_setting_function]
-    
-
-    Use the plotting function self.display_vector_cells() to show the "receptive field" of each vector cell on the environment with its color
-    scaled by its firing rate. 
-
-    Examples of VectorCells subclasses:
+    The VectorCells class defines a population of VectorCells. It should only be used as a parent class for one of the follwing subclasses:
         • BoundaryVectorCells ("BVCs")
             • FieldOfViewBVCs
         • ObjectVectorCells ("OVCs")
             • FieldOfViewOVCs
         • AgentVectorCells ("AVCs")
             • FieldOfViewAVCs
-        
-
     
+    All vector cells are similar in that every cell responds to <something> in the Environment with a preferred tuning_distance, tuning_angle, sigma_distances (i.w. width of receptive field in distance) and sigma_angle. They are different in what they respond to (<something> = walls, objects, agents) and how they are arranged (randomly, in a field-of-view, etc...).
+
+    All vector cells have receptive fields which is a von Mises distributions in angle (mean = tuning_angle, 1/sqrt_kappa ~= std = sigma_angle) and 
+    a Gaussian in distance (mean = tuning_distance, std = sigma_distance). There are many ways we might like to set these parameters for each neuron...
+
+    DEFAULT PARAMS:
+    * "n" (int): number of cells (if any params are passed in as lists or arrays, this is overwritten)
+    * "reference_frame" (str): "allocentric" or "egocentric"
+    * "cell_arrangement" (str): how to set the tuning parameters for each cell. See set_tuning_parameters() for more details. Possible cell arrangements are: 
+        • Randomly ["cell_arrangement": "random"]
+        • Field-of-view ["cell_arrangement": "uniform_manifold" or "diverging_manifold"]. This is automatically done by the by the `FieldOfViewOVCs/BVCs/AVCs` subclasses. 
+        • User defined: ["cell_arrangement": my_funky_tuning_parameter_setting_function] pass a function that returns 4 lists of the same length corresponding to the tuning distances, tuning angles, sigma distances and sigma angles 
+    
+    IF cell_arrangement is "random" THE FOLLOWING PARAMETERS BECOME RELEVANT:
+    * "tuning_distance_distribution" (str): name of the distribution from which to sample the tuning_distance parameter
+    * "tuning_distance" (tuple or array): if tuple, parameters of the distribution from which to sample the tuning_distance parameter. If array, the exact values of the tuning_distance parameter for each cell
+    * "tuning_angle_distribution" (str): name of the distribution from which to sample the tuning_angle parameter
+    * "tuning_angle" (tuple or array): if tuple, parameters of the distribution from which to sample the tuning_angle parameter. If array, the exact values of the tuning_angle parameter for each cell
+    * "sigma_distance_distribution" (str): name of the distribution from which to sample the sigma_distance parameter
+    * "sigma_distance" (tuple or array): if tuple, parameters of the distribution from which to sample the sigma_distance parameter. If array, the exact values of the sigma_distance parameter for each cell
+    * "sigma_angle_distribution" (str): name of the distribution from which to sample the sigma_angle parameter
+    * "sigma_angle" (tuple or array): if tuple, parameters of the distribution from which to sample the sigma_angle parameter. If array, the exact values of the sigma_angle parameter for each cell
+
+    HOW TO SET THE TUNING PARAMETERS FOR EACH CELL:
+    When cell_arrangement is "random", tuning_distance, tuning_angle, sigma_distance and sigma_angle can be handed in as lists/arrays (in which case they are set to these exact values, one per cell) or tuples where the values inside the tuples define the parameters of a distribution (the string defined by <param>_distribution) from which the parameters are sampled. An up to date list of avaiable distributions and their parameters in utils.distribution_sampler(), currently avaiable distributions are:
+    - uniform ------------------------------- (low, high) or just a single param p which gives (0.5*p, 1.5*p)
+    - rayleigh ------------------------------ (scale)
+    - normal -------------------------------- (loc, scale)
+    - logarithmic --------------------------- (low, high)
+    - delta --------------------------------- (the_single_value)
+    - modules ------------------------------- (module1_val, module2_val, module3_val, ...)
+    - truncnorm ----------------------------- (low, high, loc, scale)
+    The only diversion is that, in addition to the above, sigma_distance_distribution which can be set to "diverging" in which case the radial width of the receptive field is set according to the Hartley model (Hartley et al. 2000). In this case the parameters give (xi, beta) the (offset, inverse-slope) of the linear relationship between sigma and tuning_distance.
     """
+    
     default_params = {
         "n": 10,
         "reference_frame": "allocentric",
-        "min_fr": 0,
-        "max_fr": 1,
-        "cell_arrangement": "random", #if "random", will randomly assign the tuning distances and angles according to the below parameters. 
-        #the following params determine how the tuning parameters are sampled if cell_arrangement is "random"
-        "distance_distribution": "uniform",
-        "distance_distribution_params": [0.1,0.3],
-        "angle_spread_degrees":15,
-        "xi": 0.08,
-        "beta" : 12,
-
+        "cell_arrangement": "random", 
+        #the following are only used if cell_arrangement is "random"
+        "tuning_distance_distribution": "uniform",
+        "tuning_distance":(0.0,0.3),
+        "tuning_angle_distribution": "uniform",
+        "tuning_angle":(0.0,360),
+        "angular_spread_distribution": "uniform",
+        "angular_spread": (10, 30),
+        "distance_spread_distribution": "diverging", #If diverging then params give (xi, beta)
+        "distance_spread": (0.08, 12),
     }
 
     def __init__(self, Agent, params={}):
@@ -1171,12 +1145,12 @@ class VectorCells(Neurons):
             params['distance_distribution'] = params['pref_wall_dist_distribution']
             del params['pref_wall_dist_distribution']
         if 'pref_wall_dist' in params.keys():
-            warnings.warn("'pref_wall_dist' param is deprecated. Please use 'distance_distribution_params' instead")
-            params['distance_distribution_params'] = params['pref_wall_dist']
+            warnings.warn("'pref_wall_dist' param is deprecated. Please use 'distance' instead")
+            params['distance'] = params['pref_wall_dist']
             del params['pref_wall_dist']
         if 'pref_object_dist' in params.keys():
-            warnings.warn("'pref_object_dist' param is deprecated. Please use 'distance_distribution_params' instead")
-            params['distance_distribution_params'] = params['pref_object_dist']
+            warnings.warn("'pref_object_dist' param is deprecated. Please use 'distance' instead")
+            params['distance'] = params['pref_object_dist']
             del params['pref_object_dist']
 
         self.params = copy.deepcopy(__class__.default_params)
@@ -1195,14 +1169,11 @@ class VectorCells(Neurons):
          self.tuning_angles, 
          self.sigma_distances, 
          self.sigma_angles) = self.set_tuning_parameters(**self.params)
-        self.n = len(self.tuning_distances) 
+        self.n = len(self.tuning_distances) #ensure n is correct
         self.firingrate = np.zeros(self.n)
         self.noise = np.zeros(self.n)
         self.cell_colors = None 
 
-
-
-    
     
     def set_tuning_parameters(self, **kwargs):
         """Get the tuning parameters for the vector cells.
