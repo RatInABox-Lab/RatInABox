@@ -37,7 +37,7 @@ class ValueNeuron(FeedForwardLayer):
         "tau_e": None,  # eligibility trace timescale, must be <= tau (defaults to tau/4)
         "eta": 0.001,  # learning rate
         "L2": 0.001,  # L2 regularisation
-        "activation_params": {"activation": "relu"},  # non-linearity for
+        "activation_function": {"activation": "relu"},  # non-linearity for
         "n": 1,  # how many rewards there will be and thus how many Values function (each represented by one ValueNeuron) there are
     }
 

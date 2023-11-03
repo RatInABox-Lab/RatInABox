@@ -879,7 +879,7 @@ def activate(x, activation="sigmoid", deriv=False, other_args={}):
 
     Args:
         x (the input (vector))
-        activation: which type of fucntion to use (this is overwritten by 'activation' key in other_args)
+        activation: which type of fucntion to use (this is overwritten if 'activation' is in other_args)
         deriv (bool, optional): Whether it return f(x) or df(x)/dx. Defaults to False.
         other_args: Dictionary of parameters including other_args["activation"] = str for what type of activation (sigmoid, linear) and other params e.g.
           sigmoid midpoi n, max firing rate...
@@ -1081,7 +1081,7 @@ def create_diverging_radial_assembly(distance_range: list = [0.01, 0.2],
 
 def create_random_assembly(
                         tuning_distance_distribution: str = "uniform",
-                        tuning_distance: Union[np.ndarray, list, tuple] = (0.0, 0.3),
+                        tuning_distance: Union[np.ndarray, list, tuple] = (0.02, 0.3),
                         tuning_angle_distribution: str = "uniform",
                         tuning_angle: Union[np.ndarray, list, tuple] = (0.0, 360.0),
                         sigma_angle_distribution: str = "uniform",

@@ -1084,26 +1084,25 @@ class VectorCells(Neurons):
     All vector cells have receptive fields which is a von Mises distributions in angle (mean = tuning_angle, 1/sqrt_kappa ~= std = sigma_angle) and 
     a Gaussian in distance (mean = tuning_distance, std = sigma_distance). There are many ways we might like to set these parameters for each neuron...
 
-    DEFAULT PARAMS:
-    * "n" (int): number of cells (if any params are passed in as lists or arrays, this is overwritten)
-    * "reference_frame" (str): "allocentric" or "egocentric"
-    * "cell_arrangement" (str): how to set the tuning parameters for each cell. See set_tuning_parameters() for more details. Possible cell arrangements are: 
-        • Randomly ["cell_arrangement": "random"]
+    A summary of the parameters:
+    • params['n']: number of cells (if any params are passed in as lists or arrays, this is overwritten)
+    • params['reference_frame']: "allocentric" or "egocentric"
+    • parmas['cell_arrangement'] (str): how to set the tuning parameters for each cell. Possible cell arrangements are: 
+        • Randomly ["cell_arrangement": "random"] (default)
         • Field-of-view ["cell_arrangement": "uniform_manifold" or "diverging_manifold"]. This is automatically done by the by the `FieldOfViewOVCs/BVCs/AVCs` subclasses. 
         • User defined: ["cell_arrangement": my_funky_tuning_parameter_setting_function] pass a function that returns 4 lists of the same length corresponding to the tuning distances, tuning angles, sigma distances and sigma angles 
     
-    IF cell_arrangement is "random" THE FOLLOWING PARAMETERS BECOME RELEVANT:
-    * "tuning_distance_distribution" (str): name of the distribution from which to sample the tuning_distance parameter
-    * "tuning_distance" (tuple or array): if tuple, parameters of the distribution from which to sample the tuning_distance parameter. If array, the exact values of the tuning_distance parameter for each cell
-    * "tuning_angle_distribution" (str): name of the distribution from which to sample the tuning_angle parameter
-    * "tuning_angle" (tuple or array): if tuple, parameters of the distribution from which to sample the tuning_angle parameter. If array, the exact values of the tuning_angle parameter for each cell
-    * "sigma_distance_distribution" (str): name of the distribution from which to sample the sigma_distance parameter
-    * "sigma_distance" (tuple or array): if tuple, parameters of the distribution from which to sample the sigma_distance parameter. If array, the exact values of the sigma_distance parameter for each cell
-    * "sigma_angle_distribution" (str): name of the distribution from which to sample the sigma_angle parameter
-    * "sigma_angle" (tuple or array): if tuple, parameters of the distribution from which to sample the sigma_angle parameter. If array, the exact values of the sigma_angle parameter for each cell
+    iff cell_arrangement is "random" 8 additional parameters, through which to control the parameters of cell receptive fields, become relevant. the following parameters become relevant:
+    • params["tuning_distance_distribution"] (str): distribution from which to sample the tuning distances
+    • params["tuning_distance"] (tuple or array): if tuple, parameters of the distribution from which to sample the tuning_distance parameter. If array, the exact values of the tuning_distance parameter for each cell
+    • params["tuning_angle_distribution"] (str): name of the distribution from which to sample tuning angles parameter
+    • params["tuning_angle"] (tuple or array): if tuple, parameters of the distribution from which to sample the tuning_angle parameter. If array, the exact values of the tuning_angle parameter for each cell
+    • params["sigma_distance_distribution"] (str): name of the distribution from which to sample the distance spreads
+    • params["sigma_distance"] (tuple or array): if tuple, parameters of the distribution from which to sample the sigma_distance parameter. If array, the exact values of the sigma_distance parameter for each cell
+    • params["sigma_angle_distribution"] (str): name of the distribution from which to sample the angular spreads
+    • params["sigma_angle"] (tuple or array): if tuple, parameters of the distribution from which to sample the sigma_angle parameter. If array, the exact values of the sigma_angle parameter for each cell
 
-    HOW TO SET THE TUNING PARAMETERS FOR EACH CELL:
-    When cell_arrangement is "random", tuning_distance, tuning_angle, sigma_distance and sigma_angle can be handed in as lists/arrays (in which case they are set to these exact values, one per cell) or tuples where the values inside the tuples define the parameters of a distribution (the string defined by <param>_distribution) from which the parameters are sampled. An up to date list of avaiable distributions and their parameters in utils.distribution_sampler(), currently avaiable distributions are:
+    "tuning_distance", "tuning_angle", "sigma_distance" and "sigma_angle" can be handed in as lists/arrays (in which case they are set to these exact values, one per cell) or tuples where the values inside the tuples define the parameters of a distribution (the string defined by <param>_distribution) from which the parameters are sampled. An up to date list of avaiable distributions and their parameters in utils.distribution_sampler(), currently avaiable distributions are:
     - uniform ------------------------------- (low, high) or just a single param p which gives (0.5*p, 1.5*p)
     - rayleigh ------------------------------ (scale)
     - normal -------------------------------- (loc, scale)
@@ -1120,9 +1119,11 @@ class VectorCells(Neurons):
         "cell_arrangement": "random", 
         #the following are only used if cell_arrangement is "random"
         "tuning_distance_distribution": "uniform",
-        "tuning_distance":(0.0,0.3),
+        "tuning_distance":(0.05,0.3),
         "tuning_angle_distribution": "uniform",
         "tuning_angle":(0.0,360),
+        "sigma_distance_distribution": "diverging",
+        "sigma_distance" : (0.08, 12),
         "angular_spread_distribution": "uniform",
         "angular_spread": (10, 30),
         "distance_spread_distribution": "diverging", #If diverging then params give (xi, beta)
@@ -1951,7 +1952,6 @@ class AgentVectorCells(VectorCells):
 
     default_params = {
         "name":'AgentVectorCell',
-        "reference_frame" : "egocentric",
         "walls_occlude": True, #objects behind walls cannot be seen
     }
 
@@ -2117,7 +2117,7 @@ class FieldOfViewAVCs(AgentVectorCells):
     default_params = {
         "distance_range": [0.01, 0.2],  # min and max distances the agent can "see"
         "angle_range": [0,90,],  # angluar FoV in degrees (will be symmetric on both sides, so give range in 0 (forwards) to 180 (backwards)
-        "spatial_resolution": 0.04,  # resolution of each BVC tiling FoV
+        "spatial_resolution": 0.02,  # resolution of each BVC tiling FoV
         "beta": 5, # smaller means larger rate of increase of cell size with radius in hartley type manifolds
         "cell_arrangement": "diverging_manifold",  # whether all cells have "uniform" receptive field sizes or they grow ("hartley") with radius.
     }
@@ -2431,8 +2431,22 @@ class FeedForwardLayer(Neurons):
         ...
     One set of biases are stored in self.biases (defaulting to an array of zeros), one for each neuron.
 
-    Currently supported activations include 'sigmoid' (paramterised by max_fr, min_fr, mid_x, width), 'relu' (gain, threshold) and 'linear' specified with the "activation_params" dictionary in the inout params dictionary. See also utils.utils.activate() for full details. It is possible to write your own activatino function (not recommended) under the key {"function" : an_activation_function}, see utils.actvate for how one of these should be written.
-
+    
+    The activation function defaults to linear but can be set with the "activation_function" parameter. Users have two options: 
+        • PREMADE (default): if a dictionary is passed this must contain parameters for the RatInABox premade activation functions stored in utils.activate(), one key in the dictionary is always "activation" from specifying the function-type whilst the other keys should give parameters of the activation function. For example:
+            • {"activation":"linear", } #no additional params, DEFAULT
+            • {"activation":"sigmoid", "max_fr":1, "min_fr":0, "mid_x":1, "width":2}
+            • {"activation":"relu", "gain":1, "threshold":0}
+            • {"activation":"tanh", "gain":1, "threshold":0}
+            • {"activation":"retanh", "gain":1, "threshold":0}
+            • {"activation":"softmax", "gain":1, "threshold":0}
+        • BESPOKE: Users can pass their own handmade activation function, it must be vectorised and of the following format: 
+            activation_func(x, deriv=False):
+                if deriv == False: 
+                    return φ(x)
+                elif deriv == True:
+                    return φ'(x)
+    
     Check that the input layers are all named differently.
     List of functions:
         • get_state()
@@ -2441,17 +2455,15 @@ class FeedForwardLayer(Neurons):
     default_params = {
             "n": 10,
             "input_layers": [],  # a list of input layers, or add one by one using self.adD_inout
-            "activation_params": {
-                "activation": "linear",
-            },
+            "activation_function": {"activation": "linear",}, 
             "name": "FeedForwardLayer",
         }
     """
 
     default_params = {
         "n": 10,
-        "input_layers": [],  # a list of input layers, or add one by one using self.add_inout
-        "activation_params": {"activation": "linear"},
+        "input_layers": [],  # a list of input layers, or add one by one using self.add_input
+        "activation_function": {"activation": "linear"},
         "name": "FeedForwardLayer",
         "biases": None,  # an array of biases, one for each neuron
     }
@@ -2462,6 +2474,11 @@ class FeedForwardLayer(Neurons):
         self.params = copy.deepcopy(__class__.default_params)
         self.params.update(params)
 
+        #deprecation warning for activation_params --> activation_function
+        if "activation_params" in self.params.keys():
+            warnings.warn("The parameter 'activation_params' is deprecated. Use 'activation_function' instead.")
+            self.params["activation_function"] = self.params["activation_params"]
+    
         super().__init__(Agent, self.params)
 
         assert isinstance(
@@ -2471,6 +2488,20 @@ class FeedForwardLayer(Neurons):
             warnings.warn(
                 "No input layers have been provided. Either hand them in in the params dictionary params['input_layers']=[list,of,inputs] or use self.add_input_layer() to add them manually."
             )
+
+        # if activation_function is a dict
+        if isinstance(self.activation_function, dict):
+            other_args = copy.deepcopy(self.activation_function)
+            activation = other_args['activation']
+            #This is a wrapper on utils.activate to set activation and other_args arguments and then return a function which can be called like self.activation_function(x, deriv) 
+            def lambda_activation_function(activation, other_args):
+                #Here x and deriv don't matter as they are 
+                return lambda x, deriv: utils.activate(x, activation, deriv, other_args) 
+            #Now make the callable function
+            self.activation_function = lambda x, deriv : utils.activate(x, activation, deriv, other_args)
+        else:
+            # self.activation_function is already a function, passed by the user, of form             activation_func(x, deriv=False):
+            pass
 
         self.inputs = {}
         for input_layer in self.input_layers:
@@ -2557,14 +2588,17 @@ class FeedForwardLayer(Neurons):
             biases = biases.reshape((-1, 1))
         V += biases
 
-        firingrate = utils.activate(V, other_args=self.activation_params)
+        # firingrate = utils.activate(V, other_args=self.activation_params)
+        firingrate = self.activation_function(V, deriv=False)
         # saves current copy of activation derivative at firing rate (useful for learning rules)
         if (
             evaluate_at == "last"
         ):  # save copy of the firing rate through the dervative of the activation function
-            self.firingrate_prime = utils.activate(
-                V, other_args=self.activation_params, deriv=True
-            )
+            # self.firingrate_prime = utils.activate(
+            #     V, other_args=self.activation_params, deriv=True
+            # )
+            self.firingrate_prime = self.activation_function(V, deriv=True)
+
         return firingrate
 
 
