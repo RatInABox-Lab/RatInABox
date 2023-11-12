@@ -1,0 +1,4 @@
+index.md:59: [redirected permanently] http://img.shields.io/badge/bioRxiv-10.1101/2022.08.10.503541-B31B1B.svg to https://img.shields.io/badge/bioRxiv-10.1101/2022.08.10.503541-B31B1B.svg
+why-riab.md:6: [redirected with Found] https://github.com/RatInABox-Lab/RatInABox/assets/41446693/02b28673-84d4-47e5-9bdf-b52d2384cfea to https://github-production-user-asset-6210df.s3.amazonaws.com/41446693/274748060-02b28673-84d4-47e5-9bdf-b52d2384cfea.gif
+get-started/examples.md:2: [redirected permanently] https://github.com/RatInABox-Lab/RatInABox/blob/dev/demos/ to https://github.com/RatInABox-Lab/RatInABox/tree/dev/demos
+index.md:59: [redirected permanently] https://doi.org/10.1101/2022.08.10.503541 to https://www.biorxiv.org/content/10.1101/2022.08.10.503541v4
