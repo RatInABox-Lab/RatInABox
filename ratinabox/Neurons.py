@@ -1120,14 +1120,12 @@ class VectorCells(Neurons):
         #the following are only used if cell_arrangement is "random"
         "tuning_distance_distribution": "uniform",
         "tuning_distance":(0.05,0.3),
+        "sigma_distance_distribution": "diverging", #If diverging then params give (xi, beta)
+        "sigma_distance" : (0.08, 12),
         "tuning_angle_distribution": "uniform",
         "tuning_angle":(0.0,360),
-        "sigma_distance_distribution": "diverging",
-        "sigma_distance" : (0.08, 12),
         "angular_spread_distribution": "uniform",
         "angular_spread": (10, 30),
-        "distance_spread_distribution": "diverging", #If diverging then params give (xi, beta)
-        "distance_spread": (0.08, 12),
     }
 
     def __init__(self, Agent, params={}):
@@ -1153,6 +1151,14 @@ class VectorCells(Neurons):
             warnings.warn("'pref_object_dist' param is deprecated. Please use 'distance' instead")
             params['distance'] = params['pref_object_dist']
             del params['pref_object_dist']
+        if "distance_spread" in params.keys():
+            warnings.warn("'distance_spread' param is deprecated. Please use 'sigma_distance' instead")
+            params['sigma_distance'] = params['distance_spread']
+            del params['distance_spread']
+        if "distance_spread_distribution" in params.keys():
+            warnings.warn("'distance_spread_distribution' param is deprecated. Please use 'sigma_distance_distribution' instead")
+            params['sigma_distance_distribution'] = params['distance_spread_distribution']
+            del params['distance_spread_distribution']
 
         self.params = copy.deepcopy(__class__.default_params)
         self.params.update(params)
@@ -1657,12 +1663,9 @@ class FieldOfViewBVCs(BoundaryVectorCells):
     """
 
     default_params = {
-        "distance_range": [0.01, 0.2],  # min and max distances the agent can "see"
-        "angle_range": [
-            0,
-            90,
-        ],  # angluar FoV in degrees (will be symmetric on both sides, so give range in 0 (forwards) to 180 (backwards)
-        "spatial_resolution": 0.04,  # resolution of the inner row of cells (in meters)
+        "distance_range": [0.02, 0.2],  # min and max distances the agent can "see"
+        "angle_range": [0,75],  # angluar FoV in degrees (will be symmetric on both sides, so give range in 0 (forwards) to 180 (backwards)
+        "spatial_resolution": 0.02,  # resolution of the inner row of cells (in meters)
         "cell_arrangement": "diverging_manifold",  # cell receptive field widths can diverge with radius "diverging_manifold" or stay constant "uniform_manifold".
         "beta": 5, # smaller means larger rate of increase of cell size with radius in diverging type manifolds
         "color":ratinabox.DARKGREY,
@@ -1912,9 +1915,9 @@ class FieldOfViewOVCs(ObjectVectorCells):
     """
 
     default_params = {
-        "distance_range": [0.01, 0.2],  # min and max distances the agent can "see"
-        "angle_range": [0,90,],  # angluar FoV in degrees (will be symmetric on both sides, so give range in 0 (forwards) to 180 (backwards)
-        "spatial_resolution": 0.04,  # resolution of each BVC tiling FoV
+        "distance_range": [0.02, 0.2],  # min and max distances the agent can "see"
+        "angle_range": [0,75],  # angluar FoV in degrees (will be symmetric on both sides, so give range in 0 (forwards) to 180 (backwards)
+        "spatial_resolution": 0.02,  # resolution of each BVC tiling FoV
         "beta": 5, # smaller means larger rate of increase of cell size with radius in hartley type manifolds
         "cell_arrangement": "diverging_manifold",  # whether all cells have "uniform" receptive field sizes or they grow ("hartley") with radius.
         "object_tuning_type" : None, #can be "random", any integer, or a list of integers of length n. The tuning types of the OVCs.
@@ -2115,8 +2118,8 @@ class FieldOfViewAVCs(AgentVectorCells):
     """
 
     default_params = {
-        "distance_range": [0.01, 0.2],  # min and max distances the agent can "see"
-        "angle_range": [0,90,],  # angluar FoV in degrees (will be symmetric on both sides, so give range in 0 (forwards) to 180 (backwards)
+        "distance_range": [0.02, 0.2],  # min and max distances the agent can "see"
+        "angle_range": [0,75],  # angluar FoV in degrees (will be symmetric on both sides, so give range in 0 (forwards) to 180 (backwards)
         "spatial_resolution": 0.02,  # resolution of each BVC tiling FoV
         "beta": 5, # smaller means larger rate of increase of cell size with radius in hartley type manifolds
         "cell_arrangement": "diverging_manifold",  # whether all cells have "uniform" receptive field sizes or they grow ("hartley") with radius.
@@ -2463,7 +2466,7 @@ class FeedForwardLayer(Neurons):
     default_params = {
         "n": 10,
         "input_layers": [],  # a list of input layers, or add one by one using self.add_input
-        "activation_function": {"activation": "linear"},
+        "activation_function": {"activation": "linear"}, #dict or function, explained in doc string
         "name": "FeedForwardLayer",
         "biases": None,  # an array of biases, one for each neuron
     }
