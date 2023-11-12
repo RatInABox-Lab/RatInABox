@@ -69,8 +69,9 @@ class Environment:
         "aspect": 1,  # x/y aspect ratio for the (rectangular) 2D environment (how wide this is relative to tall). Only applies if you are not passing a boundary
         "dx": 0.01,  # discretises the environment (for plotting purposes only)
         "boundary": None,  # coordinates [[x0,y0],[x1,y1],...] of the corners of a 2D polygon bounding the Env (if None, Env defaults to rectangular). Corners must be ordered clockwise or anticlockwise, and the polygon must be a 'simple polygon' (no holes, doesn't self-intersect).
-        "walls": [],  # a list of loose walls within the environment. Each wall in the list can be defined by it's start and end coords [[x0,y0],[x1,y1]]. You can also manually add walls after init using Env.add_wall().
+        "walls": [],  # a list of loose walls within the environment. Each wall in the list can be defined by it's start and end coords [[x0,y0],[x1,y1]]. You can also manually add walls after init using Env.add_wall() (preferred).
         "holes": [],  # coordinates [[[x0,y0],[x1,y1],...],...] of corners of any holes inside the Env. These must be entirely inside the environment and not intersect one another. Corners must be ordered clockwise or anticlockwise. holes has 1-dimension more than boundary since there can be multiple holes
+        "objects": [], #a list of objects within the environment. Each object is defined by it's position [[x0,y0],[x1,y1],...]. By default all objects are type 0, alternatively you can manually add objects after init using Env.add_object(object, type) (preferred).
     }
 
     def __init__(self, params={}):
@@ -149,13 +150,16 @@ class Environment:
             self.boundary_polygon = shapely.Polygon(self.boundary)
 
             # make list of "objects" within the Env
+            self.passed_in_objects = copy.deepcopy(self.objects)
             self.objects = {
                 "objects": np.empty((0, 2)),
                 "object_types": np.empty(0, int),
             }
             self.n_object_types = 0
             self.object_colormap = "rainbow_r"
-
+            if len(self.passed_in_objects) > 0:
+                for o in self.passed_in_objects:
+                    self.add_object(o, type=0)
 
             # make some other attributes
             left = min([c[0] for c in b])
