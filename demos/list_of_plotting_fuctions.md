@@ -140,4 +140,4 @@ Neurons.plot_rate_timeseries(fig=fig,ax=axes[4])
 
 * For rate maps and timeseries' by default **all** the cells will be plotted. This may take a long time if the number of cells is large. Control this with the `chosen_neurons` argument
 
-* We use the `matplotlib` wrapper [`tomplotlib`](https://github.com/TomGeorge1234/tomplotlib) to format and save figures. This is not necesary for the workings of `ratinabox` but note your figures might look slightly different without it.
+* We use the `matplotlib` wrapper [`tomplotlib`](https://github.com/RatInABox-Lab/tomplotlib) to format and save figures. This is not necesary for the workings of `ratinabox` but note your figures might look slightly different without it.

@@ -1663,7 +1663,7 @@ class FieldOfViewBVCs(BoundaryVectorCells):
     """
 
     default_params = {
-        "distance_range": [0.02, 0.2],  # min and max distances the agent can "see"
+        "distance_range": [0.02, 0.4],  # min and max distances the agent can "see"
         "angle_range": [0,75],  # angluar FoV in degrees (will be symmetric on both sides, so give range in 0 (forwards) to 180 (backwards)
         "spatial_resolution": 0.02,  # resolution of the inner row of cells (in meters)
         "cell_arrangement": "diverging_manifold",  # cell receptive field widths can diverge with radius "diverging_manifold" or stay constant "uniform_manifold".
@@ -1915,7 +1915,7 @@ class FieldOfViewOVCs(ObjectVectorCells):
     """
 
     default_params = {
-        "distance_range": [0.02, 0.2],  # min and max distances the agent can "see"
+        "distance_range": [0.02, 0.4],  # min and max distances the agent can "see"
         "angle_range": [0,75],  # angluar FoV in degrees (will be symmetric on both sides, so give range in 0 (forwards) to 180 (backwards)
         "spatial_resolution": 0.02,  # resolution of each BVC tiling FoV
         "beta": 5, # smaller means larger rate of increase of cell size with radius in hartley type manifolds
@@ -2118,7 +2118,7 @@ class FieldOfViewAVCs(AgentVectorCells):
     """
 
     default_params = {
-        "distance_range": [0.02, 0.2],  # min and max distances the agent can "see"
+        "distance_range": [0.02, 0.4],  # min and max distances the agent can "see"
         "angle_range": [0,75],  # angluar FoV in degrees (will be symmetric on both sides, so give range in 0 (forwards) to 180 (backwards)
         "spatial_resolution": 0.02,  # resolution of each BVC tiling FoV
         "beta": 5, # smaller means larger rate of increase of cell size with radius in hartley type manifolds

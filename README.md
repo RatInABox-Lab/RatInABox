@@ -1,4 +1,4 @@
-# RatInABox ![Tests](https://github.com/TomGeorge1234/RatInABox/actions/workflows/test.yml/badge.svg)   [![PyPI version](https://badge.fury.io/py/ratinabox.svg)](https://badge.fury.io/py/ratinabox) [![Downloads](https://static.pepy.tech/badge/ratinabox)](https://pepy.tech/project/ratinabox)<img align="right" src=".images/readme/logo.png" width=150> 
+# RatInABox ![Tests](https://github.com/RatInABox-Lab/RatInABox/actions/workflows/test.yml/badge.svg)   [![PyPI version](https://badge.fury.io/py/ratinabox.svg)](https://badge.fury.io/py/ratinabox) [![Downloads](https://static.pepy.tech/badge/ratinabox)](https://pepy.tech/project/ratinabox)<img align="right" src=".images/readme/logo.png" width=150> 
 
 `RatInABox` (see [paper](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v3)) is a toolkit for generating synthetic behaviour and neural data for spatially and/or velocity selective cell types in complex continuous environments. 
 
@@ -46,7 +46,7 @@ The top animation shows an example use case: an `Agent` randomly explores a 2D `
 
 <!-- 
 ## Announcement about support for OpenAI's `gymnasium` <img src=".images/readme/gymnasium_logo.svg" width=25> API
-A new wrapper contributed by [@SynapticSage](https://github.com/SynapticSage) allows `RatInABox` to natively support OpenAI's [`gymnasium`](https://gymnasium.farama.org) API for standardised and multiagent reinforment learning. This can be used to flexibly integrate `RatInABox` with other RL libraries such as Stable-Baselines3 etc. and to build non-trivial tasks with objectives and time dependent rewards. Check it out [here](https://github.com/TomGeorge1234/RatInABox/blob/dev/ratinabox/contribs/TaskEnv_example_files/TaskEnvironment_basics.md). -->
+A new wrapper contributed by [@SynapticSage](https://github.com/SynapticSage) allows `RatInABox` to natively support OpenAI's [`gymnasium`](https://gymnasium.farama.org) API for standardised and multiagent reinforment learning. This can be used to flexibly integrate `RatInABox` with other RL libraries such as Stable-Baselines3 etc. and to build non-trivial tasks with objectives and time dependent rewards. Check it out [here](https://github.com/RatInABox-Lab/RatInABox/blob/dev/ratinabox/contribs/TaskEnv_example_files/TaskEnvironment_basics.md). -->
 
 ## Get started 
 Many [demos](./demos/) are provided. Reading through the [example scripts](#example-scripts) (one simple and one extensive, duplicated at the bottom of the readme) these should be enough to get started. We also provide numerous interactive jupyter scripts as more in-depth case studies; for example one where `RatInABox` is used for [reinforcement learning](./demos/reinforcement_learning_example.ipynb), another for [neural decoding](./demos/decoding_position_example.ipynb) of position from firing rate. Jupyter scripts reproducing all figures in the [paper](./demos/paper_figures.ipynb) and [readme](./demos/readme_figures.ipynb) are also provided. All [demos](./demos/) can be run on Google Colab [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](./demos/)
@@ -60,7 +60,7 @@ $ pip install ratinabox
 ```
 Alternatively, in particular if you would like to develop `RatInABox` code or if you want the bleeding edge (may occasioanlly break), install from this repo using  
 ```console
-$ git clone --depth 1 https://github.com/TomGeorge1234/RatInABox.git
+$ git clone --depth 1 https://github.com/RatInABox-Lab/RatInABox.git
 $ cd RatInABox
 $ pip install -e .
 ```
@@ -433,7 +433,7 @@ fig, ax = PCs.plot_rate_timeseries()
 * [successor_features_example.ipynb](./successor_features_example.ipynb): RatInABox is use to learn and visualise successor features under random and biased motion policies.
 * [path_integration_example.ipynb](./demos/path_integration_example.ipynb): RatInABox is use to construct, train and visualise a large multi-layer network capable of learning a "ring attractor" capable of path integrating a position estimate using only velocity inputs.
 
-## Contribute [![](https://img.shields.io/github/contributors/TomGeorge1234/RatInAbox.svg?logo=github)](https://github.com/TomGeorge1234/RatInABox/graphs/contributors) [![](https://img.shields.io/github/issues-closed/TomGeorge1234/RatInAbox.svg?logo=github)](https://github.com/TomGeorge1234/RatInABox/graphs/issues-closed) [![](https://img.shields.io/github/issues-pr-closed/TomGeorge1234/RatInAbox.svg?logo=github)](https://github.com/TomGeorge1234/RatInABox/pulls) [![](https://img.shields.io/github/commit-activity/y/TomGeorge1234/RatInABox.svg?logo=git&logoColor=white)](https://github.com/TomGeorge1234/RatInABox/graphs/commit-activity)
+## Contribute [![](https://img.shields.io/github/contributors/RatInABox-Lab/RatInAbox.svg?logo=github)](https://github.com/RatInABox-Lab/RatInABox/graphs/contributors) [![](https://img.shields.io/github/issues-closed/RatInABox-Lab/RatInAbox.svg?logo=github)](https://github.com/RatInABox-Lab/RatInABox/graphs/issues-closed) [![](https://img.shields.io/github/issues-pr-closed/RatInABox-Lab/RatInAbox.svg?logo=github)](https://github.com/RatInABox-Lab/RatInABox/pulls) [![](https://img.shields.io/github/commit-activity/y/RatInABox-Lab/RatInABox.svg?logo=git&logoColor=white)](https://github.com/RatInABox-Lab/RatInABox/graphs/commit-activity)
 `RatInABox` is open source project and we actively encourage  all contributions from example bug fixes to documentation or new cell types. Feel free to make a pull request (you will need to fork the repository first) or raise and issue. 
 
 We have a dedicated [contribs](./ratinabox/contribs/) directory where you can safely add awesome scripts and new `Neurons` classes etc.
@@ -441,7 +441,7 @@ We have a dedicated [contribs](./ratinabox/contribs/) directory where you can sa
 Questions? Just ask! Ideally via opening an issue so others can see the answer too. 
 
 Thanks to all contributors so far:
-![GitHub Contributors Image](https://contrib.rocks/image?repo=TomGeorge1234/RatInABox)
+![GitHub Contributors Image](https://contrib.rocks/image?repo=RatInABox-Lab/RatInABox)
 
 ## Cite [![](http://img.shields.io/badge/bioRxiv-10.1101/2022.08.10.503541-B31B1B.svg)](https://doi.org/10.1101/2022.08.10.503541) 
 
