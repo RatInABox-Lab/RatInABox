@@ -425,7 +425,8 @@ fig, ax = PCs.plot_rate_timeseries()
 * [list_of_plotting_functions.md](./demos/list_of_plotting_fuctions.md): All the types of plots available for are listed and explained. 
 * [readme_figures.ipynb](./demos/readme_figures.ipynb): (Almost) all plots/animations shown in the root readme are produced from this script (plus some minor formatting done afterwards in powerpoint).
 * [paper_figures.ipynb](./demos/paper_figures.ipynb): (Almost) all plots/animations shown in the paper are produced from this script (plus some major formatting done afterwards in powerpoint).
-* [decoding_position_example.ipynb](./demos/decoding_position_example.ipynb): Postion is decoded from neural data generated with RatInABox. Place cells, grid cell and boundary vector cells are compared. 
+* [decoding_position_example.ipynb](./demos/decoding_position_example.ipynb): Postion is decoded from neural data generated with RatInABox. Place cells, grid cell and boundary vector cells are compared.
+* [conjunctive_gridcells_example.ipynb](./demos/conjunctive_gridcells_example.ipynb): `GridCells` and `HeadDirectionCells` are minimally combined useing `FeedForwardLayer` to create head-direction-selective grid cells (aka. conjunctive cells).
 * [splitter_cells_example.ipynb](./demos/splitter_cells_example.ipynb): A simple simultaion demonstrating how `Splittre` cell data could be create in a figure-8 maze.
 * [deep_learning_example.ipynb](./deep_learning_example.ipynb): Here we showcase `NeuralNetworkNeurons` a class of `Neurons` which has a small neural network embedded inside. We train them to take grid cells as inputs and output an arbitrary function  as their rate map.
 * [reinforcement_learning_example.ipynb](./demos/reinforcement_learning_example.ipynb): RatInABox is use to construct, train and visualise a small two-layer network capable of model free reinforcement learning in order to find a reward hidden behind a wall. 
@@ -463,6 +464,6 @@ Formatted:
 ```
 Tom M George, William de Cothi, Claudia Clopath, Kimberly Stachenfeld, Caswell Barry. "RatInABox: A toolkit for modelling locomotion and neuronal activity in continuous environments" (2022).
 ``` 
-The research paper corresponding to the above citation can be found [here](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v3).
+The research paper corresponding to the above citation can be found [here](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v4).
 
 
