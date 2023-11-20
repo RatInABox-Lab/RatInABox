@@ -170,6 +170,17 @@ class Neurons:
     def get_state(self, **kwargs):
         raise NotImplementedError("Neurons object needs a get_state() method")
 
+    def get_head_direction_averaged_state(self, evaluate_at="agent", **kwargs):
+        """Like get_state() except it calculates it at all head directions 0-->2pi and then averages over those head directions. Note this will only be relevant (although it will always "work") for Neurons which have some kind of head direction selectivity i.e. Neurons where "head_direction" is a kwarg which is used by get_state(). These include HeadDirectionCells or egocentric-BoundaryVectorCells or any cells you might build out of these. Conversely for PlaceCells, the head_direction argument into get_state() will be ignored so this will just be a more inefficient way of calling get_state()."""
+        firingrate = np.zeros_like(self.get_state(evaluate_at=evaluate_at, head_direction=[1,0], **kwargs))
+        firingrate = np.repeat(firingrate[:,:,np.newaxis],100,axis=2)
+        angles = np.linspace(0,2*np.pi,100)
+        for (i,ang) in enumerate(angles):
+            head_direction = np.array([np.cos(ang),np.sin(ang)])
+            firingrate[:,:,i] = self.get_state(evaluate_at=evaluate_at, head_direction=head_direction, **kwargs)
+        firingrate = np.mean(firingrate,axis=2)
+        return firingrate
+    
     def plot_rate_timeseries(
         self,
         t_start=0.0,
@@ -312,7 +323,7 @@ class Neurons:
         Args:
             •chosen_neurons: Which neurons to plot. string "10" will plot 10 of them, "all" will plot all of them, a list like [1,4,5] will plot cells indexed 1, 4 and 5. Defaults to "10".
 
-            • method: "groundtruth" "history" "neither": which method to use. If "analytic" (default) tries to calculate rate map by evaluating firing rate at all positions across the environment (note this isn't always well defined. in which case...). If "history", plots ratemap by a weighting a histogram of positions visited by the firingrate observed at that position. If "neither" (or anything else), then neither.
+            • method: "groundtruth" "history" "neither" "ratemaps_provided": which method to use. If "groundtruth" (default) tries to calculate rate map by evaluating firing rate at all positions across the environment (note this isn't always well defined. in which case...). If "groundtruth__headdirectionaveraged" calculates rate maps but averaged over all head directions (2D environments only). If "history", plots ratemap by a weighting a histogram of positions visited by the firingrate observed at that position. If "neither" (or anything else), then neither. If "ratemaps_provided" then you must provide a rate map as a numpy array of shape (n_neurons, n_positions) under the keyworkd argument "ratemaps". This is useful if you have already calculated the rate map and want to plot it without having to recalculate it.
 
             • spikes: True or False. Whether to display the occurence of spikes. If False (default) no spikes are shown. If True both ratemap and spikes are shown.
 
@@ -328,9 +339,12 @@ class Neurons:
             fig, ax
         """
         # GET DATA
-        if method == "groundtruth":
+        if method[:11] == "groundtruth":
             try:
-                rate_maps = self.get_state(evaluate_at="all", **kwargs)
+                if method == "groundtruth":
+                    rate_maps = self.get_state(evaluate_at="all", **kwargs)
+                elif method == "groundtruth_headdirectionaveraged":
+                    rate_maps = self.get_head_direction_averaged_state(evaluate_at="all", **kwargs)
             except Exception as e:
                 print(
                     "It was not possible to get the rate map by evaluating the firing rate at all positions across the Environment. This is probably because the Neuron class does not support vectorised evaluation, or it does not have an groundtruth receptive field. Instead trying wit ha for-loop over all positions one-by-one (could be slow)Instead, plotting rate map by weighted position histogram method. Here is the error:"
@@ -362,6 +376,14 @@ class Neurons:
                 spike_data = np.array(self.history["spikes"])[slice].T
                 if len(spike_data) == 0:
                     print("No historical data with which to plot spikes.")
+        if method == "ratemaps_provided":
+            try:
+                rate_maps = kwargs["ratemaps"]
+            except:
+                print(
+                    "You have specified method='ratemaps_provided' but have not provided the rate maps themselves. Please provide them as a numpy array of shape (n_neurons, n_positions) under the keyworkd argument 'ratemaps'."
+                )
+                return
 
         if self.color is None:
             coloralpha = None
@@ -388,7 +410,7 @@ class Neurons:
                 plt.close(env_fig)
                 plt.show
                 fig = plt.figure(figsize=(height * Ny, width * Nx))
-                if colorbar == True and (method in ["groundtruth", "history"]):
+                if colorbar == True and (method in ["groundtruth", "history", "groundtruth_headdirectionaveraged"]):
                     cbar_mode = "single"
                 else:
                     cbar_mode = None
@@ -425,10 +447,10 @@ class Neurons:
 
             vmin, vmax = 0, 0
             ims = []
-            if method in ["groundtruth", "history"]:
+            if method in ["groundtruth", "history", "groundtruth_headdirectionaveraged"]:
                 for i, ax_ in enumerate(axes):
                     ex = self.Agent.Environment.extent
-                    if method == "groundtruth":
+                    if method[:11] == "groundtruth":
                         rate_map = rate_maps[chosen_neurons[i], :].reshape(
                             self.Agent.Environment.discrete_coords.shape[:2]
                         )
@@ -539,6 +561,53 @@ class Neurons:
         ratinabox.utils.save_figure(fig, self.name + "_ratemaps", save=autosave)
 
         return fig, axes
+
+
+    def plot_angular_rate_map(self, chosen_neurons="all", fig=None, ax=None, autosave=None):
+        """Plots the position-averaged firing rate map of the neuron as a function of head direction. To od this ist calculates the spatial receptive fields at many head directions and averages them over position (therefore it may be slow). 
+        Args:
+            chosen_neurons (str, optional): The neurons to plot. Defaults to "all".
+            fig, ax (_type_, optional): matplotlib fig, ax objects ot plot onto (optional).
+            autosave (bool, optional): if True, will try to save the figure into `ratinabox.figure_directory`. 
+                                       Defaults to None in which case looks for global constant ratinabox.autosave_plots
+        """
+        chosen_neurons = self.return_list_of_neurons(chosen_neurons=chosen_neurons)
+        if fig is None and ax is None:
+            fig, ax = plt.subplots(
+                1,
+                len(chosen_neurons),
+                figsize=(2 * len(chosen_neurons), 2),
+                subplot_kw={"projection": "polar"},
+            )
+
+        # get rate maps at all head directions and all positions
+        # the object will end up having shape (n_neurons, n_positions, n_headdirections)
+        rm = np.zeros_like(self.get_state(evaluate_at='all',head_direction=np.array([1,0])))
+        rm = np.repeat(rm[:,:,np.newaxis],100,axis=2)
+        angles = np.linspace(0,2*np.pi,100)
+        for (i,ang) in enumerate(angles):
+            head_direction = np.array([np.cos(ang),np.sin(ang)])
+            rm[:,:,i] = self.get_state(evaluate_at='all', head_direction=head_direction)
+        
+        # average over positions leaving just head direction selectivity
+        rm_hd = np.mean(rm,axis=1)
+        
+        # plot head direction rate map
+        for (i,n) in enumerate(chosen_neurons):
+            perneuron_rm = rm_hd[n,:]
+            ax[i].plot(angles,perneuron_rm,linewidth=2,color=self.color)
+            ax[i].set_yticks([])
+            ax[i].set_xticks([])
+            ax[i].set_xticks([0, np.pi / 2, np.pi, 3 * np.pi / 2])
+            ax[i].fill_between(angles, perneuron_rm, 0, alpha=0.2,facecolor=self.color)
+            ax[i].set_ylim([0, 1.1*np.max(rm_hd[n,:])])
+            ax[i].tick_params(pad=-20)
+            ax[i].set_xticklabels(["E", "N", "W", "S"])
+        
+        ratinabox.utils.save_figure(fig, self.name + "_angularratemaps", save=autosave)
+
+        return fig, ax 
+    
 
     def save_to_history(self):
         cell_spikes = np.random.uniform(0, 1, size=(self.n,)) < (
@@ -822,7 +891,6 @@ class PlaceCells(Neurons):
             firingrate * (self.max_fr - self.min_fr) + self.min_fr
         )  # scales from being between [0,1] to [min_fr, max_fr]
         return firingrate
-
 
     def plot_place_cell_locations(
         self,
@@ -1737,8 +1805,7 @@ class ObjectVectorCells(VectorCells):
             c = cmap(self.tuning_types[i] /  (self.Agent.Environment.n_object_types - 1 + 1e-8))
             self.cell_colors.append(np.array(matplotlib.colors.to_rgba(c)))
         self.cell_colors = np.array(self.cell_colors)
-        self.color = self.cell_colors[0] #this will obviously not work if you have different colors for each cell but most of the time itll work great.
-
+        self.color = (self.params['color'] or self.cell_colors[0]) #this will obviously not work if you have different colors for each cell but most of the time itll work great. Passing in a color to the params dict will override this.
 
         if ratinabox.verbose is True:
             print(
@@ -2213,19 +2280,20 @@ class HeadDirectionCells(Neurons):
         if use_velocity is False: 
             if evaluate_at == "agent":
                 direction = self.Agent.head_direction
-            elif "head_direction" in kwargs.keys():
+            elif "head_direction" in kwargs.keys(): #overrides "agent" hd if provided
                 direction = kwargs["head_direction"]
             elif "vel" in kwargs.keys():
                 direction = np.array(kwargs["vel"])
                 warnings.warn("'vel' kwarg deprecated in favour of 'head_direction'")
             else:
-                print("HeadDirection cells need a head direction but not was given, taking...")
+                print("HeadDirection cells need a head direction but you didn't pass one. Taking ",end="")
                 if self.Agent.Environment.dimensionality == "2D":
                     direction = np.array([1, 0])
-                    print("...[1,0] as default")
+                    print("[1,0] as default",end="")
                 if self.Agent.Environment.dimensionality == "1D":
                     direction = np.array([1])
-                    print("...[1] as default")
+                    print("[1] as default",end="")
+                print("Recommended to pass one in the 'head_direction' argument of get_state()")
         # Head direction uses normalised velocity of agent
         elif use_velocity is True:
             if evaluate_at == "agent":
@@ -2233,13 +2301,14 @@ class HeadDirectionCells(Neurons):
             elif "velocity" in kwargs.keys():
                 vel = kwargs["velocity"]
             else:
-                print("HeadDirection cells need a head direction but not was given, taking...")
+                print("HeadDirection cells need a velocity but you didn't pass one. Taking ",end="")
                 if self.Agent.Environment.dimensionality == "2D":
                     vel = np.array([1, 0])
-                    print("...[1,0] as default")
+                    print("[1,0] as default",end="")
                 if self.Agent.Environment.dimensionality == "1D":
                     vel = np.array([1])
-                    print("...[1] as default")
+                    print("[1] as default",end="")
+                print("Recommended to pass one in the 'velocity' argument of get_state()")
             direction = vel / np.linalg.norm(vel)
         
         if self.Agent.Environment.dimensionality == "1D":
@@ -2256,13 +2325,25 @@ class HeadDirectionCells(Neurons):
             firingrate * (self.max_fr - self.min_fr) + self.min_fr
         )  # scales from being between [0,1] to [min_fr, max_fr]
 
+        #Since these cells are not position selective, just tile the array to be the same size as the position array
+        if evaluate_at == "all":
+            pos_shape = self.Agent.Environment.flattened_discrete_coords.shape[0]
+        elif "pos" in kwargs.keys():
+            pos_shape = kwargs["pos"].shape[0]
+        else:
+            pos_shape = 1
+        firingrate = np.tile(firingrate, (pos_shape, 1)).T
+
         return firingrate
 
+                         
+            
+        
     def plot_HDC_receptive_field(
         self, chosen_neurons="all", fig=None, ax=None, autosave=None
     ):
         """Plots the receptive fields, in polar coordinates, of hte head direction cells. The receptive field 
-        is a von mises function centred around the preferred direction of the cell.
+        is a von mises function centred around the preferred direction of the cell. Note this only differs from the global `Neurons.plot_angular_rate_map()` function in that it analytically plots a von mises, rather than numerically averaging over positions for various head directions.
 
         Args:
             chosen_neurons (str, optional): The neurons to plot. Defaults to "all".
