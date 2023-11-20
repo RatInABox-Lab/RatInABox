@@ -10,7 +10,7 @@ $ pip install ratinabox
 ```
 Alternatively, in particular if you would like to develop `RatInABox` code or if you want the bleeding edge (may occasioanlly break), install from this repo using  
 ```console
-$ git clone --depth 1 https://github.com/TomGeorge1234/RatInABox.git
+$ git clone --depth 1 https://github.com/RatInABox-Lab/RatInABox.git
 $ cd RatInABox
 $ pip install -e .
 ```

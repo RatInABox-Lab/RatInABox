@@ -43,7 +43,7 @@ The top animation shows an example use case: an `Agent` randomly explores a 2D `
 
 <!-- 
 ## Announcement about support for OpenAI's `gymnasium` <img src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/dev/.images/readme/gymnasium_logo.svg" width=25> API
-A new wrapper contributed by [@SynapticSage](https://github.com/SynapticSage) allows `RatInABox` to natively support OpenAI's [`gymnasium`](https://gymnasium.farama.org) API for standardised and multiagent reinforment learning. This can be used to flexibly integrate `RatInABox` with other RL libraries such as Stable-Baselines3 etc. and to build non-trivial tasks with objectives and time dependent rewards. Check it out [here](https://github.com/TomGeorge1234/RatInABox/blob/dev/ratinabox/contribs/TaskEnv_example_files/TaskEnvironment_basics.md). -->
+A new wrapper contributed by [@SynapticSage](https://github.com/SynapticSage) allows `RatInABox` to natively support OpenAI's [`gymnasium`](https://gymnasium.farama.org) API for standardised and multiagent reinforment learning. This can be used to flexibly integrate `RatInABox` with other RL libraries such as Stable-Baselines3 etc. and to build non-trivial tasks with objectives and time dependent rewards. Check it out [here](https://github.com/RatInABox-Lab/RatInABox/blob/dev/ratinabox/contribs/TaskEnv_example_files/TaskEnvironment_basics.md). -->
 
 
 ## Contribute
@@ -54,7 +54,7 @@ We have a dedicated [contribs](https://github.com/RatInABox-Lab/RatInABox/tree/d
 Questions? Just ask! Ideally via opening an issue so others can see the answer too. 
 
 Thanks to all contributors so far:
-![GitHub Contributors Image](https://contrib.rocks/image?repo=TomGeorge1234/RatInABox)
+![GitHub Contributors Image](https://contrib.rocks/image?repo=RatInABox-Lab/RatInABox)
 
 ## Cite [![](http://img.shields.io/badge/bioRxiv-10.1101/2022.08.10.503541-B31B1B.svg)](https://doi.org/10.1101/2022.08.10.503541) 
 
