@@ -166,7 +166,7 @@ class Neurons:
         if self.save_history is True:
             self.save_to_history()
         return
-    
+
     def get_state(self, **kwargs):
         raise NotImplementedError("Neurons object needs a get_state() method")
 
