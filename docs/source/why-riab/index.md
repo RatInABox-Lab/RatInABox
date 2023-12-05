@@ -1,7 +1,7 @@
 # Why RatInABox? 
 ## Our beliefs and mission statement
 
-The document outlines a set of beliefs which motivated RatInABox and a set of principles on which is was, and continues to be, built. It should be used to guide decisions about whether to accept new functionality, make changes to the styling of code or whether to take on new dependencies etc.
+The document outlines a set of beliefs which motivated RatInABox and a set of principles on which it was, and continues to be, built. It should be used to guide decisions about whether to accept new functionality, make changes to the styling of code or whether to take on new dependencies etc.
 
 ![why_riab](https://github.com/RatInABox-Lab/RatInABox/assets/41446693/02b28673-84d4-47e5-9bdf-b52d2384cfea)
 
@@ -60,3 +60,11 @@ To achieve these we will adhere to a set of core principles:
 
 
 *Of course heavily reduced models can still teach us a lot but it's a question of at what level you hope to understand a system. If you want to understand the neural underpinnings of complex behavioural trajectories then grid world is probably not the best place to start.
+
+
+```{toctree}
+:maxdepth: 2
+:hidden:
+
+testimonials
+```

@@ -29,4 +29,6 @@ from ratinabox.Neurons import PlaceCells, GridCells #...
 :hidden:
 
 examples
+from-scratch
+africa
 ```

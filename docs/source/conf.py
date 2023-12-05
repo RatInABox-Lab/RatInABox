@@ -92,7 +92,7 @@ html_title = "ratinabox"
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
 
-html_favicon = "_static/logo.png"
+html_favicon = "_static/logo_small.png"
 
 # Customize the theme
 html_theme_options = {
@@ -111,8 +111,8 @@ html_theme_options = {
     ],
     "logo": {
         "text": f"{project} v{release}",
-        "image_light": "logo.png",
-        "image_dark": "logo.png",
+        "image_light": "logo_small.png",
+        "image_dark": "logo_small.png",
     },
 }
 
