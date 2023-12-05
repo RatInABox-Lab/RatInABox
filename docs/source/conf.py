@@ -109,12 +109,11 @@ html_theme_options = {
             "type": "fontawesome",
         }
     ],
-
-    },
     "logo": {
         "text": f"{project} v{release}",
         "image_light": "logo.png",
         "image_dark": "logo.png",
+    },
 }
 
 # Redirect the webpage to another URL
