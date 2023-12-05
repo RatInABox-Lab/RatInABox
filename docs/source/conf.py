@@ -110,7 +110,7 @@ html_theme_options = {
         }
     ],
     "logo": {
-        "text": f"{project} v{release}",
+        "text": f"{project}", #v{release} for release version
         "image_light": "logo_small.png",
         "image_dark": "logo_small.png",
     },
