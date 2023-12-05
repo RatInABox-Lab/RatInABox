@@ -87,6 +87,13 @@ exclude_patterns = [
 html_theme = "pydata_sphinx_theme"
 html_title = "ratinabox"
 
+# Add any paths that contain custom static files (such as style sheets) here,
+# relative to this directory. They are copied after the builtin static files,
+# so a file named "default.css" will overwrite the builtin "default.css".
+html_static_path = ["_static"]
+
+html_favicon = "_static/logo.png"
+
 # Customize the theme
 html_theme_options = {
     "icon_links": [
@@ -102,9 +109,12 @@ html_theme_options = {
             "type": "fontawesome",
         }
     ],
+
+    },
     "logo": {
         "text": f"{project} v{release}",
-    },
+        "image_light": "logo.png",
+        "image_dark": "logo.png",
 }
 
 # Redirect the webpage to another URL

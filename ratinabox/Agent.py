@@ -54,7 +54,7 @@ class Agent:
 
     default_params = {
         "name": None,
-        "dt": 0.05,
+        "dt": 0.1,
         # Speed params (leave empty if you are importing trajectory data)
         # These defaults are fit to match data from Sargolini et al. (2016)
         # also given are the parameter names as refered to in the methods section of the paper
