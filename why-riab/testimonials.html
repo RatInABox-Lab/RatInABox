@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Example scripts &#8212; ratinabox</title>
+    <title>Testimonials &#8212; ratinabox</title>
   
   
   
@@ -39,13 +39,11 @@
     <script src="../_static/doctools.js?v=888ff710"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'get-started/examples';</script>
-    <link rel="canonical" href="https://RatInABox-Lab.github.io/ratinabox/get-started/examples.html" />
+    <script>DOCUMENTATION_OPTIONS.pagename = 'why-riab/testimonials';</script>
+    <link rel="canonical" href="https://RatInABox-Lab.github.io/ratinabox/why-riab/testimonials.html" />
     <link rel="icon" href="../_static/logo.png"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Documentation" href="../documentation.html" />
-    <link rel="prev" title="Get started" href="index.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -154,8 +152,8 @@
                     </li>
                 
 
-                    <li class="nav-item current active">
-                      <a class="nav-link nav-internal" href="index.html">
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../get-started/index.html">
                         Get started
                       </a>
                     </li>
@@ -249,7 +247,7 @@ document.write(`
   <div class="bd-container">
     <div class="bd-container__inner bd-page-width">
       
-      <div class="bd-sidebar-primary bd-sidebar">
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
         
 
   
@@ -275,8 +273,8 @@ document.write(`
                     </li>
                 
 
-                    <li class="nav-item current active">
-                      <a class="nav-link nav-internal" href="index.html">
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../get-started/index.html">
                         Get started
                       </a>
                     </li>
@@ -329,18 +327,6 @@ document.write(`
     
   </div>
   
-    <div class="sidebar-primary-items__start sidebar-primary__section">
-        <div class="sidebar-primary-item">
-<nav class="bd-docs-nav bd-links"
-     aria-label="Section Navigation">
-  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Example scripts</a></li>
-</ul>
-</div>
-</nav></div>
-    </div>
-  
   
   <div class="sidebar-primary-items__end sidebar-primary__section">
   </div>
@@ -373,10 +359,7 @@ document.write(`
         <i class="fa-solid fa-home"></i>
       </a>
     </li>
-    
-    <li class="breadcrumb-item"><a href="index.html" class="nav-link">Get started</a></li>
-    
-    <li class="breadcrumb-item active" aria-current="page">Example scripts</li>
+    <li class="breadcrumb-item active" aria-current="page">Testimonials</li>
   </ul>
 </nav>
 </div>
@@ -393,42 +376,18 @@ document.write(`
 <div id="searchbox"></div>
                 <article class="bd-article" role="main">
                   
-  <section class="tex2jax_ignore mathjax_ignore" id="example-scripts">
-<h1>Example scripts<a class="headerlink" href="#example-scripts" title="Link to this heading">#</a></h1>
-<p>In the folder called <a class="reference external" href="https://github.com/RatInABox-Lab/RatInABox/blob/dev/demos/">demos</a> we provide numerous script and demos which will help when learning <code class="docutils literal notranslate"><span class="pre">RatInABox</span></code>. In approximate order of complexity, these include:</p>
+  <section class="tex2jax_ignore mathjax_ignore" id="testimonials">
+<h1>Testimonials<a class="headerlink" href="#testimonials" title="Link to this heading">#</a></h1>
 <ul class="simple">
-<li><p><a class="reference external" href="https://github.com/RatInABox-Lab/RatInABox/blob/dev/demos/simple_example.ipynb">simple_example.ipynb</a>: a very simple tutorial for importing RiaB, initialising an Environment, Agent and some PlaceCells, running a brief simulation and outputting some data. Code copied here for convenience.</p></li>
-</ul>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">ratinabox</span> <span class="c1">#IMPORT </span>
-<span class="kn">from</span> <span class="nn">ratinabox.Environment</span> <span class="kn">import</span> <span class="n">Environment</span>
-<span class="kn">from</span> <span class="nn">ratinabox.Agent</span> <span class="kn">import</span> <span class="n">Agent</span>
-<span class="kn">from</span> <span class="nn">ratinabox.Neurons</span> <span class="kn">import</span> <span class="o">*</span>
-<span class="c1">#INITIALISE CLASSES</span>
-<span class="n">Env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span> 
-<span class="n">Ag</span> <span class="o">=</span> <span class="n">Agent</span><span class="p">(</span><span class="n">Env</span><span class="p">)</span>
-<span class="n">PCs</span> <span class="o">=</span> <span class="n">PlaceCells</span><span class="p">(</span><span class="n">Ag</span><span class="p">)</span>
-<span class="c1">#EXPLORE</span>
-<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="mi">20</span><span class="o">/</span><span class="n">Ag</span><span class="o">.</span><span class="n">dt</span><span class="p">)):</span> 
-    <span class="n">Ag</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
-    <span class="n">PCs</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
-<span class="c1">#ANALYSE/PLOT</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">Ag</span><span class="o">.</span><span class="n">history</span><span class="p">[</span><span class="s1">&#39;pos&#39;</span><span class="p">][:</span><span class="mi">10</span><span class="p">])</span> 
-<span class="nb">print</span><span class="p">(</span><span class="n">PCs</span><span class="o">.</span><span class="n">history</span><span class="p">[</span><span class="s1">&#39;firingrate&#39;</span><span class="p">][:</span><span class="mi">10</span><span class="p">])</span>
-<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">Ag</span><span class="o">.</span><span class="n">plot_trajectory</span><span class="p">()</span>
-<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">PCs</span><span class="o">.</span><span class="n">plot_rate_timeseries</span><span class="p">()</span>
-</pre></div>
-</div>
-<ul class="simple">
-<li><p><a class="reference external" href="https://github.com/RatInABox-Lab/RatInABox/blob/dev/demos/extensive_example.ipynb">extensive_example.ipynb</a>: a more involved tutorial. More complex enivornment, more complex cell types and more complex plots are used.</p></li>
-<li><p><a class="reference external" href="https://github.com/RatInABox-Lab/RatInABox/blob/dev/demos/list_of_plotting_fuctions.md">list_of_plotting_functions.md</a>: All the types of plots available for are listed and explained.</p></li>
-<li><p><a class="reference external" href="https://github.com/RatInABox-Lab/RatInABox/blob/dev/demos/readme_figures.ipynb">readme_figures.ipynb</a>: (Almost) all plots/animations shown in the root readme are produced from this script (plus some minor formatting done afterwards in powerpoint).</p></li>
-<li><p><a class="reference external" href="https://github.com/RatInABox-Lab/RatInABox/blob/dev/demos/paper_figures.ipynb">paper_figures.ipynb</a>: (Almost) all plots/animations shown in the paper are produced from this script (plus some major formatting done afterwards in powerpoint).</p></li>
-<li><p><a class="reference external" href="https://github.com/RatInABox-Lab/RatInABox/blob/dev/demos/decoding_position_example.ipynb">decoding_position_example.ipynb</a>: Postion is decoded from neural data generated with RatInABox. Place cells, grid cell and boundary vector cells are compared.</p></li>
-<li><p><a class="reference external" href="https://github.com/RatInABox-Lab/RatInABox/blob/dev/demos/splitter_cells_example.ipynb">splitter_cells_example.ipynb</a>: A simple simultaion demonstrating how <code class="docutils literal notranslate"><span class="pre">Splittre</span></code> cell data could be create in a figure-8 maze.</p></li>
-<li><p><a class="reference external" href="https://github.com/RatInABox-Lab/RatInABox/blob/dev/demos/reinforcement_learning_example.ipynb">reinforcement_learning_example.ipynb</a>: RatInABox is use to construct, train and visualise a small two-layer network capable of model free reinforcement learning in order to find a reward hidden behind a wall.</p></li>
-<li><p><a class="reference external" href="https://github.com/RatInABox-Lab/RatInABox/blob/dev/demos/actor_critic_example.ipynb">actor_critic_example.ipynb</a>: RatInABox is use to implement the actor critic algorithm using deep neural networks.</p></li>
-<li><p><a class="reference external" href="https://github.com/RatInABox-Lab/RatInABox/blob/dev/demos/successor_features_example.ipynb">successor_features_example.ipynb</a>: RatInABox is use to learn and visualise successor features under random and biased motion policies.</p></li>
-<li><p><a class="reference external" href="https://github.com/RatInABox-Lab/RatInABox/blob/dev/demos/path_integration_example.ipynb">path_integration_example.ipynb</a>: RatInABox is use to construct, train and visualise a large multi-layer network capable of learning a “ring attractor” capable of path integrating a position estimate using only velocity inputs.</p></li>
+<li><p>🇵🇰 <strong>Muhammad Irfan Kaleem, King Edward Medical University, Lahore, Pakistan</strong> - “My research as a medical graduate from Pakistan aspiring to be a computational neuroscientist but with little computational background, focused on simulating single neuronal activity in a navigational task. I found RatInaBox a great tool box to achieve the goals of my research. This is for several reasons, most important of all that the code has been written in a very easy to understand style so someone like me, with very little programming knowledge, was also able to use it efficiently. Furthermore, RatInaBox has an excellent motion data generation module and then it is augmented by robust analysis tools such as reinforcement learning module to test and build a navigational neuronal network. Other than that, it has its own plotting module which steps up the  matplotlib functionality. Any query that I had while using RatInaBox was almost always answered within a day or two at maximum and the github repo has also been maintained continuously. In summary, RatInaBox is not just a tool box for motion data and single neuron analysis, it is a great learning and teaching tool, particularly for those who are underprivileged AND new to computational neuroscience.”</p></li>
+<li><p>🇬🇭 <strong>Kojo Nketia, University of Ghana, Ghana</strong> - “As a student studying mathematics at the University of Ghana (Legon), I found RatInABox to be a really useful tool when learning about spatial behaviour and representations of a rodent (or an agent) in an environment due to its ability to showcase the relationship between the rodent’s position &amp; velocity and their neural firing rates. This is a helpful python package for replicating realistic motions of a rodent in a controlled environment whilst it allows modification of the environment and/or adding more rodents to suit your preference as you study their navigation, grid cells and place cells. It is an easy and fast approach to experiment with rodents compared to the time-consuming experiments performed in labs and I would recommend it to anyone looking to learn or teach concepts in computational neuroscience.”</p></li>
+<li><p>🇬🇧 <strong>Dr. Colleen Gillon, Imperial College London, UK</strong> - “RatInABox has been critical to the progress of my postdoctoral work studying the role of pyramidal neurons in learning spatial maps of the world. It offers a vast array of tools and features that I need for my project, and would have otherwise had to code from scratch over a period of at least 6 months. Instead, I was able to quickly use RatInABox’s realistic navigation models in a vaste array of randomly generated simulation environments to deploy and test a network model I built from the toolbox’s neuronal models. I recently presented my work at the Bernstein Conference, where several colleagues were very interested in learning more about RatInABox for their own work. I believe that with further development, it has the strong potential to become a cornerstone tool for realistic behavioural modelling and neuronal simulation in the field of computational neuroscience.”</p></li>
+<li><p>🇹🇼 <strong>Pei Huang, National Taiwan University, Taiwan</strong> - “As for educational purposes, we find that the built-in functions in RiaB are user-friendly for Python beginners, allowing them to easily generate activity patterns of various types of spatial-tuning neurons and to modify parameters to see the outcomes. We also think that RiaB can be used to explore the synaptic learning rules we studied for forming splitter cells (choice-dependent place cells). Synthetic data with continuous time domain is cool for considering plasticity mechanisms in the context of their timescales, potentially.”</p></li>
+<li><p>🇬🇧 <strong>Dr. Zilong Ji, UCL, UK</strong> - “The RiaB toolbox has been an invaluable resource for our research. With its user-friendly interface, we’ve been able to rapidly generate a diverse array of grid cells, each with unique spatial properties. This efficiency has allowed us to efficiently test critical predictions from our computational brain navigation model, saving us months of waiting for real experimental data. The toolbox’s versatility and ease of use have significantly accelerated our progress and hold great promise for advancing our understanding of neural systems.” -</p></li>
+<li><p>🇨🇦 <strong>Dr. Dan Levenstein, MILA, Canada</strong> - “We’ve been using RatInABox to study the emergence of spatial tuning in predictive networks. It was easy to use and allowed us to train our networks with biologically plausible behavior and egocentric sensory input — an essential and sorely needed contribution to advance neuroscience research. We now have an additional two projects in development that will use the package.”</p></li>
+<li><p>🇨🇦 <strong>Dr. Quinn Lee, McGill University, Canada</strong> - “As a researcher focused on testing theoretical models of cognitive mapping through a combination of modelling and large-scale neuronal recordings, RiaB has been an invaluable tool to progress my research program and provides a centralized, easy-to-use, and accessible workflow for modelling cognitive map dynamics in the brain. In recent months, we have leveraged this powerful tool to perform large-scale simulations of cognitive mapping dynamics across diverse experimental settings, and have successfully used the results from RiaB in combination with large-scale recordings from calcium imaging (thousands of neurons in freely-behaving mice) to directly test the long-standing theories on spatial representation in the brain. The highly readable documentation, user-friendly demonstrations, and open-source nature of RiaB have established a new foundation and common space for advances in cognitive mapping research.”</p></li>
+<li><p>🇯🇵 <strong>Dr. Tom Burns, OIST, Japan</strong> - “RiaB has been extremely useful in its flexibility and intuitive design (and helpful, responsive developer) in my study of neural coding in varying environment topologies. RiaB significantly improved the efficiency and speed of my analysis and research workflow, letting me go from idea to execution with ease.”</p></li>
+<li><p>🇬🇧 <strong>Prof. Jeff Erlich, UCL, UK</strong> - “We have been using RiaB as a framework for modeling the strategies of mice in a competitive and dynamic environment. Having a framework that outputs realistic trajectories of agents based on clearly defined neural representations, is invaluable. Most other modeling frameworks involve substantial abstraction either on the input or the output side, and one is left wondering how much those abstractions influence the link between models and data. With RiaB the abstractions on the input side (e.g. the neural representations) are explicit and there is limited abstraction on the output side, if what you care about is the position and trajectory of your agents!”</p></li>
 </ul>
 </section>
 
@@ -442,24 +401,6 @@ document.write(`
                 <footer class="prev-next-footer">
                   
 <div class="prev-next-area">
-    <a class="left-prev"
-       href="index.html"
-       title="previous page">
-      <i class="fa-solid fa-angle-left"></i>
-      <div class="prev-next-info">
-        <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Get started</p>
-      </div>
-    </a>
-    <a class="right-next"
-       href="../documentation.html"
-       title="next page">
-      <div class="prev-next-info">
-        <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Documentation</p>
-      </div>
-      <i class="fa-solid fa-angle-right"></i>
-    </a>
 </div>
                 </footer>
               
@@ -472,7 +413,7 @@ document.write(`
   <div class="sidebar-secondary-item">
 
   <div class="tocsection sourcelink">
-    <a href="../_sources/get-started/examples.md.txt">
+    <a href="../_sources/why-riab/testimonials.md.txt">
       <i class="fa-solid fa-file-lines"></i> Show Source
     </a>
   </div>
