@@ -8,7 +8,7 @@ With `RatInABox` you can:
 * **Generate artificial neuronal data** for various location- or velocity-selective cells found in the brain (e.g., but not limited to, Hippocampal cell types), or build your own more complex cell types. 
 * **Build and train complex multi-layer networks** of cells, powered by data generated with `RatInABox`. 
 
-<img src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/dev/.images/readme/ratinabox.gif" width=850>
+<img src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/ratinabox.gif" width=850>
 
 `RatInABox` is an open source project welcoming [contributions](#contribute). If you use `RatInABox` please [cite](#cite) the paper and consider giving this repository a star ☆. It contains three classes: 
 
@@ -39,17 +39,17 @@ The top animation shows an example use case: an `Agent` randomly explores a 2D `
 * **Fast**:         Simulating 1 minute of exploration in a 2D environment with 100 place cells (dt=10 ms) take just 2 seconds on a laptop (no GPU needed).
 * **Precise**:      No more prediscretised positions, tabular state spaces, or jerky movement policies. It's all continuous. 
 * **Easy**:         Sensible default parameters mean you can have realisitic simulation data to work with in <10 lines of code.
-* **Visual**        Plot or animate trajectories, firing rate timeseries', spike rasters, receptive fields, heat maps, velocity histograms...using the plotting functions ([summarised here](https://github.com/RatInABox-Lab/RatInABox/blob/dev/demos/list_of_plotting_fuctions.md)). 
+* **Visual**        Plot or animate trajectories, firing rate timeseries', spike rasters, receptive fields, heat maps, velocity histograms...using the plotting functions ([summarised here](https://github.com/RatInABox-Lab/RatInABox/blob/main/demos/list_of_plotting_fuctions.md)). 
 
 <!-- 
-## Announcement about support for OpenAI's `gymnasium` <img src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/dev/.images/readme/gymnasium_logo.svg" width=25> API
-A new wrapper contributed by [@SynapticSage](https://github.com/SynapticSage) allows `RatInABox` to natively support OpenAI's [`gymnasium`](https://gymnasium.farama.org) API for standardised and multiagent reinforment learning. This can be used to flexibly integrate `RatInABox` with other RL libraries such as Stable-Baselines3 etc. and to build non-trivial tasks with objectives and time dependent rewards. Check it out [here](https://github.com/RatInABox-Lab/RatInABox/blob/dev/ratinabox/contribs/TaskEnv_example_files/TaskEnvironment_basics.md). -->
+## Announcement about support for OpenAI's `gymnasium` <img src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/gymnasium_logo.svg" width=25> API
+A new wrapper contributed by [@SynapticSage](https://github.com/SynapticSage) allows `RatInABox` to natively support OpenAI's [`gymnasium`](https://gymnasium.farama.org) API for standardised and multiagent reinforment learning. This can be used to flexibly integrate `RatInABox` with other RL libraries such as Stable-Baselines3 etc. and to build non-trivial tasks with objectives and time dependent rewards. Check it out [here](https://github.com/RatInABox-Lab/RatInABox/blob/main/ratinabox/contribs/TaskEnv_example_files/TaskEnvironment_basics.md). -->
 
 
 ## Contribute
 `RatInABox` is open source project and we actively encourage  all contributions from example bug fixes to documentation or new cell types. Feel free to make a pull request (you will need to fork the repository first) or raise and issue. 
 
-We have a dedicated [contribs](https://github.com/RatInABox-Lab/RatInABox/tree/dev/ratinabox/contribs) directory where you can safely add awesome scripts and new `Neurons` classes etc.
+We have a dedicated [contribs](https://github.com/RatInABox-Lab/RatInABox/tree/main/ratinabox/contribs) directory where you can safely add awesome scripts and new `Neurons` classes etc.
 
 Questions? Just ask! Ideally via opening an issue so others can see the answer too. 
 

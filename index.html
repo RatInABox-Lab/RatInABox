@@ -35,7 +35,7 @@
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
   <script src="_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
 
-    <script src="_static/documentation_options.js?v=0c41ae70"></script>
+    <script src="_static/documentation_options.js?v=fc13ec96"></script>
     <script src="_static/doctools.js?v=888ff710"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
@@ -126,7 +126,7 @@
     <script>document.write(`<img src="_static/logo_small.png" class="logo__image only-dark" alt=""/>`);</script>
   
   
-    <p class="title logo__title">ratinabox v0.1.dev1+g88c414a</p>
+    <p class="title logo__title">ratinabox v0.1.dev1+g33a10f5</p>
   
 </a></div>
     
@@ -346,7 +346,7 @@ document.write(`
 <li><p><strong>Generate artificial neuronal data</strong> for various location- or velocity-selective cells found in the brain (e.g., but not limited to, Hippocampal cell types), or build your own more complex cell types.</p></li>
 <li><p><strong>Build and train complex multi-layer networks</strong> of cells, powered by data generated with <code class="docutils literal notranslate"><span class="pre">RatInABox</span></code>.</p></li>
 </ul>
-<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/dev/.images/readme/ratinabox.gif"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/dev/.images/readme/ratinabox.gif" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/dev/.images/readme/ratinabox.gif" style="width: 850px;" /></a>
+<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/ratinabox.gif"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/ratinabox.gif" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/ratinabox.gif" style="width: 850px;" /></a>
 <p><code class="docutils literal notranslate"><span class="pre">RatInABox</span></code> is an open source project welcoming <a class="reference internal" href="#contribute"><span class="std std-ref">contributions</span></a>. If you use <code class="docutils literal notranslate"><span class="pre">RatInABox</span></code> please <a class="reference internal" href="#cite"><span class="std std-ref">cite</span></a> the paper and consider giving this repository a star ☆. It contains three classes:</p>
 <ol class="arabic simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">Environment()</span></code>📦: The environment/maze (or “box”) that the agent lives in. 1- or 2-dimensional.</p></li>
@@ -379,16 +379,16 @@ document.write(`
 <li><p><strong>Fast</strong>:         Simulating 1 minute of exploration in a 2D environment with 100 place cells (dt=10 ms) take just 2 seconds on a laptop (no GPU needed).</p></li>
 <li><p><strong>Precise</strong>:      No more prediscretised positions, tabular state spaces, or jerky movement policies. It’s all continuous.</p></li>
 <li><p><strong>Easy</strong>:         Sensible default parameters mean you can have realisitic simulation data to work with in &lt;10 lines of code.</p></li>
-<li><p><strong>Visual</strong>        Plot or animate trajectories, firing rate timeseries’, spike rasters, receptive fields, heat maps, velocity histograms…using the plotting functions (<a class="reference external" href="https://github.com/RatInABox-Lab/RatInABox/blob/dev/demos/list_of_plotting_fuctions.md">summarised here</a>).</p></li>
+<li><p><strong>Visual</strong>        Plot or animate trajectories, firing rate timeseries’, spike rasters, receptive fields, heat maps, velocity histograms…using the plotting functions (<a class="reference external" href="https://github.com/RatInABox-Lab/RatInABox/blob/main/demos/list_of_plotting_fuctions.md">summarised here</a>).</p></li>
 </ul>
 <!-- 
-## Announcement about support for OpenAI's `gymnasium` <img src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/dev/.images/readme/gymnasium_logo.svg" width=25> API
-A new wrapper contributed by [@SynapticSage](https://github.com/SynapticSage) allows `RatInABox` to natively support OpenAI's [`gymnasium`](https://gymnasium.farama.org) API for standardised and multiagent reinforment learning. This can be used to flexibly integrate `RatInABox` with other RL libraries such as Stable-Baselines3 etc. and to build non-trivial tasks with objectives and time dependent rewards. Check it out [here](https://github.com/RatInABox-Lab/RatInABox/blob/dev/ratinabox/contribs/TaskEnv_example_files/TaskEnvironment_basics.md). -->
+## Announcement about support for OpenAI's `gymnasium` <img src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/gymnasium_logo.svg" width=25> API
+A new wrapper contributed by [@SynapticSage](https://github.com/SynapticSage) allows `RatInABox` to natively support OpenAI's [`gymnasium`](https://gymnasium.farama.org) API for standardised and multiagent reinforment learning. This can be used to flexibly integrate `RatInABox` with other RL libraries such as Stable-Baselines3 etc. and to build non-trivial tasks with objectives and time dependent rewards. Check it out [here](https://github.com/RatInABox-Lab/RatInABox/blob/main/ratinabox/contribs/TaskEnv_example_files/TaskEnvironment_basics.md). -->
 </section>
 <section id="contribute">
 <h2>Contribute<a class="headerlink" href="#contribute" title="Link to this heading">#</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">RatInABox</span></code> is open source project and we actively encourage  all contributions from example bug fixes to documentation or new cell types. Feel free to make a pull request (you will need to fork the repository first) or raise and issue.</p>
-<p>We have a dedicated <a class="reference external" href="https://github.com/RatInABox-Lab/RatInABox/tree/dev/ratinabox/contribs">contribs</a> directory where you can safely add awesome scripts and new <code class="docutils literal notranslate"><span class="pre">Neurons</span></code> classes etc.</p>
+<p>We have a dedicated <a class="reference external" href="https://github.com/RatInABox-Lab/RatInABox/tree/main/ratinabox/contribs">contribs</a> directory where you can safely add awesome scripts and new <code class="docutils literal notranslate"><span class="pre">Neurons</span></code> classes etc.</p>
 <p>Questions? Just ask! Ideally via opening an issue so others can see the answer too.</p>
 <p>Thanks to all contributors so far:
 <img alt="GitHub Contributors Image" src="https://contrib.rocks/image?repo=RatInABox-Lab/RatInABox" /></p>
