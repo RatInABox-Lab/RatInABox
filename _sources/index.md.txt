@@ -82,7 +82,7 @@ The research paper corresponding to the above citation can be found [here](https
 :maxdepth: 2
 :hidden:
 
-why-riab
+why-riab/index
 get-started/index
 documentation
 ```
