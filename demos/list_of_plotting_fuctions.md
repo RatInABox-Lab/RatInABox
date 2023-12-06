@@ -104,7 +104,7 @@ As an example here we show this function for a set of 3 (two dimensional) grid c
 
 
 
-## `PlaceCells.plot_place_cell_centres()`
+## `PlaceCells.plot_place_cell_locations()`
 
 Scatters where the place cells are centres 
 
