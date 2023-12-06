@@ -71,7 +71,7 @@ class Environment:
         "boundary": None,  # coordinates [[x0,y0],[x1,y1],...] of the corners of a 2D polygon bounding the Env (if None, Env defaults to rectangular). Corners must be ordered clockwise or anticlockwise, and the polygon must be a 'simple polygon' (no holes, doesn't self-intersect).
         "walls": [],  # a list of loose walls within the environment. Each wall in the list can be defined by it's start and end coords [[x0,y0],[x1,y1]]. You can also manually add walls after init using Env.add_wall() (preferred).
         "holes": [],  # coordinates [[[x0,y0],[x1,y1],...],...] of corners of any holes inside the Env. These must be entirely inside the environment and not intersect one another. Corners must be ordered clockwise or anticlockwise. holes has 1-dimension more than boundary since there can be multiple holes
-        "objects": [], #a list of objects within the environment. Each object is defined by it's position [[x0,y0],[x1,y1],...]. By default all objects are type 0, alternatively you can manually add objects after init using Env.add_object(object, type) (preferred).
+        "objects": [], # a list of objects within the environment. Each object is defined by its position [[x0,y0],[x1,y1],...] for 2D environments and [[x0],[x1],...] for 1D environments. By default all objects are type 0, alternatively you can manually add objects after init using Env.add_object(object, type) (preferred).
     }
 
     def __init__(self, params={}):
@@ -94,6 +94,19 @@ class Environment:
             self.D = 1
             self.extent = np.array([0, self.scale])
             self.centre = np.array([self.scale / 2, self.scale / 2])
+            if self.boundary is not None:
+                warnings.warn(
+                    "You have passed a boundary into a 1D environment. This is ignored."
+                )
+                self.boundary = None
+
+            for feature_for_2D_only in ["holes", "walls"]:
+                if len(getattr(self, feature_for_2D_only)) > 0:
+                    warnings.warn(
+                        f"You have passed {feature_for_2D_only} into a 1D environment. "
+                        "This is ignored."
+                    )
+                    setattr(self, feature_for_2D_only, list())
 
         elif self.dimensionality == "2D":
             self.D = 2
@@ -149,18 +162,6 @@ class Environment:
                     self.holes_polygons.append(shapely.Polygon(h))
             self.boundary_polygon = shapely.Polygon(self.boundary)
 
-            # make list of "objects" within the Env
-            self.passed_in_objects = copy.deepcopy(self.objects)
-            self.objects = {
-                "objects": np.empty((0, 2)),
-                "object_types": np.empty(0, int),
-            }
-            self.n_object_types = 0
-            self.object_colormap = "rainbow_r"
-            if len(self.passed_in_objects) > 0:
-                for o in self.passed_in_objects:
-                    self.add_object(o, type=0)
-
             # make some other attributes
             left = min([c[0] for c in b])
             right = max([c[0] for c in b])
@@ -170,6 +171,18 @@ class Environment:
             self.extent = np.array(
                 [left, right, bottom, top]
             )  # [left,right,bottom,top] ]the "extent" which will be plotted, always a rectilinear rectangle which will be the extent of all matplotlib plots
+
+        # make list of "objects" within the Env
+        self.passed_in_objects = copy.deepcopy(self.objects)
+        self.objects = {
+            "objects": np.empty((0, self.D)),
+            "object_types": np.empty(0, int),
+        }
+        self.n_object_types = 0
+        self.object_colormap = "rainbow_r"
+        if len(self.passed_in_objects) > 0:
+            for o in self.passed_in_objects:
+                self.add_object(o, type=0)
 
         # save some prediscretised coords (useful for plotting rate maps later)
         self.discrete_coords = self.discretise_environment(dx=self.dx)
@@ -352,8 +365,8 @@ class Environment:
             type (_type_): The "type" of the object, any integer. By default ("new") a new type is made s.t. the first object is type 0, 2nd type 1... n'th object will be type n-1, etc.... If type == "same" then the added object has the same type as the last
 
         """
-        object = np.array(object).reshape(1, 2)
-        assert object.shape[1] == 2
+        object = np.array(object).reshape(1, -1)
+        assert object.shape[1] == self.D
 
         if type == "new":
             type = self.n_object_types
@@ -379,12 +392,14 @@ class Environment:
                          fig=None, 
                          ax=None, 
                          gridlines=False,
+                         plot_objects=True,
                          autosave=None,
                          **kwargs,):
         """Plots the environment on the x axis, dark grey lines show the walls
         Args:
             fig,ax: the fig and ax to plot on (can be None)
             gridlines: if True, plots gridlines
+            plot_objects: if True, plots objects
             autosave: if True, will try to save the figure to the figure directory `ratinabox.figure_directory`. Defaults to None in which case looks for global constant ratinabox.autosave_plots
         Returns:
             fig, ax: the environment figures, can be used for further downstream plotting.
@@ -406,6 +421,24 @@ class Environment:
             ax.set_yticks([])
             ax.set_xticks([extent[0], extent[1]])
             ax.set_xlabel("Position / m")
+
+            # plot objects, if applicable
+            if plot_objects:
+                object_cmap = matplotlib.colormaps[self.object_colormap]
+                for i, object in enumerate(self.objects["objects"]):
+                    object_color = object_cmap(
+                        self.objects["object_types"][i]
+                        / (self.n_object_types - 1 + 1e-8)
+                    )
+                    ax.scatter(
+                        object[0],
+                        0,
+                        facecolor=[0, 0, 0, 0],
+                        edgecolors=object_color,
+                        s=10,
+                        zorder=2,
+                        marker="o",
+                    )
 
         if self.dimensionality == "2D":
             extent, walls = self.extent, self.walls
@@ -474,10 +507,8 @@ class Environment:
                     zorder=2,
                 )
 
-            # plot objects if there isn't a kwarg setting it to false
-            if 'plot_objects' in kwargs and kwargs['plot_objects'] == False:
-                pass
-            else: 
+            # plot objects, if applicable
+            if plot_objects: 
                 object_cmap = matplotlib.colormaps[self.object_colormap]
                 for i, object in enumerate(self.objects["objects"]):
                     object_color = object_cmap(
