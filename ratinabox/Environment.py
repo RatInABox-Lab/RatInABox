@@ -554,13 +554,13 @@ class Environment:
                 ex = self.extent
                 area = (ex[1] - ex[0]) * (ex[3] - ex[2])
                 delta = np.sqrt(area / n)
-                x = np.arange(ex[0] + delta / 2, ex[1] - delta / 2 + 1e-6, delta)
-                y = np.arange(ex[2] + delta / 2, ex[3] - delta / 2 + 1e-6, delta)
+                x = np.linspace(ex[0] + delta /2, ex[1] - delta /2, int((ex[1] - ex[0])/delta))
+                y = np.linspace(ex[2] + delta /2, ex[3] - delta /2, int((ex[3] - ex[2])/delta))
                 positions = np.array(np.meshgrid(x, y)).reshape(2, -1).T
                 n_uniformly_distributed = positions.shape[0]
                 if method[7:] == "_jitter":
                     positions += np.random.uniform(
-                        -0.45 * delta, 0.45 * delta, positions.shape
+                        -0.45 * delta, 0.45 * delta, positions.shape 
                     )
                 n_remaining = n - n_uniformly_distributed
                 if n_remaining > 0:
