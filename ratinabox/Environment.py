@@ -548,7 +548,7 @@ class Environment:
 
         return fig, ax
 
-    def sample_positions(self, n=10, method="uniform_jitter"):
+    def sample_positions(self, n=10, method="uniform_jitter",force_method=False):
         """Scatters 'n' locations across the environment which can act as, for example, the centres of gaussian place fields, or as a random starting position.
         If method == "uniform" an evenly spaced grid of locations is returned.  If method == "uniform_jitter" these locations are jittered slightly (i.e. random but span the space). Note; if n doesn't uniformly divide the size (i.e. n is not a square number in a square environment) then the largest number that can be scattered uniformly are found, the remaining are randomly placed.
         Args:
@@ -581,33 +581,46 @@ class Environment:
                 positions[:, 1] = np.random.uniform(
                     self.extent[2], self.extent[3], size=n
                 )
+                if (self.is_rectangular is False) or (self.has_holes is True):
+                # in this case, the positions you have sampled within the extent of the environment may not actually fall within it's legal area (i.e. they could be outside the polygon boundary or inside a hole). Brute force this by randomly resampling these points until all fall within the env.
+                    for i, pos in enumerate(positions):
+                        if self.check_if_position_is_in_environment(pos) == False:
+                            pos = self.sample_positions(n=1, method="random").reshape(
+                                -1
+                            )  # this recursive call must pass eventually, assuming the env is sufficiently large. this is why we don't need a while loop
+                            positions[i] = pos
             elif method[:7] == "uniform":
                 ex = self.extent
                 area = (ex[1] - ex[0]) * (ex[3] - ex[2])
+                if (self.has_holes is True): 
+                    area -= sum(polygon_area(hole) for hole in self.holes)
                 delta = np.sqrt(area / n)
                 x = np.linspace(ex[0] + delta /2, ex[1] - delta /2, int((ex[1] - ex[0])/delta))
                 y = np.linspace(ex[2] + delta /2, ex[3] - delta /2, int((ex[3] - ex[2])/delta))
                 positions = np.array(np.meshgrid(x, y)).reshape(2, -1).T
+                
+                if (self.is_rectangular is False) or (self.has_holes is True):
+                    # in this case, the positions you have sampled within the extent of the environment may not actually fall within it's legal area (i.e. they could be outside the polygon boundary or inside a hole).
+                    delpos = [i for (i,pos) in enumerate(positions) if self.check_if_position_is_in_environment(pos) == False]
+                    positions = np.delete(positions,delpos,axis=0) # this will delete illegal positions
+
                 n_uniformly_distributed = positions.shape[0]
                 if method[7:] == "_jitter":
                     positions += np.random.uniform(
                         -0.45 * delta, 0.45 * delta, positions.shape 
-                    )
+                    ) 
                 n_remaining = n - n_uniformly_distributed
                 if n_remaining > 0:
-                    positions_remaining = self.sample_positions(
-                        n=n_remaining, method="random"
-                    )
+                    if force_method:
+                        # resample from available positions (repeating sampled positions)     
+                        positions_remaining = [positions[i] for i in np.random.choice(range(len(positions)),n_remaining, replace=False)]
+                    else:
+                        # or brute force this by randomly resampling these points until all fall within the env.
+                        positions_remaining = self.sample_positions(
+                            n=n_remaining, method="random"
+                        )
                     positions = np.vstack((positions, positions_remaining))
 
-            if (self.is_rectangular is False) or (self.has_holes is True):
-                # in this case, the positions you have sampled within the extent of the environment may not actually fall within it's legal area (i.e. they could be outside the polygon boundary or inside a hole). Brute force this by randomly resampling these points until all fall within the env.
-                for i, pos in enumerate(positions):
-                    if self.check_if_position_is_in_environment(pos) == False:
-                        pos = self.sample_positions(n=1, method="random").reshape(
-                            -1
-                        )  # this recursive call must pass eventually, assuming the env is sufficiently large. this is why we don't need a while loop
-                        positions[i] = pos
             return positions
 
     def discretise_environment(self, dx=None):
