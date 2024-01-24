@@ -555,6 +555,7 @@ class Environment:
             n (int): number of features
             method: "uniform", "uniform_jittered" or "random" for how points are distributed
             true_random: if True, just randomly scatters point
+            force_method: if True, forces sampling 'method'. if False, illegal sampled positions will be resampled randomly.
         Returns:
             array: (n x dimensionality) of positions
         """
@@ -593,7 +594,7 @@ class Environment:
                 ex = self.extent
                 area = (ex[1] - ex[0]) * (ex[3] - ex[2])
                 if (self.has_holes is True): 
-                    area -= sum(polygon_area(hole) for hole in self.holes)
+                    area -= sum(shapely.geometry.Polygon(hole).area for hole in self.holes)
                 delta = np.sqrt(area / n)
                 x = np.linspace(ex[0] + delta /2, ex[1] - delta /2, int((ex[1] - ex[0])/delta))
                 y = np.linspace(ex[2] + delta /2, ex[3] - delta /2, int((ex[3] - ex[2])/delta))

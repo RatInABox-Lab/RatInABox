@@ -13,15 +13,6 @@ import ratinabox
 """OTHER USEFUL FUNCTIONS"""
 """Geometry functions"""
 
-def polygon_area(hole):
-    """Given 4-point list defining a hole in the environment, returns its area.
-    Args:
-        hole (array): list of list of points defining the hole.
-    Returns:
-        scalar: area of the hole.
-    """
-    x, y = zip(*hole)
-    return round(0.5*np.abs(np.dot(x,np.roll(y,1))-np.dot(y,np.roll(x,1))),2)
 
 def get_perpendicular(a=None):
     """Given 2-vector, a, returns its perpendicular
