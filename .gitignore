@@ -6,7 +6,7 @@ grants/
 build/
 dist/
 demos/random/
-ratinabox/contribs/STDPFeedForwardLayer.py
+ratinabox/contribs/work_in_progress/
 publishing_instructions.md
 *.pptx
 .DS_Store
@@ -14,7 +14,6 @@ __pycache__
 */__pycache__
 *.egg-info
 */.ipynb_checkpoints
-ratinabox/contribs/not_yet_ready/
 community_use_cases.md
 .vscode/
 
