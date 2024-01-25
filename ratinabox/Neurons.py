@@ -2632,7 +2632,7 @@ class FeedForwardLayer(Neurons):
         self.inputs[name]["layer"] = input_layer
         self.inputs[name]["w"] = w
         self.inputs[name]["w_init"] = w.copy()
-        self.inputs[name]["I"] = I
+        self.inputs[name]["I"] = I #stores the last input to this layer, only updated when "evaluate_at"=="last" i.e. not during plotting 
         self.inputs[name]["n"] = input_layer.n  # a copy for convenience
         self.inputs[name]["recurrent"] = recurrent
         for key, value in kwargs.items():
@@ -2671,9 +2671,9 @@ class FeedForwardLayer(Neurons):
             w = inputlayer["w"]
             if evaluate_at == "last":
                 I = inputlayer["layer"].firingrate
+                inputlayer["I"] = I
             else:  # kick can down the road let input layer decide how to evaluate the firingrate. this is core to feedforward layer as this recursive call will backprop through the upstraem layers until it reaches a "core" (e.g. place cells) layer which will then evaluate the firingrate.
                 I = inputlayer["layer"].get_state(evaluate_at, max_recurrence=pass_max_recurrence, **kwargs)
-            inputlayer["I_temp"] = I
             V += np.matmul(w, I)
 
         biases = self.biases

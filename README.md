@@ -1,6 +1,6 @@
 # RatInABox ![Tests](https://github.com/RatInABox-Lab/RatInABox/actions/workflows/test.yml/badge.svg)   [![PyPI version](https://badge.fury.io/py/ratinabox.svg)](https://badge.fury.io/py/ratinabox) [![Downloads](https://static.pepy.tech/badge/ratinabox)](https://pepy.tech/project/ratinabox)<img align="right" src=".images/readme/logo.png" width=150> 
 
-`RatInABox` (see [paper](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v3)) is a toolkit for generating synthetic behaviour and neural data for spatially and/or velocity selective cell types in complex continuous environments. 
+`RatInABox` (see [paper](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v5)) is a toolkit for generating synthetic behaviour and neural data for spatially and/or velocity selective cell types in complex continuous environments. 
 
 [**Install**](#installing-and-importing) | [**Demos**](#get-started) | [**Features**](#feature-run-down) | [**Contributions and Questions**](#contribute) | [**Cite**](#cite)
 
@@ -124,9 +124,9 @@ Here are some easy to make examples.
 #### **Complex `Environment`s: Polygons, curves, and holes**
 By default, `Environments` in RatInABox are square (or rectangular if `aspect != 1`). It is possible to create arbitrary environment shapes using the `"boundary"` parameter at initialisation. 
 
-One can all add holes to the `Environment` using the `"holes"` parameter at initialisation. Positions sampled from the Environment (e.g. at initialisation) won't be inside holes.
+You can also add holes to the `Environment` using the `"holes"` parameter at initialisation. When sampling positions from the Environment (e.g. at initialisation), holes won't be included.
 
-Any curved environments can be made by creating a boundary of many small walls (uyse sparingly, walls may slow down computations)
+Any curved environments can be made by creating a boundary of many small walls (use sparingly, walls may slow down computations, particular for wall-responsive representations, e.g. boundary vector cells.)
 
 ```python 
 #A trapezium shaped Environment
@@ -146,7 +146,6 @@ Env = Environment(params = {
     'boundary':[[0.5*np.cos(t),0.5*np.sin(t)] for t in np.linspace(0,2*np.pi,100)],
     })
 ```
-
 
 <img src=".images/readme/complex_envs.png" width=1000>
 

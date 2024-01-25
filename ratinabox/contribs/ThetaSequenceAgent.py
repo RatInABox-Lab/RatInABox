@@ -93,7 +93,7 @@ class ThetaSequenceAgent(Agent):
 
         • Achilles and the tortoise: When behind the Agent we can interpolate along historic data but on each step the true agent moves forwards a little, so we must recollect this new data. The ThetaSequenceAgent position is Achilles, the TrueAgent is the tortoise.
         • Interpolation expense: We must interpolate smoothly over historic data but this is expensive since it requires converting the list of past positions into an array then running scipy.interpolate.interp1d. So we want to take the least possible historic data which guarantees we'll have enough to do the behind sequence.
-        • Reference frame: In the current model the speed of the sequence is constant (in the reference frame of the TrueAgent) but the speed of the TrueAgent may not be. Therefore it is not enough to just interpolate over the past trajectory (indexed by time), we mmust transform coordinates to "distance travelled" (which is linear wrt the sequence).
+        • Reference frame: In the current model the speed of the sequence is constant (in the reference frame of the TrueAgent) but the speed of the TrueAgent may not be. Therefore it is not enough to just interpolate over the past trajectory (indexed by time), we must transform coordinates to "distance travelled" (which is linear wrt the sequence).
         • Boundary conditions
         """
 
@@ -280,3 +280,4 @@ class ThetaSequenceAgent(Agent):
             fig, ax = super(ThetaSequenceAgent, self).plot_trajectory(**kwargs_)
 
         return fig, ax
+
