@@ -548,14 +548,12 @@ class Environment:
 
         return fig, ax
 
-    def sample_positions(self, n=10, method="uniform_jitter",force_method=False):
+    def sample_positions(self, n=10, method="uniform_jitter"):
         """Scatters 'n' locations across the environment which can act as, for example, the centres of gaussian place fields, or as a random starting position.
         If method == "uniform" an evenly spaced grid of locations is returned.  If method == "uniform_jitter" these locations are jittered slightly (i.e. random but span the space). Note; if n doesn't uniformly divide the size (i.e. n is not a square number in a square environment) then the largest number that can be scattered uniformly are found, the remaining are randomly placed.
         Args:
             n (int): number of features
             method: "uniform", "uniform_jittered" or "random" for how points are distributed
-            true_random: if True, just randomly scatters point
-            force_method: if True, forces sampling 'method'. if False, illegal sampled positions will be resampled randomly.
         Returns:
             array: (n x dimensionality) of positions
         """
@@ -612,14 +610,12 @@ class Environment:
                     ) 
                 n_remaining = n - n_uniformly_distributed
                 if n_remaining > 0:
-                    if force_method:
-                        # resample from available positions (repeating sampled positions)     
-                        positions_remaining = [positions[i] for i in np.random.choice(range(len(positions)),n_remaining, replace=False)]
-                    else:
-                        # or brute force this by randomly resampling these points until all fall within the env.
-                        positions_remaining = self.sample_positions(
-                            n=n_remaining, method="random"
-                        )
+                    # sample remaining from available positions with further jittering (delta = delta/2)
+                    positions_remaining = np.array([positions[i] for i in np.random.choice(range(len(positions)),n_remaining, replace=False)])
+                    delta /= 2
+                    positions_remaining += np.random.uniform(
+                        -0.45 * delta, 0.45 * delta, positions_remaining.shape
+                    )
                     positions = np.vstack((positions, positions_remaining))
 
             return positions
