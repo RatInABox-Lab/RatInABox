@@ -170,11 +170,18 @@ class Neurons:
     def get_state(self, **kwargs):
         raise NotImplementedError("Neurons object needs a get_state() method")
 
-    def get_head_direction_averaged_state(self, evaluate_at="agent", **kwargs):
-        """Like get_state() except it calculates it at all head directions 0-->2pi and then averages over those head directions. Note this will only be relevant (although it will always "work") for Neurons which have some kind of head direction selectivity i.e. Neurons where "head_direction" is a kwarg which is used by get_state(). These include HeadDirectionCells or egocentric-BoundaryVectorCells or any cells you might build out of these. Conversely for PlaceCells, the head_direction argument into get_state() will be ignored so this will just be a more inefficient way of calling get_state()."""
+    def get_head_direction_averaged_state(self, evaluate_at="agent", angular_resolution_degrees=10, **kwargs):
+        """Like get_state() except it calculates it at all head directions 0-->2pi and then averages over those head directions. Note this will only be relevant (although it will always "work") for Neurons which have some kind of head direction selectivity i.e. Neurons where "head_direction" is a kwarg which is used by get_state(). These include HeadDirectionCells or egocentric-BoundaryVectorCells or any cells you might build out of these. Conversely for PlaceCells, the head_direction argument into get_state() will be ignored so this will just be a more inefficient way of calling get_state().
+        
+        Args: 
+            • evaluate_at: "agent" or "all" or None. If "agent" (default) then the Agent's current position is used to calculate the firing rate. If "all" then the firing rate is calculated at all positions across the environment. If None then you must provide a position or velocity array as a kwarg "pos" or "vel" respectively. Defaults to "agent".
+            • angular_resolution_degrees: the angular resolution in degrees at which to calculate the firing rate. Defaults to 10.
+            • kwargs: passed into get_state().
+        """
         firingrate = np.zeros_like(self.get_state(evaluate_at=evaluate_at, head_direction=[1,0], **kwargs))
-        firingrate = np.repeat(firingrate[:,:,np.newaxis],100,axis=2)
-        angles = np.linspace(0,2*np.pi,100)
+        n_angles = int(360 / angular_resolution_degrees)
+        firingrate = np.repeat(firingrate[:,:,np.newaxis],n_angles,axis=2)
+        angles = np.linspace(0,2*np.pi,n_angles)
         for (i,ang) in enumerate(angles):
             head_direction = np.array([np.cos(ang),np.sin(ang)])
             firingrate[:,:,i] = self.get_state(evaluate_at=evaluate_at, head_direction=head_direction, **kwargs)
@@ -323,7 +330,7 @@ class Neurons:
         Args:
             •chosen_neurons: Which neurons to plot. string "10" will plot 10 of them, "all" will plot all of them, a list like [1,4,5] will plot cells indexed 1, 4 and 5. Defaults to "10".
 
-            • method: "groundtruth" "history" "neither" "ratemaps_provided": which method to use. If "groundtruth" (default) tries to calculate rate map by evaluating firing rate at all positions across the environment (note this isn't always well defined. in which case...). If "groundtruth__headdirectionaveraged" calculates rate maps but averaged over all head directions (2D environments only). If "history", plots ratemap by a weighting a histogram of positions visited by the firingrate observed at that position. If "neither" (or anything else), then neither. If "ratemaps_provided" then you must provide a rate map as a numpy array of shape (n_neurons, n_positions) under the keyworkd argument "ratemaps". This is useful if you have already calculated the rate map and want to plot it without having to recalculate it.
+            • method: "groundtruth" "history" "neither" "ratemaps_provided": which method to use. If "groundtruth" (default) tries to calculate rate map by evaluating firing rate at all positions across the environment (note this isn't always well defined. in which case...). If "groundtruth_headdirectionaveraged" calculates rate maps but averaged over all head directions (2D environments only). If "history", plots ratemap by a weighting a histogram of positions visited by the firingrate observed at that position. If "neither" (or anything else), then neither. If "ratemaps_provided" then you must provide a rate map as a numpy array of shape (n_neurons, n_positions) under the keyworkd argument "ratemaps". This is useful if you have already calculated the rate map and want to plot it without having to recalculate it.
 
             • spikes: True or False. Whether to display the occurence of spikes. If False (default) no spikes are shown. If True both ratemap and spikes are shown.
 
@@ -564,7 +571,7 @@ class Neurons:
 
 
     def plot_angular_rate_map(self, chosen_neurons="all", fig=None, ax=None, autosave=None):
-        """Plots the position-averaged firing rate map of the neuron as a function of head direction. To od this ist calculates the spatial receptive fields at many head directions and averages them over position (therefore it may be slow). 
+        """Plots the position-averaged firing rate map of the neuron as a function of head direction. To do this it calculates the spatial receptive fields at many head directions and averages them over position (therefore it may be slow). 
         Args:
             chosen_neurons (str, optional): The neurons to plot. Defaults to "all".
             fig, ax (_type_, optional): matplotlib fig, ax objects ot plot onto (optional).
