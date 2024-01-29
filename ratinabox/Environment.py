@@ -572,7 +572,8 @@ class Environment:
             return positions
 
         elif self.dimensionality == "2D":
-            if method == "random":
+            if method == "random": 
+                # random scatter positions and check they aren't in holes etc. 
                 positions = np.zeros((n, 2))
                 positions[:, 0] = np.random.uniform(
                     self.extent[0], self.extent[1], size=n
@@ -589,6 +590,7 @@ class Environment:
                             )  # this recursive call must pass eventually, assuming the env is sufficiently large. this is why we don't need a while loop
                             positions[i] = pos
             elif method[:7] == "uniform":
+                # uniformly scatter positions on a square grid and check they aren't in holes etc.
                 ex = self.extent
                 area = (ex[1] - ex[0]) * (ex[3] - ex[2])
                 if (self.has_holes is True): 
@@ -599,12 +601,13 @@ class Environment:
                 positions = np.array(np.meshgrid(x, y)).reshape(2, -1).T
                 
                 if (self.is_rectangular is False) or (self.has_holes is True):
-                    # in this case, the positions you have sampled within the extent of the environment may not actually fall within it's legal area (i.e. they could be outside the polygon boundary or inside a hole).
+                    # in this case, the positions you have sampled within the extent of the environment may not actually fall within it's legal area (i.e. they could be outside the polygon boundary or inside a hole). delete those that do for resampling later. 
                     delpos = [i for (i,pos) in enumerate(positions) if self.check_if_position_is_in_environment(pos) == False]
                     positions = np.delete(positions,delpos,axis=0) # this will delete illegal positions
 
                 n_uniformly_distributed = positions.shape[0]
                 if method[7:] == "_jitter":
+                    # add jitter to the uniformly distributed positions
                     positions += np.random.uniform(
                         -0.45 * delta, 0.45 * delta, positions.shape 
                     ) 
