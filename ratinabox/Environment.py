@@ -289,23 +289,20 @@ class Environment:
             if name in self.agents_dict:
                 raise ValueError(f"A agent with the name {agent.name}  and  {name} already exists. Please choose a unique name for each agent.\n\
                             This can cause trouble with lookups")
-                
             else:
                 agent.name = name 
                 warnings.warn(f"A agent with the name {agent.name} already exists. Renaming to {name}")
         
-
         self.Agents.append(agent)
         self.agents_dict[agent.name] = agent
 
 
     def remove_agent(self, agent: Union[str, Agent]  = None):
-
         """
-            A function to remove a agent from the Environment.Agents list and the Environment.agents_dict dictionary
+        A function to remove a agent from the Environment.Agents list and the Environment.agents_dict dictionary
 
-            Args:
-                agent (str|Agent): the name of the agent you want to remove or the agent object itself
+        Args:
+            agent (str|Agent): the name of the agent you want to remove or the agent object itself
         """
 
         if isinstance(agent, str):
@@ -319,8 +316,6 @@ class Environment:
         
     
 
-
-    
     def add_wall(self, wall):
         """Add a wall to the (2D) environment.
         Extends self.walls array to include one new wall.
