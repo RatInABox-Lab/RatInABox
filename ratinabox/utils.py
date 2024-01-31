@@ -105,6 +105,15 @@ def vector_intercepts(vector_list_a, vector_list_b, return_collisions=False):
             * (intercepts[:, :, 1] < 1)
         )
         return direct_collision
+    #do both
+    elif return_collisions == "as_well":
+        direct_collision = (
+            (intercepts[:, :, 0] > 0)
+            * (intercepts[:, :, 0] < 1)
+            * (intercepts[:, :, 1] > 0)
+            * (intercepts[:, :, 1] < 1)
+        )
+        return intercepts, direct_collision
     else:
         return intercepts
 
