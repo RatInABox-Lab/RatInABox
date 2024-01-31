@@ -264,7 +264,7 @@ class ThetaSequenceAgent(Agent):
         )  # 2cm point seperation for sequences
         kwargs_["color"] = "C1"
         kwargs_["alpha"] = 0.4
-        kwargs_["plot_agent"] = False
+        kwargs_["show_agent"] = False
         kwargs_["autosave"] = False
 
         if sequences_ontop == False:
@@ -280,4 +280,6 @@ class ThetaSequenceAgent(Agent):
             fig, ax = super(ThetaSequenceAgent, self).plot_trajectory(**kwargs_)
 
         return fig, ax
+    
+    
 
