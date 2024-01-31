@@ -86,12 +86,10 @@ class Agent:
         utils.update_class_params(self, self.params, get_all_defaults=True)
         utils.check_params(self, params.keys())
 
-        
         self.Environment = Environment
 
         # decide the name of the agent 
         self.agent_idx = len(self.Environment.Agents)
-
         if self.name is None:
             self.name = f"agent_{self.agent_idx}"
 
@@ -125,11 +123,13 @@ class Agent:
             self.velocity = self.speed_mean * np.array(
                 [np.cos(direction), np.sin(direction)]
             )
+            self.save_velocity = self.velocity.copy()
             self.rotational_velocity = 0
 
         if self.Environment.dimensionality == "1D":
             self.pos = self.Environment.sample_positions(n=1, method="random")[0]
             self.velocity = np.array([self.speed_mean])
+            self.save_velocity = self.velocity.copy()
             if self.Environment.boundary_conditions == "solid":
                 if self.speed_mean != 0:
                     warnings.warn(
@@ -171,22 +171,27 @@ class Agent:
         Specifically the full loop looks like this:
         1) Update time by dt
         2) Update velocity for the next time step.
-           In 2D this is done by varying the agents heading direction and speed according to ornstein-uhlenbeck processes.
+           In 2D this is done by varying the agents heading direction and speed according to random ornstein-uhlenbeck processes.
            In 1D, simply the velocity is varied according to ornstein-uhlenbeck. This includes, if turned on, being repelled by the walls.
+        2.1) If drift_velocity is provided, deterministically drift the velocity towards this velocity (allows for smooth variation between random and controlled velocity)
         3) Propose a new position (x_new =? x_old + velocity.dt)
         3.1) Check if this step collides with any walls (and act accordingly)
         3.2) Check you distance and direction from walls and be repelled by them is necessary
         4) Check position is still within maze and handle boundary conditions appropriately
         6) Store new position and time in history data frame
+
+        Args: 
+            • dt: the time step, seconds (float, default = None --> self.dt)
+            • drift_velocity: the velocity vector the Agents velocity will drift towards (default = None --> no drift, only random motion)
+            • drift_to_random_strength_ratio: ratio of random to drift velocity (default = 1 --> drift is as strong as random)
         """
-        if dt == None:
-            dt = self.dt
-        self.dt = dt
+        dt = (dt or self.dt)
+        self.dt = dt #by setting dt this means you can use dt anywhere else and know it was dt used in the latest update 
         self.t += dt
         self.velocity = self.velocity.astype(float)
-        self.pos = np.array(
-            self.pos
-        )  # check pos is an array (may have external been set as a list)
+        self.pos = np.array(self.pos)  # check pos is an array (may have external been set as a list)
+
+
 
         if self.use_imported_trajectory == False:  # use random motion model
             if self.Environment.dimensionality == "2D":
@@ -366,6 +371,11 @@ class Agent:
                     coherence_time=self.speed_coherence_time,
                 )
                 self.save_velocity = self.velocity
+                if self.Environment.boundary_conditions == "solid":
+                    self.distance_to_closest_wall = min(
+                        self.Environment.extent[1] - self.pos, self.pos - self.Environment.extent[0]
+                    )[0]
+
 
         elif self.use_imported_trajectory == True:
             # use an imported trajectory to
@@ -654,14 +664,8 @@ class Agent:
         fig=None,
         ax=None,
         plot_all_agents=False,
-        plot_head_direction=False,
-        point_size=15,
-        decay_point_size=False,
-        decay_point_timescale=10,
         color=None,
         colorbar=False,
-        alpha=0.7,
-        xlim=None,
         autosave=None,
         **kwargs,
     ):
@@ -673,20 +677,25 @@ class Agent:
             • fig, ax: the fig, ax to plot on top of, optional, if not provided used self.Environment.plot_Environment().
               This can be used to plot trajectory on top of receptive fields etc.
             • plot_all_agents: if True, this will plot the trajectory of all agents in the list self.Environment.Agents
-            • plot_head_direction: if True, will plot a triangle showing the head direction of the agent
-            • point_size: size of scatter points
-            • decay_point_size: decay trajectory point size over time (recent times = largest)
-            • decay_point_timescale: if decay_point_size is True, this is the timescale over which sizes decay
             • color: plot point color, if color == 'changing' will smoothly change trajectory color from start to finish
             • colorbar: if True, will add a colorbar to the plot (only valid if color == 'changing')
-            • alpha: plot point opaqness
-            • xlim: In 1D, forces the xlim to be a certain time (minutes) (useful if animating this function)
             • autosave: if True, will try to save the figure to the figure directory `ratinabox.figure_directory`. Defaults to None in which case looks for global constant ratinabox.autosave_plots
-            • **kwargs: passed to self.Environment.plot_environment()
+            • **kwargs: For finer control of plotting (see top of function), these are then passed on to passed to self.Environment.plot_environment()
 
         Returns:
             fig, ax
         """
+        # Sets a load of default params if you they havent been defined in kwargs
+        zorder = kwargs.get("zorder", 1.1)
+        alpha = kwargs.get("alpha", 0.7) #transparency of trajectory
+        show_agent = kwargs.get("show_agent", True) #if True, will plot a red dot at the current position of the agent
+        point_size = kwargs.get("point_size", 15) #size of trajectory points
+        decay_point_size = kwargs.get("decay_point_size", False) #if True will decay trajectory point size over time (recent times = largest)
+        decay_point_timescale = kwargs.get("decay_point_timescale", 10) #if decay_point_size is True, this is the timescale over which sizes decay
+        plot_head_direction = kwargs.get("plot_head_direction", True) #if True, will plot a triangle showing the head direction of the agent
+        trajectory_cmap = kwargs.get("trajectory_cmap", matplotlib.colormaps["viridis_r"]) #colormap to use when color == 'changing' 
+        xlim = kwargs.get("xlim", None)  #In 1D, forces the xlim to be a certain time (minutes) (useful if animating this function)
+
         # loop over all agents in the Environment if plot_all_agents is True
         if plot_all_agents == False:
             agent_list = [self]
@@ -705,7 +714,7 @@ class Agent:
             head_direction = np.array(self_.history["head_direction"])[slice]
             if color is None:
                 color_list = [f"C{self_.agent_idx}"] * len(time)
-            elif color == "changing":
+            elif (color == "changing") or isinstance(color, matplotlib.colors.Colormap):
                 trajectory_cmap = matplotlib.colormaps["viridis_r"]
                 color_list = [trajectory_cmap(t / len(time)) for t in range(len(time))]
                 decay_point_size = (
@@ -731,21 +740,22 @@ class Agent:
                     trajectory[:-1, 1],
                     s=s[:-1],
                     alpha=alpha,
-                    zorder=1.1,
+                    zorder=zorder,
                     c=color_list[:-1],
                     linewidth=0,
                 )
 
                 #plot agent
-                agent_ = ax.scatter(
-                    trajectory[-1, 0],
-                    trajectory[-1, 1],
-                    s=40,
-                    zorder=1.1,
-                    c="r",
-                    linewidth=0,
-                    marker="o",
-                )
+                if show_agent == True: 
+                    agent_ = ax.scatter(
+                        trajectory[-1, 0],
+                        trajectory[-1, 1],
+                        s=40,
+                        zorder=zorder,
+                        c="r",
+                        linewidth=0,
+                        marker="o",
+                    )
 
                 #plot head direction 
                 if plot_head_direction == True:
@@ -756,7 +766,7 @@ class Agent:
                         trajectory[-1, 1],
                         s=200,
                         alpha=alpha,
-                        zorder=1.1,
+                        zorder=zorder,
                         c="r",
                         linewidth=0,
                         marker=rotated_agent_marker,
