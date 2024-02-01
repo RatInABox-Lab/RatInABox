@@ -839,40 +839,42 @@ class Environment:
         return walls_to_pos_vectors
 
     def apply_boundary_conditions(self, pos):
-        """Performs a boundary condition check. If pos is OUTside the environment and the boundary conditions are solid then a different position, safely located 1cm within the environmnt, is returne3d. If pos is OUTside the environment but boundary conditions are periodic its position is looped to the other side of the environment appropriately.
+        """Performs a boundary condition check. If pos is OUTside the environment and the boundary conditions are solid then a different position, safely located 1cm within the environmnt, is returned. If pos is OUTside the environment but boundary conditions are periodic its position is looped to the other side of the environment appropriately.
         Args:
             pos (np.array): 1 or 2 dimensional position
         returns new_pos
+        TODO update this so if pos is in one of the holes the Agent is returned to the ~nearest legal location inside the Environment
         """
-        if self.check_if_position_is_in_environment(pos) is False:
-            if self.dimensionality == "1D":
-                if self.boundary_conditions == "periodic":
-                    pos = pos % self.extent[1]
-                if self.boundary_conditions == "solid":
-                    pos = min(max(pos, self.extent[0] + 0.01), self.extent[1] - 0.01)
-                    pos = np.reshape(pos, (-1))
-            elif self.dimensionality == "2D":
-                if self.is_rectangular == True:
-                    if not (
-                        matplotlib.path.Path(self.boundary).contains_point(
-                            pos, radius=-1e-10
+        if self.check_if_position_is_in_environment(pos) is True: return
+
+        if self.dimensionality == "1D":
+            if self.boundary_conditions == "periodic":
+                pos = pos % self.extent[1]
+            if self.boundary_conditions == "solid":
+                pos = min(max(pos, self.extent[0] + 0.01), self.extent[1] - 0.01)
+                pos = np.reshape(pos, (-1))
+        elif self.dimensionality == "2D":
+            if self.is_rectangular == True:
+                if not (
+                    matplotlib.path.Path(self.boundary).contains_point(
+                        pos, radius=-1e-10
+                    )
+                ):  # outside the bounding environment (i.e. not just in a hole), apply BCs
+                    if self.boundary_conditions == "periodic":
+                        pos[0] = pos[0] % self.extent[1]
+                        pos[1] = pos[1] % self.extent[3]
+                    if self.boundary_conditions == "solid":
+                        # in theory this wont be used as wall bouncing catches it earlier on
+                        pos[0] = min(
+                            max(pos[0], self.extent[0] + 0.01),
+                            self.extent[1] - 0.01,
                         )
-                    ):  # outside the bounding environment (i.e. not just in a hole), apply BCs
-                        if self.boundary_conditions == "periodic":
-                            pos[0] = pos[0] % self.extent[1]
-                            pos[1] = pos[1] % self.extent[3]
-                        if self.boundary_conditions == "solid":
-                            # in theory this wont be used as wall bouncing catches it earlier on
-                            pos[0] = min(
-                                max(pos[0], self.extent[0] + 0.01),
-                                self.extent[1] - 0.01,
-                            )
-                            pos[1] = min(
-                                max(pos[1], self.extent[2] + 0.01),
-                                self.extent[3] - 0.01,
-                            )
-                    else:  # in this case, must just be in a hole. sample new position (there should be a better way to do this but, in theory, this isn't used)
-                        pos = self.sample_positions(n=1, method="random").reshape(-1)
-                else:  # polygon shaped env, just resample random position
+                        pos[1] = min(
+                            max(pos[1], self.extent[2] + 0.01),
+                            self.extent[3] - 0.01,
+                        )
+                else:  # in this case, must just be in a hole. sample new position (there should be a better way to do this but, in theory, this isn't used)
                     pos = self.sample_positions(n=1, method="random").reshape(-1)
+            else:  # polygon shaped env, just resample random position
+                pos = self.sample_positions(n=1, method="random").reshape(-1)
         return pos

@@ -24,7 +24,15 @@ class Agent:
     A default parameters dictionary (with descriptions) can be fount in __init__()
 
     List of functions:
-        • update()
+        • update() ... which is broken down into subfunctions:
+            • _stochastic_velocity_update()
+            • _drift_velocity_update()
+            • _wall_velocity_update()
+            • _check_and_handle_wall_collisions()
+            • _measure_velocity_of_step_taken()
+            • _update_head_direction()
+            • _update_position_to_forced_next_position()
+            • _update_position_along_imported_trajectory()
         • import_trajectory()
         • plot_trajectory()
         • animate_trajectory()
@@ -33,6 +41,8 @@ class Agent:
         • plot_histogram_of_rotational_velocities()
         • save_to_history()
         • reset_history()
+        • get_history_slice()
+        • get_all_default_params()
 
     The default params for this agent are:
         default_params = {
@@ -62,9 +72,7 @@ class Agent:
         "speed_mean": 0.08,  # mean of speed, σ_v2 μ_v1
         "speed_std": 0.08,  # std of speed (meaningless in 2D where speed ~rayleigh), σ_v1
         "rotational_velocity_coherence_time": 0.08,  # time over which speed decoheres, τ_w
-        "rotational_velocity_std": (
-            120 * (np.pi / 180)
-        ),  # std of rotational speed, σ_w wall following parameter
+        "rotational_velocity_std": (120 * (np.pi / 180)),  # std of rotational speed, σ_w wall following parameter
         "head_direction_smoothing_timescale" : 0.15, # timescale over which head direction is smoothed (head dir = normalised smoothed velocity).
         "thigmotaxis": 0.5,  # tendency for agents to linger near walls [0 = not at all, 1 = max]
         "wall_repel_distance": 0.1, # distance from wall at which wall repulsion starts
@@ -106,7 +114,6 @@ class Agent:
 
         self.Neurons = []  # each new Neurons class belonging to this Agent will append itself to this list
 
-
         # time and runID
         self.t = 0
         self.distance_travelled = 0
@@ -117,30 +124,29 @@ class Agent:
         self.distance_to_closest_wall = np.inf #this attribute is updated by the update() function and can be used by the user if you need to know how close the agent is to the walls
 
         # initialise starting positions and velocity
+        self.pos = self.Environment.sample_positions(n=1, method="random")[0]
+        self.prev_pos = self.pos.copy()
         if self.Environment.dimensionality == "2D":
-            self.pos = self.Environment.sample_positions(n=1, method="random")[0]
             direction = np.random.uniform(0, 2 * np.pi)
             self.velocity = self.speed_mean * np.array(
                 [np.cos(direction), np.sin(direction)]
             )
-            self.save_velocity = self.velocity.copy()
             self.rotational_velocity = 0
+            self.measured_rotational_velocity = 0
+            
 
         if self.Environment.dimensionality == "1D":
-            self.pos = self.Environment.sample_positions(n=1, method="random")[0]
-            self.velocity = np.array([self.speed_mean])
+            self.velocity = np.array([self.speed_mean]) + 1e-8 #to avoid nans 
             self.save_velocity = self.velocity.copy()
             if self.Environment.boundary_conditions == "solid":
                 if self.speed_mean != 0:
                     warnings.warn(
                         "Warning: You have solid 1D boundary conditions and non-zero speed mean."
                     )
-        
-        # normally this will just be a low pass filter over the velocity vector
-        # this is done to smooth out head turning and make it more realistic 
-        # (potentially stablize behaviours associated with head direction)
+        # this is the velocity of the step that was actually taken, i.e. after wall collisions etc. It is used by the Neurons class to calculate the firing rate. The difference between self.velocity and self.measured_velocity is that self.velocity determines the dynamics of the Agent on the next update whereas self.measured_velocity is just a record of what happened on the last update. To manually change the velocity you should change self.velocity, not self.measured_velocity.
+        self.measured_velocity = self.velocity.copy()
+        self.prev_measured_velocity = self.measured_velocity.copy()
         self.head_direction = self.velocity / np.linalg.norm(self.velocity)
-
 
         if ratinabox.verbose is True:
             print(
@@ -152,364 +158,354 @@ class Agent:
             )
         return
 
-    @classmethod
-    def get_all_default_params(cls, verbose=False):
-        """Returns a dictionary of all the default parameters of the class, including those inherited from its parents."""
-        all_default_params = utils.collect_all_params(cls, dict_name="default_params")
-        if verbose:
-            pprint.pprint(all_default_params)
-        return all_default_params
+    def update(self, dt=None, drift_velocity=None, drift_to_random_strength_ratio=1, **kwargs):
+        """
+        This implements the motion model for the Agent. It's a complex multistage function which updates the position, velocity and (maybe) rotational velocity of the Agent, handles walls and then saves the new position and velocity to the history dataframe.
+    
+        There are three ways the Agents motion can be updated: 
+            MOST COMMONLY (AND RECOMMENDED) 
+            1) Random + controlled: default. The Agents velocity is updated by a stochastic Ornstein-Uhlenbeck process as well as towards an (optional) control signal passed by the user (drift_velocity) and a wall repulsion component. The Agents position is then updated by integrating the velocity.
+            OR OPTIONALLY 
+            2) Imported: triggered if Agent.import_trajectory() was been called. The Agent will interpolate along the trajectory.
+            3) Forced: Triggered if a forced_next_position kwarg is provided. The Agent will move to this position. 
+        Note the latter two a provided as options for users who may want to use them but we do not recommend them - by their nature imported or forced trajectories may illegally pass through walls or leave the Environment altogether which may cause issues with cell firing rates etc.
 
-    def update(self, dt=None, drift_velocity=None, drift_to_random_strength_ratio=1):
-        """Movement policy update.
-        In principle this does a very simple thing:
-        • updates time by dt
-        • updates velocity (speed and direction) according to a movement policy
-        • updates position along the velocity direction
-        In reality it's a complex function as the policy requires checking for immediate or upcoming collisions with all walls at each step as well as
-        handling boundary conditions.
-        Specifically the full loop looks like this:
+        Random + controlled (Further details):
         1) Update time by dt
         2) Update velocity for the next time step.
            In 2D this is done by varying the agents heading direction and speed according to random ornstein-uhlenbeck processes.
-           In 1D, simply the velocity is varied according to ornstein-uhlenbeck. This includes, if turned on, being repelled by the walls.
+           In 1D, simply the speed is varied according to ornstein-uhlenbeck. This includes, if turned on, being repelled by the walls.
         2.1) If drift_velocity is provided, deterministically drift the velocity towards this velocity (allows for smooth variation between random and controlled velocity)
         3) Propose a new position (x_new =? x_old + velocity.dt)
         3.1) Check if this step collides with any walls (and act accordingly)
-        3.2) Check you distance and direction from walls and be repelled by them is necessary
+        3.2) Check you distance and direction from walls and be repelled by them if necessary
         4) Check position is still within maze and handle boundary conditions appropriately
-        6) Store new position and time in history data frame
+        5) Store new position and time in history data frame
 
+        
         Args: 
             • dt: the time step, seconds (float, default = None --> self.dt)
             • drift_velocity: the velocity vector the Agents velocity will drift towards (default = None --> no drift, only random motion)
             • drift_to_random_strength_ratio: ratio of random to drift velocity (default = 1 --> drift is as strong as random)
+            • **kwargs: this is passed to many of the submethods and can be used for more dynamic control of the parameters. See the docstrings of the submethods for more details.  
         """
+
+        # Update the time - eventually this "clock" will live in the Environment class 
         dt = (dt or self.dt)
-        self.dt = dt #by setting dt this means you can use dt anywhere else and know it was dt used in the latest update 
+        self.dt = dt # by setting dt this means you can use dt anywhere else and know it was dt used in the latest update 
         self.t += dt
-        self.velocity = self.velocity.astype(float)
-        self.pos = np.array(self.pos)  # check pos is an array (may have external been set as a list)
+        self.pos = np.array(self.pos,dtype=float) 
+        self.velocity = np.array(self.velocity,dtype=float)
+        self.prev_pos = self.pos.copy()
+        self.prev_velocity = self.velocity.copy()
+        self.prev_measured_velocity = self.measured_velocity.copy()
+        forced_next_position = kwargs.get("forced_next_position", None) #if provided this will override the random motion model and the imported trajectory model
 
-
-
-        if self.use_imported_trajectory == False:  # use random motion model
-            if self.Environment.dimensionality == "2D":
-                # UPDATE VELOCITY there are a number of contributing factors
-                # 1 Stochastically update the direction
-                self.rotational_velocity += utils.ornstein_uhlenbeck(
-                    dt=dt,
-                    x=self.rotational_velocity,
-                    drift=0,
-                    noise_scale=self.rotational_velocity_std,
-                    coherence_time=self.rotational_velocity_coherence_time,
-                )
-                dtheta = self.rotational_velocity * dt
-                self.velocity = utils.rotate(self.velocity, dtheta)
-
-                # 2 Stochastically update the speed
-                speed = np.linalg.norm(self.velocity)
-                if speed == 0:  # add tiny velocity in [1,0] direction to avoid nans
-                    self.velocity, speed = 1e-8 * np.array([1, 0]), 1e-8
-
-                normal_variable = utils.rayleigh_to_normal(speed, sigma=self.speed_mean)
-                new_normal_variable = normal_variable + utils.ornstein_uhlenbeck(
-                    dt=dt,
-                    x=normal_variable,
-                    drift=0,
-                    noise_scale=1,
-                    coherence_time=self.speed_coherence_time,
-                )
-                speed_new = utils.normal_to_rayleigh(
-                    new_normal_variable, sigma=self.speed_mean
-                )
-                self.velocity = (speed_new / speed) * self.velocity
-
-                # Deterministically drift velocity towards the drift_velocity which has been passed into the update function
-                if drift_velocity is not None:
-                    self.velocity += utils.ornstein_uhlenbeck(
-                        dt=dt,
-                        x=self.velocity,
-                        drift=drift_velocity,
-                        noise_scale=0,
-                        coherence_time=self.speed_coherence_time
-                        / drift_to_random_strength_ratio,  # <--- this controls how "powerful" this signal is
-                    )
-
-                # Deterministically drift the velocity away from any nearby walls
-                if (self.wall_repel_strength > 0.0) and (len(self.Environment.walls > 0)):
-                    vectors_from_walls = self.Environment.vectors_from_walls(
-                        self.pos
-                    )  # shape=(N_walls,2)
-                    if len(self.Environment.walls) > 0:
-                        distance_to_walls = np.linalg.norm(vectors_from_walls, axis=-1)
-                        self.distance_to_closest_wall = np.min(distance_to_walls) #in case user needs this
-                        normalised_vectors_from_walls = (
-                            vectors_from_walls
-                            / np.expand_dims(distance_to_walls, axis=-1)
-                        )
-                        x, d, v = (
-                            distance_to_walls,
-                            self.wall_repel_distance,
-                            self.wall_repel_strength * self.speed_mean,
-                        )
-
-                        """Wall repulsion and wall following works as follows:
-                        When an agent is near the wall, the acceleration and velocity of a hypothetical spring mass tied to a line self.wall_repel_distance away from the wall is calculated.
-                        The spring constant is calibrated so that if if starts with the Agent.speed_mean it will ~~just~~ not hit the wall.
-                        Now, either the acceleration can be used to update the velocity and guide the agent away from the wall OR the counteracting velocity can be used to update the agents position and shift it away from the wall. Both result in repulsive motion away from the wall.
-                        The difference is that the latter (and not the former) does not update the agents velocity vector to reflect this, in which case it continues to walk (unsuccessfully) in the same direction barging into the wall and 'following' it.
-                        The thigmotaxis parameter allows us to divvy up which of these two dominate.
-                        If thigmotaxis is low the acceleration-gives-velocity-update is most dominant and the agent will not linger near the wall.
-                        If thigmotaxis is high the velocity-gives-position-update is most dominant and the agent will linger near the wall."""
-
-                        """Spring acceletation model:
-                        In this case this is done by applying an acceleration whenever the agent is near to a wall.
-                        This acceleration matches that of a spring with spring constant 3x that of a spring which would, if the agent arrived head on at v = self.speed_mean, turn around exactly at the wall.
-                        This is solved by letting d2x/dt2 = -k.x where k = v**2/d**2 (v=seld.speed_mean, d = self.wall_repel_distance)
-
-                        See paper for full details"""
-
-                        spring_constant = v**2 / d**2
-                        wall_accelerations = np.piecewise(
-                            x=x,
-                            condlist=[
-                                (x <= d),
-                                (x > d),
-                            ],
-                            funclist=[
-                                lambda x: spring_constant * (d - x),
-                                lambda x: 0,
-                            ],
-                        )
-                        wall_acceleration_vecs = (
-                            np.expand_dims(wall_accelerations, axis=-1)
-                            * normalised_vectors_from_walls
-                        )
-                        wall_acceleration = wall_acceleration_vecs.sum(axis=0)
-                        dv = wall_acceleration * dt
-                        self.velocity += 3 * ((1 - self.thigmotaxis) ** 2) * dv
-
-                        """Conveyor belt drift model.
-                        Instead of a spring model this is like a converyor belt model.
-                        When the agent is < wall_repel_distance from the wall the agents position is updated as though it were on a conveyor belt which moves at the speed of spring mass attached to the wall with starting velocity 5*self.speed_mean.
-                        This has a similar effect effect  as the spring model above in that the agent moves away from the wall BUT, crucially the update is made directly to the agents position, not it's speed, so the next time step will not reflect this update.
-                        As a result the agent which is walking into the wall will continue to barge hopelessly into the wall causing it the "hug" close to the wall."""
-                        wall_speeds = np.piecewise(
-                            x=x,
-                            condlist=[
-                                (x <= d),
-                                (x > d),
-                            ],
-                            funclist=[
-                                lambda x: v * (1 - np.sqrt(1 - (d - x) ** 2 / d**2)),
-                                lambda x: 0,
-                            ],
-                        )
-                        wall_speed_vecs = (
-                            np.expand_dims(wall_speeds, axis=-1)
-                            * normalised_vectors_from_walls
-                        )
-                        wall_speed = wall_speed_vecs.sum(axis=0)
-                        dx = wall_speed * dt
-                        self.pos += 6 * (self.thigmotaxis**2) * dx
-
-                # proposed position update
-                proposed_new_pos = self.pos + self.velocity * dt
-                proposed_step = np.array([self.pos, proposed_new_pos])
-                wall_check = self.Environment.check_wall_collisions(proposed_step)
-                walls = wall_check[0]  # shape=(N_walls,2,2)
-                wall_collisions = wall_check[1]  # shape=(N_walls,)
-
-                if (wall_collisions is None) or (True not in wall_collisions):
-                    # it is safe to move to the new position
-                    self.pos = self.pos + self.velocity * dt
-
-                # Bounce off walls you collide with
-                elif True in wall_collisions:
-                    colliding_wall = walls[np.argwhere(wall_collisions == True)[0][0]]
-                    self.velocity = utils.wall_bounce(self.velocity, colliding_wall)
-                    self.velocity = (
-                        0.5 * self.speed_mean / (np.linalg.norm(self.velocity))
-                    ) * self.velocity
-                    self.pos += self.velocity * dt
-
-                # handles instances when agent leaves environmnet
-                if (
-                    self.Environment.check_if_position_is_in_environment(self.pos)
-                    is False
-                ):
-                    self.pos = self.Environment.apply_boundary_conditions(self.pos)
-
-                # calculate the velocity of the step that, after all that, was taken.
-                if len(self.history["vel"]) >= 1:
-                    last_pos = np.array(self.history["pos"][-1])
-                    shift = self.Environment.get_vectors_between___accounting_for_environment(
-                        pos1=self.pos, pos2=last_pos
-                    ) #TODO this recalculation of velocity might be slowing things down more than it's worth
-                    self.save_velocity = (
-                        shift.reshape(-1) / self.dt
-                    )  # accounts for periodic
-                else:
-                    self.save_velocity = self.velocity
-
-            elif self.Environment.dimensionality == "1D":
-                self.pos = self.pos + dt * self.velocity
-                if (
-                    self.Environment.check_if_position_is_in_environment(self.pos)
-                    is False
-                ):
-                    if self.Environment.boundary_conditions == "solid":
-                        self.velocity *= -1
-                    self.pos = self.Environment.apply_boundary_conditions(self.pos)
-
-                self.velocity += utils.ornstein_uhlenbeck(
-                    dt=dt,
-                    x=self.velocity,
-                    drift=self.speed_mean,
-                    noise_scale=self.speed_std,
-                    coherence_time=self.speed_coherence_time,
-                )
-                self.save_velocity = self.velocity
-                if self.Environment.boundary_conditions == "solid":
-                    self.distance_to_closest_wall = min(
-                        self.Environment.extent[1] - self.pos, self.pos - self.Environment.extent[0]
-                    )[0]
-
-
+        # Update the position according to the random motion model and drift velocity
+        if self.use_imported_trajectory == False and forced_next_position is None:
+            # Random update to the velocity (Ornstein-Uhlenbeck)
+            self._stochastic_velocity_update(**kwargs)
+            # Drift update to the velocity (towards drift_velocity)
+            self._drift_velocity_update(
+                drift_velocity=drift_velocity, 
+                drift_to_random_strength_ratio=drift_to_random_strength_ratio,
+                **kwargs)            
+            # Drift velocity to avoid walls 
+            self._wall_velocity_update(**kwargs)
+            # Propose a new position by integrating the velocity
+            self.pos += self.velocity * dt       
+            # Check for wall collisions and handle them
+            self._check_and_handle_wall_collisions()
+            # Handle times when the Agent is now outside the Environment. 
+            # This is mostly a safety net. Crossing the boundary should be handled by the wall collision function above.
+            if (self.Environment.check_if_position_is_in_environment(self.pos) is False):
+                self.pos = self.Environment.apply_boundary_conditions(self.pos)
+            # Calculate the velocity of the step that, after all that, was taken.
+            self._measure_velocity_of_step_taken()
+       
+    
+        # Update position along the imported trajectory if one has been provided
         elif self.use_imported_trajectory == True:
-            # use an imported trajectory to
-            if (
-                self.interpolate is True
-            ):  # interpolate along the trajectory by an amount dt
-                if self.Environment.dimensionality == "2D":
-                    interp_time = self.t % max(self.t_interp)
-                    pos = self.pos_interp(interp_time)
-                    ex = self.Environment.extent
-                    self.pos = np.array(
-                        [min(max(pos[0], ex[0]), ex[1]), min(max(pos[1], ex[2]), ex[3])]
-                    )
+            self._update_position_along_imported_trajectory(**kwargs)
+            self._measure_velocity_of_step_taken(overwrite_velocity=True)
 
-                    # calculate velocity and rotational velocity
-                    if len(self.history["vel"]) >= 1:
-                        last_pos = np.array(self.history["pos"][-1])
-                        shift = self.Environment.get_vectors_between___accounting_for_environment(
-                            pos1=self.pos, pos2=last_pos
-                        )
-                        self.velocity = (
-                            shift.reshape(-1) / self.dt
-                        )  # accounts for periodic
-                    else:
-                        self.velocity = np.array([0, 0])
-                    self.save_velocity = self.velocity
-
-                    angle_now = utils.get_angle(self.velocity)
-                    if len(self.history["vel"]) >= 1:
-                        angle_before = utils.get_angle(self.history["vel"][-1])
-                    else:
-                        angle_before = angle_now
-                    if abs(angle_now - angle_before) > np.pi:
-                        if angle_now > angle_before:
-                            angle_now -= 2 * np.pi
-                        elif angle_now < angle_before:
-                            angle_before -= 2 * np.pi
-                    self.rotational_velocity = (angle_now - angle_before) / self.dt
-
-                if self.Environment.dimensionality == "1D":
-                    interp_time = self.t % max(self.t_interp)
-                    pos = self.pos_interp(interp_time)
-                    ex = self.Environment.extent
-                    self.pos = np.array([min(max(pos, ex[0]), ex[1])])
-                    if len(self.history["vel"]) >= 1:
-                        self.velocity = (self.pos - self.history["pos"][-1]) / self.dt
-                    else:
-                        self.velocity = np.array([0])
-                    self.save_velocity = self.velocity
-            else:  # just jump one count along the trajectory
-                self.t = self.times[self.imported_trajectory_id]
-                pos = self.positions[self.imported_trajectory_id]
-                ex = self.Environment.extent
-                if self.Environment.dimensionality == "1D":
-                    self.pos = np.array([min(max(pos, ex[0]), ex[1])])
-                    if len(self.history["vel"]) >= 1:
-                        self.velocity = (self.pos - self.history["pos"][-1]) / self.dt
-                    else:
-                        self.velocity = np.array([0])
-                if self.Environment.dimensionality == "2D":
-                    self.pos = np.array(
-                        [min(max(pos[0], ex[0]), ex[1]), min(max(pos[1], ex[2]), ex[3])]
-                    )
-                    if len(self.history["vel"]) >= 1:
-                        self.velocity = (self.pos - self.history["pos"][-1]) / self.dt
-                    else:
-                        self.velocity = np.array([0, 0])
-                self.save_velocity = self.velocity
-                self.imported_trajectory_id = (self.imported_trajectory_id + 1) % len(
-                    self.times
-                )
-
-        self.update_head_direction(dt=dt)
+        # Update position to a forced new position provided in a kwarg 
+        # We expose this option as, in rare case, it may be useful for users to simply specify the next position of the agent with a kwarg. However we don't recommend it. If used, this will override the imported trajectory or random motion model
+        elif forced_next_position is not None:
+            # assert this is an np.array of shape[Env.D]
+            self._update_position_to_forced_next_position(forced_next_position, **kwargs)
+            self._measure_velocity_of_step_taken(overwrite_velocity=True)
         
-        if len(self.history["pos"]) >= 1:
-            self.distance_travelled += np.linalg.norm(
-                self.Environment.get_vectors_between___accounting_for_environment(
-                    self.pos, np.array(self.history["pos"][-1])
-                )
-            )
-            tau_speed = 10
-            self.average_measured_speed = (
-                1 - dt / tau_speed
-            ) * self.average_measured_speed + (dt / tau_speed) * np.linalg.norm(
-                self.save_velocity
-            )
+    
+        
+        self._update_head_direction(**kwargs)
+        self.save_to_history(**kwargs)
 
-        # write to history
-        if self.save_history is True:
-            self.save_to_history()
+    def _update_position_to_forced_next_position(self, forced_next_position):
+        """Update sthe position to the forced_next_position provided in the kwargs. This will override the random motion model and the imported trajectory model. This doesn't really need its own function but in theory users may like to replace it with something more complex.
+        
+        Args: 
+            • forced_next_position: the position the Agent will move to (np.array of shape [Env.D])
+            • **kwargs: For flexibility in csae this functon is overwritten."""
+        assert isinstance(forced_next_position, np.ndarray), "forced_next_position must be an np.array"
+        assert forced_next_position.shape == self.Environment.D, "forced_next_position must be an np.array of shape Env.D"
+        self.pos = forced_next_position
+        return 
 
-        return
+    def _update_position_along_imported_trajectory(self):
+        """Updates the posiiton of the Agent along the imported trajectory. By default this interpolates along the imported trajectory to exactly the right point unless specified otherwise by the user at the of import."""
+        if self.interpolate is True:  # interpolate along the trajectory by an amount dt
+            interp_time = self.t % max(self.t_interp)
+            self.pos = self.pos_interp(interp_time)
 
-    def update_head_direction(self, dt):
+        else:  # just jump one count along the trajectory, we do NOT recommend using this option as it will break at the end of the trajectory and dt may not match the trajectory dt
+            old_time = self.history['t'][-1]
+            self.t = self.times[self.imported_trajectory_id]
+            self.dt = self.t - old_time # Must reset these to ensure dt is correct
+            self.pos = self.positions[self.imported_trajectory_id]
+            self.imported_trajectory_id = (self.imported_trajectory_id + 1) % len(self.times)
+        return 
+            
+    def _stochastic_velocity_update(self, **kwargs):
+        """This function updates the velocity of the Agent according to a stochastic Ornstein-Uhlenbeck process. In 2D the rotational velocity and speed are independedntly updated with different timescales. In 1D only the speed is updated.
+
+        Args:
+            • rotational_velocity_std: the standard deviation of the rotational velocity (float, default = self.rotational_velocity_std)
+            • rotational_velocity_coherence_time: the time over which the rotational velocity decoheres (float, default = self.rotational_velocity_coherence_time)
+            • rotational_velocity_drift: the drift of the rotational velocity (float, default = 0)
+            • speed_coherence_time: the time over which the speed decoheres (float, default = self.speed_coherence_time)
+            • speed_mean: the mean / drift of the speed (float, default = self.speed_mean) for 1D motion
+            • speed_std: the deviation of the speed (float, default = self.speed_std) (normal std in 1D or Rayleigh sigma in 2D)
         """
-        This function updates the head direction of the agent. #
+        # in case the user wants to override the default parameters
+        rotational_velocity_std = kwargs.get("rotational_velocity_std", self.rotational_velocity_std)
+        rotational_velocity_coherence_time = kwargs.get("rotational_velocity_coherence_time", self.rotational_velocity_coherence_time)
+        rotational_velocity_drift = kwargs.get("rotational_velocity_drift", 0)
+        speed_coherence_time = kwargs.get("speed_coherence_time", self.speed_coherence_time)    
+        speed_mean = kwargs.get("speed_mean", self.speed_mean)
+        speed_std = kwargs.get("speed_std", self.speed_std)
+
+        if self.Environment.dimensionality == "2D":
+            #Update ratational velocity 
+            self.rotational_velocity += utils.ornstein_uhlenbeck(
+                dt=self.dt,
+                x=self.rotational_velocity,
+                drift=rotational_velocity_drift,
+                noise_scale=rotational_velocity_std,
+                coherence_time=rotational_velocity_coherence_time,)
+            dtheta = self.rotational_velocity * self.dt
+            self.velocity = utils.rotate(self.velocity, dtheta)
+            
+            # Update linear speed 
+            speed = np.linalg.norm(self.velocity)
+            if speed == 0:  # add tiny velocity in [1,0] direction to avoid nans
+                self.velocity, speed = 1e-8 * np.array([1, 0]), 1e-8
+            normal_variable = utils.rayleigh_to_normal(speed, sigma=speed_mean)
+            normal_variable += utils.ornstein_uhlenbeck(
+                dt=self.dt,
+                x=normal_variable,
+                drift=0,
+                noise_scale=1,
+                coherence_time=speed_coherence_time,)
+            speed_new = utils.normal_to_rayleigh(normal_variable, sigma=speed_mean)
+            self.velocity = (speed_new / speed) * self.velocity
+        
+        elif self.Environment.dimensionality == "1D":
+            self.velocity += utils.ornstein_uhlenbeck(
+                dt=self.dt,
+                x=self.velocity,
+                drift=speed_mean,
+                noise_scale=speed_std,
+                coherence_time=speed_coherence_time,)
+
+            return 
+    
+    def _drift_velocity_update(self, drift_velocity, drift_to_random_strength_ratio): 
+        """This function updates the velocity of the Agent to drift it towards a target velocity. We use the inbuilt ornstein_uhlenbeck function to do this but since there is no noise (noise scale = 0) its not a random update its just vel = (1 - 1/tau)*vel + (1/tau)*drift_vel. The higher the drift_to_random_strength_ratio the lower the timescale of this update there to more strongly that the velocity will be updated to the drift velocity (in favour of, say, the random motion update).
+
+        Args:
+            • drift_velocity: the velocity vector the Agents velocity will drift towards (default = None --> no drift, only random motion)
+            • drift_to_random_strength_ratio: ratio of random to drift velocity (default = 1 --> drift is as strong as random)
+        """
+        if drift_velocity is None: return 
+
+        assert isinstance(drift_velocity, np.ndarray), "drift_velocity must be an np.array"
+        assert drift_velocity.shape == (self.Environment.D,), "drift_velocity must be an np.array of shape Env.D"
+        self.velocity += utils.ornstein_uhlenbeck(
+            dt=self.dt,
+            x=self.velocity,
+            drift=drift_velocity,
+            noise_scale=0, #<--- this being 0 is the key to making this a deterministic drift, i.e. theres no noise
+            coherence_time=self.speed_coherence_time / drift_to_random_strength_ratio)  # <--- this controls how "powerful" this signal is)
+        return 
+    
+    def _wall_velocity_update(self, **kwargs):
+        """This function updates self.velocity and self.pos in order to drift the agent away from nearby walls. It does this by a combination of a repulsive spring drift (accelerating velocity away from the wall) and a repulsive conveyor belt shift (shifting the agent away from the wall). The relative strength of these two is controlled by the thigmotaxis parameter. See paper for full details.
 
         Args: 
-            dt: the time step (float)
-
-        The head direction is updated by a low pass filter of the the current velocity vector.
+            • wall_repel_strength: the strength of the wall repulsion (float, default = self.wall_repel_strength)
+            • wall_repel_distance: the distance at which the wall repulsion starts to act (float, default = self.wall_repel_distance)
+            • thigmotaxis: the strength of the wall repulsion (float, default = self.thigmotaxis)
         """
+
+        # in case the user wants to override the default parameters
+        wall_repel_strength = kwargs.get("wall_repel_strength", self.wall_repel_strength)
+        wall_repel_distance = kwargs.get("wall_repel_distance", self.wall_repel_distance)
+        thigmotaxis = kwargs.get("thigmotaxis", self.thigmotaxis)
+
+        if self.Environment.dimensionality == "2D":
+            #Skip this if wall repulsion is turned off or there are no walls
+            if (wall_repel_strength == 0.0) or (len(self.Environment.walls) == 0):
+                return 
+        
+            vectors_from_walls = self.Environment.vectors_from_walls(self.pos)  # shape=(N_walls,2)
+            if len(self.Environment.walls) > 0:
+                distance_to_walls = np.linalg.norm(vectors_from_walls, axis=-1)
+                self.distance_to_closest_wall = np.min(distance_to_walls) #in case user needs this
+                normalised_vectors_from_walls = (vectors_from_walls / np.expand_dims(distance_to_walls, axis=-1))
+                x, d, v = (
+                    distance_to_walls,
+                    wall_repel_distance,
+                    wall_repel_strength * self.speed_mean,
+                )
+
+                """Wall repulsion and wall following works as follows:
+                When an agent is near the wall, the acceleration and velocity of a hypothetical spring mass tied to a line self.wall_repel_distance away from the wall is calculated.
+                The spring constant is calibrated so that if if starts with the Agent.speed_mean it will ~~just~~ not hit the wall.
+                Now, either the acceleration can be used to update the velocity and guide the agent away from the wall OR the counteracting velocity can be used to update the agents position and shift it away from the wall. Both result in repulsive motion away from the wall.
+                The difference is that the latter (and not the former) does not update the agents velocity vector to reflect this, in which case it continues to walk (unsuccessfully) in the same direction barging into the wall and 'following' it.
+                The thigmotaxis parameter allows us to divvy up which of these two dominate.
+                If thigmotaxis is low the acceleration-gives-velocity-update is most dominant and the agent will not linger near the wall.
+                If thigmotaxis is high the velocity-gives-position-update is most dominant and the agent will linger near the wall."""
+
+                """Spring acceletation model:
+                In this case this is done by applying an acceleration whenever the agent is near to a wall.
+                This acceleration matches that of a spring with spring constant 3x that of a spring which would, if the agent arrived head on at v = self.speed_mean, turn around exactly at the wall.
+                This is solved by letting d2x/dt2 = -k.x where k = v**2/d**2 (v=seld.speed_mean, d = self.wall_repel_distance)
+
+                See paper for full details"""
+
+                spring_constant = v**2 / d**2
+                wall_accelerations = np.piecewise(
+                    x=x,
+                    condlist=[(x <= d),(x > d),],
+                    funclist=[lambda x: spring_constant * (d - x),lambda x: 0,],)
+                wall_acceleration_vecs = (
+                    np.expand_dims(wall_accelerations, axis=-1)
+                    * normalised_vectors_from_walls)
+                wall_acceleration = wall_acceleration_vecs.sum(axis=0)
+                dv = wall_acceleration * self.dt
+                self.velocity += 3 * ((1 - thigmotaxis) ** 2) * dv
+
+                """Conveyor belt drift model.
+                Instead of a spring model this is like a converyor belt model.
+                When the agent is < wall_repel_distance from the wall the agents position is updated as though it were on a conveyor belt which moves at the speed of spring mass attached to the wall with starting velocity 5*self.speed_mean.
+                This has a similar effect effect  as the spring model above in that the agent moves away from the wall BUT, crucially the update is made directly to the agents position, not it's speed, so the next time step will not reflect this update.
+                As a result the agent which is walking into the wall will continue to barge hopelessly into the wall causing it to "hug" close to the wall."""
+                wall_speeds = np.piecewise(
+                    x=x,
+                    condlist=[(x <= d),(x > d),],
+                    funclist=[lambda x: v * (1 - np.sqrt(1 - (d - x) ** 2 / d**2)),lambda x: 0,],)
+                wall_speed_vecs = (
+                    np.expand_dims(wall_speeds, axis=-1)
+                    * normalised_vectors_from_walls)
+                wall_speed = wall_speed_vecs.sum(axis=0)
+                dx = wall_speed * self.dt
+                self.pos += 6 * (thigmotaxis**2) * dx
+        
+        elif self.Environment.dimensionality == "1D":
+            # TODO do wall repulsion in 1D
+            pass
+
+        return
+    
+    def _check_and_handle_wall_collisions(self):
+        """This function checks to see if the vector from self.prev_pos to self.pos collides with any walls. If it does, then you've nothing to worry about. If it does, then you need to bounce off the wall and update the velocity and position accordingly. This is done in the handle_wall_collisions() function.
+        TODO strictly wall collisions are only considered in 2D but this function should be extended to 1D too, for completeness."""
+        proposed_step = np.array([self.prev_pos, self.pos])
+        wall_check = self.Environment.check_wall_collisions(proposed_step) #returns (None, None) for 1D Envs 
+        walls = wall_check[0]  # shape=(N_walls,2,2)
+        wall_collisions = wall_check[1]  # shape=(N_walls,)
+
+        # If no wall collsions it is safe to move to the next position so do nothing
+        if (wall_collisions is None) or (True not in wall_collisions): return
+ 
+        # Bounce off walls you collide with
+        elif True in wall_collisions:
+            colliding_wall = walls[np.argwhere(wall_collisions == True)[0][0]]
+            self.velocity = utils.wall_bounce(self.velocity, colliding_wall)
+            self.velocity = (0.5 * self.speed_mean / (np.linalg.norm(self.velocity))) * self.velocity
+            # TODO strictly in the event of a collision the position should be updated away from the wall starting from the collision point (and only for the remaining fraction of dt), not the prev position. Small detail but worth fixing.
+            self.pos = self.prev_pos + self.velocity * self.dt
+        return
+    
+    def _measure_velocity_of_step_taken(self, overwrite_velocity=False):
+        """This function takes self.prev_pos and self.pos and uses them to update self.measured_velocity. Then it takes self.prev_measured_velocity and self.measured_velocity and calculates self.measured_rotational_velocity. These "measured" velocities are typically the same as self.velocity and self.rotational_velocity but not always. The reason for this is that when the Agent is near a wall it is possible for the dynamical updates to adjust its position without adjusting its velocity (e.g. conveyor belt drift), in which case the absolute velocities of the agent (which are the one we want to save into the history dataframe) may be subtely different from the velocity used in the motion updates thinks it has (self.velocity) and which it will use for dynamical updates on subsequent steps.
+        
+        Args:
+            • overwrite_velocity: if True, self.velocity and self.rotational_velocity will be updated to match self.measured_velocity and self.measured_rotational_velocity. This is useful when forced or imported trajectories are being used to keep self.velocity and self.rotational_velocity in sync with the actual motion of the Agent.
+        """
+        d_pos = self.Environment.get_vectors_between___accounting_for_environment(
+            pos1=self.pos, pos2=self.prev_pos ) #TODO this recalculation of velocity might be slowing things down more than it's worth
+        self.measured_velocity = (d_pos.reshape(-1) / self.dt)  # accounts for periodic
+        # if zero, add a tiny bit of noise to avoid nans 
+        if np.linalg.norm(self.measured_velocity) == 0: 
+            self.measured_velocity = 1e-8 * np.random.randn(self.Environment.D)        
+        if overwrite_velocity is True:
+            self.velocity = self.measured_velocity.copy()
+
+        #Calculate effective rotational velocity 
+        if self.Environment.dimensionality == "2D":
+            angle_now = utils.get_angle(self.measured_velocity)
+            angle_before = utils.get_angle(self.prev_measured_velocity)
+            self.measured_rotational_velocity = ratinabox.utils.pi_domain(angle_now - angle_before) / self.dt
+            if overwrite_velocity is True:
+                self.rotational_velocity = self.measured_rotational_velocity.copy()    
+        return 
+    
+    def _update_head_direction(self, **kwargs):
+        """
+        This function updates the head direction of the agent. The head direction is updated by a low pass filter of the the measured velocity vector but you could overwrite this function if you wished. 
+
+        Args: 
+            • head_direction_smoothing_timescale: the time over which the head direction decoheres (float, default = self.head_direction_smoothing_timescale)
+            • **kwargs: in case you overwrite this function with something else. 
+        """
+        dt = self.dt 
+        tau = kwargs.get("head_direction_smoothing_timescale", self.head_direction_smoothing_timescale)
+
         if self.Environment.dimensionality == "1D": #its just the sign of the velocity
-            self.head_direction = np.sign(self.velocity)
+            self.head_direction = np.sign(self.measured_velocity)
 
         elif self.Environment.dimensionality == "2D":
-            tau_head_direction = self.head_direction_smoothing_timescale
-            immediate_head_direction = self.velocity / np.linalg.norm(self.velocity)
-
+            tau = self.head_direction_smoothing_timescale
+            immediate_head_direction = self.measured_velocity / np.linalg.norm(self.measured_velocity)
             if self.head_direction is None:
-                self.head_direction = self.velocity
-            
-            if tau_head_direction <= dt: 
+                self.head_direction = self.measured_velocity
+            if tau <= dt: 
                 self.head_direction = immediate_head_direction
-                return
-            
-            if dt > tau_head_direction:
+                return 
+            if dt > tau:
                 warnings.warn("dt > head_direction_smoothing_timescale. This will break the head direction smoothing.")
-     
-            self.head_direction = self.head_direction * ( 1 - dt / tau_head_direction ) + dt / tau_head_direction * immediate_head_direction
-
+            self.head_direction = self.head_direction * ( 1 - dt / tau ) + dt / tau * immediate_head_direction
             # normalize the head direction
             self.head_direction = self.head_direction / np.linalg.norm(self.head_direction)
 
-    def save_to_history(self):
+    def save_to_history(self, **kwargs):
+        """Saves the current state of the Agent to the history dictionary. This is called automatically by the update() function. 
+
+        Args: 
+            • **kwargs: in case you overwrite this function with something else."""
         self.history["t"].append(self.t)
         self.history["pos"].append(list(self.pos))
-        self.history["vel"].append(list(self.save_velocity))
+        self.history["vel"].append(list(self.measured_velocity))
         self.history["head_direction"].append(list(self.head_direction))
         if self.Environment.dimensionality == "2D":
-            self.history["rot_vel"].append(self.rotational_velocity)     
+            self.history["rot_vel"].append(self.measured_rotational_velocity)     
         return
 
     def reset_history(self):
+        """Clears the history dataframe, primarily intended for saving memory when running long simulations."""
         for key in self.history.keys():
             self.history[key] = []
         return
@@ -629,32 +625,6 @@ class Agent:
                 self.imported_trajectory_id = 0
 
         return
-
-    def get_history_slice(self, t_start=None, t_end=None, framerate=None):
-        """
-        Returns a python slice() object which can be used to get a slice of history lists between t_start and t_end with framerate. Use case:
-        >>> slice = get_history_slice(0,10*60,20)
-        >>> t = self.history['t'][slice]
-        >>> pos = self.history['pos'][slice]
-        t and pos are now lists of times and positions between t_start=0 and t_end=10*60 at 20 frames per second
-
-        Args:
-            • t_start: start time in seconds (default = self.history['t'][0])
-            • t_end: end time in seconds (default = self.history["t"][-1])
-            • framerate: frames per second (default = None --> step=0 so, just whatever the data frequency (1/Ag.dt) is)
-        """
-
-        t = np.array(self.history["t"])
-        t_start = t_start or t[0]
-        startid = np.nanargmin(np.abs(t - (t_start)))
-        t_end = t_end or t[-1]
-        endid = np.nanargmin(np.abs(t - (t_end)))
-        if framerate is None:
-            skiprate = 1
-        else:
-            skiprate = max(1, int((1 / framerate) / self.dt))
-
-        return slice(startid, endid, skiprate)
 
     def plot_trajectory(
         self,
@@ -825,7 +795,13 @@ class Agent:
         return fig, ax
 
     def animate_trajectory(
-        self, t_start=None, t_end=None, fps=15, speed_up=1, autosave=None, **kwargs
+        self, 
+        t_start=None, 
+        t_end=None, 
+        fps=15, 
+        speed_up=1, 
+        autosave=None, 
+        **kwargs
     ):
         """Returns an animation (anim) of the trajectory, 25fps.
         Args:
@@ -1030,3 +1006,37 @@ class Agent:
         if return_data == True:
             return fig, ax, n, bins, patches
         return fig, ax
+
+    @classmethod
+    def get_all_default_params(cls, verbose=False):
+        """Returns a dictionary of all the default parameters of the class, including those inherited from its parents."""
+        all_default_params = utils.collect_all_params(cls, dict_name="default_params")
+        if verbose:
+            pprint.pprint(all_default_params)
+        return all_default_params
+
+    def get_history_slice(self, t_start=None, t_end=None, framerate=None):
+        """
+        Returns a python slice() object which can be used to get a slice of history lists between t_start and t_end with framerate. Use case:
+        >>> slice = get_history_slice(0,10*60,20)
+        >>> t = self.history['t'][slice]
+        >>> pos = self.history['pos'][slice]
+        t and pos are now lists of times and positions between t_start=0 and t_end=10*60 at 20 frames per second
+
+        Args:
+            • t_start: start time in seconds (default = self.history['t'][0])
+            • t_end: end time in seconds (default = self.history["t"][-1])
+            • framerate: frames per second (default = None --> step=0 so, just whatever the data frequency (1/Ag.dt) is)
+        """
+
+        t = np.array(self.history["t"])
+        t_start = t_start or t[0]
+        startid = np.nanargmin(np.abs(t - (t_start)))
+        t_end = t_end or t[-1]
+        endid = np.nanargmin(np.abs(t - (t_end)))
+        if framerate is None:
+            skiprate = 1
+        else:
+            skiprate = max(1, int((1 / framerate) / self.dt))
+
+        return slice(startid, endid, skiprate)
