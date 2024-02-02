@@ -233,7 +233,7 @@ class Agent:
         # We expose this option as, in rare case, it may be useful for users to simply specify the next position of the agent with a kwarg. However we don't recommend it. If used, this will override the imported trajectory or random motion model
         elif forced_next_position is not None:
             # assert this is an np.array of shape[Env.D]
-            self._update_position_to_forced_next_position(forced_next_position, **kwargs)
+            self._update_position_to_forced_next_position(forced_next_position)
             self._measure_velocity_of_step_taken(overwrite_velocity=True)
         
     
@@ -248,7 +248,7 @@ class Agent:
             • forced_next_position: the position the Agent will move to (np.array of shape [Env.D])
             • **kwargs: For flexibility in csae this functon is overwritten."""
         assert isinstance(forced_next_position, np.ndarray), "forced_next_position must be an np.array"
-        assert forced_next_position.shape == self.Environment.D, "forced_next_position must be an np.array of shape Env.D"
+        assert forced_next_position.shape == (self.Environment.D,), "forced_next_position must be an np.array of shape Env.D"
         self.pos = forced_next_position
         return 
 
@@ -658,11 +658,12 @@ class Agent:
         # Sets a load of default params if you they havent been defined in kwargs
         zorder = kwargs.get("zorder", 1.1)
         alpha = kwargs.get("alpha", 0.7) #transparency of trajectory
-        show_agent = kwargs.get("show_agent", True) #if True, will plot a red dot at the current position of the agent
         point_size = kwargs.get("point_size", 15) #size of trajectory points
         decay_point_size = kwargs.get("decay_point_size", False) #if True will decay trajectory point size over time (recent times = largest)
         decay_point_timescale = kwargs.get("decay_point_timescale", 10) #if decay_point_size is True, this is the timescale over which sizes decay
+        show_agent = kwargs.get("show_agent", True) #if True, will plot a red dot at the current position of the agent
         plot_head_direction = kwargs.get("plot_head_direction", True) #if True, will plot a triangle showing the head direction of the agent
+        agent_color = kwargs.get("agent_color", "r") #color of the agent if show_agent is True
         trajectory_cmap = kwargs.get("trajectory_cmap", matplotlib.colormaps["viridis_r"]) #colormap to use when color == 'changing' 
         xlim = kwargs.get("xlim", None)  #In 1D, forces the xlim to be a certain time (minutes) (useful if animating this function)
 
@@ -722,25 +723,25 @@ class Agent:
                         trajectory[-1, 1],
                         s=40,
                         zorder=zorder,
-                        c="r",
+                        c=agent_color,
                         linewidth=0,
                         marker="o",
                     )
 
-                #plot head direction 
-                if plot_head_direction == True:
-                    rotated_agent_marker = matplotlib.markers.MarkerStyle(marker=[(-1,0),(1,0),(0,4)]) # a triangle
-                    rotated_agent_marker._transform = rotated_agent_marker.get_transform().rotate_deg(-ratinabox.utils.get_bearing(head_direction[-1])*180/np.pi)
-                    hd_ = ax.scatter(
-                        trajectory[-1, 0],
-                        trajectory[-1, 1],
-                        s=200,
-                        alpha=alpha,
-                        zorder=zorder,
-                        c="r",
-                        linewidth=0,
-                        marker=rotated_agent_marker,
-                    )
+                    #plot head direction 
+                    if plot_head_direction == True:
+                        rotated_agent_marker = matplotlib.markers.MarkerStyle(marker=[(-1,0),(1,0),(0,4)]) # a triangle
+                        rotated_agent_marker._transform = rotated_agent_marker.get_transform().rotate_deg(-ratinabox.utils.get_bearing(head_direction[-1])*180/np.pi)
+                        hd_ = ax.scatter(
+                            trajectory[-1, 0],
+                            trajectory[-1, 1],
+                            s=200,
+                            alpha=alpha,
+                            zorder=zorder,
+                            c=agent_color,
+                            linewidth=0,
+                            marker=rotated_agent_marker,
+                        )
 
                 if colorbar == True and color == "changing": 
                     #add colorbar to the ax
