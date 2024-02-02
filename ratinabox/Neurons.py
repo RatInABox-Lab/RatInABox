@@ -1256,12 +1256,14 @@ class VectorCells(Neurons):
          self.sigma_angles) = self.set_tuning_parameters(**self.params)
 
         # records whether n was passed as a parameter.
-        if not hasattr(self, "_warn_n_change"):
-            self._warn_n_change = ("n" in params.keys() and params["n"] is not None)
+        if not hasattr(self, "_warn_if_n_changes"):
+            self._warn_if_n_changes = ("n" in params.keys() and params["n"] is not None)
 
         # raises a warning if n was passed as a parameter, but will change.
-        if self._warn_n_change:
-            warnings.warn(f"Ignoring 'n' parameter value ({params['n']}) that was passed, and setting number of {self.name} neurons to {len(self.tuning_distances)}, inferred from the cell arrangement parameter.")
+        if self._warn_if_n_changes:
+            dont_check_equality = (isinstance(self.params["cell_arrangement"], str) and self.params["cell_arrangement"].endswith("manifold"))
+            if dont_check_equality or self.n != len(self.tuning_distances):
+                warnings.warn(f"Ignoring 'n' parameter value ({params['n']}) that was passed, and setting number of {self.name} neurons to {len(self.tuning_distances)}, inferred from the cell arrangement parameter.")
         
         self.n = len(self.tuning_distances) # ensure n is correct
  
@@ -1453,8 +1455,8 @@ class BoundaryVectorCells(VectorCells):
         self.params.update(params)
 
         # records whether n was passed as a parameter.
-        if not hasattr(self, "_warn_n_change"):
-            self._warn_n_change = ("n" in params.keys() and params["n"] is not None)
+        if not hasattr(self, "_warn_if_n_changes"):
+            self._warn_if_n_changes = ("n" in params.keys() and params["n"] is not None)
 
         super().__init__(Agent, self.params)
 
@@ -1807,8 +1809,8 @@ class ObjectVectorCells(VectorCells):
         ), "object vector cells only possible in 2D"
 
         # records whether n was passed as a parameter.
-        if not hasattr(self, "_warn_n_change"):
-            self._warn_n_change = ("n" in params.keys() and params["n"] is not None)
+        if not hasattr(self, "_warn_if_n_changes"):
+            self._warn_if_n_changes = ("n" in params.keys() and params["n"] is not None)
 
         super().__init__(Agent, self.params)
 
@@ -2062,6 +2064,10 @@ class AgentVectorCells(VectorCells):
         self.Agent = Agent
         self.params = copy.deepcopy(__class__.default_params)
         self.params.update(params)
+
+        # records whether n was passed as a parameter.
+        if not hasattr(self, "_warn_if_n_changes"):
+            self._warn_if_n_changes = ("n" in params.keys() and params["n"] is not None)
 
         super().__init__(Agent, self.params)
 
