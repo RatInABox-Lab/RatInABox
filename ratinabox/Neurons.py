@@ -2065,6 +2065,10 @@ class AgentVectorCells(VectorCells):
         self.params = copy.deepcopy(__class__.default_params)
         self.params.update(params)
 
+        # records whether n was passed as a parameter.
+        if not hasattr(self, "_warn_if_n_changes"):
+            self._warn_if_n_changes = ("n" in params.keys() and params["n"] is not None)
+
         super().__init__(Agent, self.params)
 
         # have a list to detect which agent will the cell detect 
