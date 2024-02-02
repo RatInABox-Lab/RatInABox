@@ -46,7 +46,7 @@ class Agent:
 
     The default params for this agent are:
         default_params = {
-            "dt": 0.01,
+            "dt": 0.1,
             "speed_coherence_time": 0.7,
             "speed_mean": 0.08,
             "speed_std": 0.08,
