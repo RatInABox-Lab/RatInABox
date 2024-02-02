@@ -371,8 +371,9 @@ class Neurons:
                 )
                 return
             t_end = t_end or t[-1]
-            slice = self.Agent.get_history_slice(t_start, t_end)
-            pos = np.array(self.Agent.history["pos"])[slice]
+            position_data_agent = kwargs.get("position_data_agent", self.Agent) # In rare cases you may like to plot this cells rate/spike data against the position of a diffferent Agent. This kwarg enables that. 
+            slice = position_data_agent.get_history_slice(t_start, t_end)
+            pos = np.array(position_data_agent.history["pos"])[slice]
             t = t[slice]
 
             if method == "history":
@@ -569,7 +570,6 @@ class Neurons:
 
         return fig, axes
 
-
     def plot_angular_rate_map(self, chosen_neurons="all", fig=None, ax=None, autosave=None):
         """Plots the position-averaged firing rate map of the neuron as a function of head direction. To do this it calculates the spatial receptive fields at many head directions and averages them over position (therefore it may be slow). 
         Args:
@@ -615,7 +615,6 @@ class Neurons:
 
         return fig, ax 
     
-
     def save_to_history(self):
         cell_spikes = np.random.uniform(0, 1, size=(self.n,)) < (
             self.Agent.dt * self.firingrate
