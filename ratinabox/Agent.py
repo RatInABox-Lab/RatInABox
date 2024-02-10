@@ -31,6 +31,7 @@ class Agent:
             • _check_and_handle_wall_collisions()
             • _measure_velocity_of_step_taken()
             • _update_head_direction()
+            • _update_distance_travelled()
             • _update_position_to_forced_next_position()
             • _update_position_along_imported_trajectory()
         • import_trajectory()
@@ -41,8 +42,10 @@ class Agent:
         • plot_histogram_of_rotational_velocities()
         • save_to_history()
         • reset_history()
+        • initialise_position_and_velocity()
         • get_history_slice()
         • get_all_default_params()
+        • cache_history_as_arrays()
 
     The default params for this agent are:
         default_params = {
@@ -108,45 +111,37 @@ class Agent:
         self.history = {}
         self.history["t"] = []
         self.history["pos"] = []
+        self.history["distance_travelled"] = []
         self.history["vel"] = []
         self.history["rot_vel"] = []
         self.history["head_direction"] = []
+        self.history_array_cache = {"last_cache_time":None} # this is used to cache the history data as an arrays for faster plotting/animating
 
         self.Neurons = []  # each new Neurons class belonging to this Agent will append itself to this list
 
         # time and runID
         self.t = 0
-        self.distance_travelled = 0
         self.average_measured_speed = max(self.speed_mean, self.speed_std)
         self.use_imported_trajectory = False
+        self.distance_travelled = 0.0
 
         # motion model stufff
         self.distance_to_closest_wall = np.inf #this attribute is updated by the update() function and can be used by the user if you need to know how close the agent is to the walls
 
         # initialise starting positions and velocity
-        self.pos = self.Environment.sample_positions(n=1, method="random")[0]
-        self.prev_pos = self.pos.copy()
-        if self.Environment.dimensionality == "2D":
-            direction = np.random.uniform(0, 2 * np.pi)
-            self.velocity = self.speed_mean * np.array(
-                [np.cos(direction), np.sin(direction)]
-            )
-            self.rotational_velocity = 0
-            self.measured_rotational_velocity = 0
-            
-
-        if self.Environment.dimensionality == "1D":
-            self.velocity = np.array([self.speed_mean]) + 1e-8 #to avoid nans 
-            self.save_velocity = self.velocity.copy()
-            if self.Environment.boundary_conditions == "solid":
-                if self.speed_mean != 0:
-                    warnings.warn(
-                        "Warning: You have solid 1D boundary conditions and non-zero speed mean."
-                    )
+        self.initialise_position_and_velocity()
         # this is the velocity of the step that was actually taken, i.e. after wall collisions etc. It is used by the Neurons class to calculate the firing rate. The difference between self.velocity and self.measured_velocity is that self.velocity determines the dynamics of the Agent on the next update whereas self.measured_velocity is just a record of what happened on the last update. To manually change the velocity you should change self.velocity, not self.measured_velocity.
+        self.prev_pos = self.pos.copy()
         self.measured_velocity = self.velocity.copy()
+        self.measured_rotational_velocity = 0
         self.prev_measured_velocity = self.measured_velocity.copy()
         self.head_direction = self.velocity / np.linalg.norm(self.velocity)
+
+        # warn if 1D and non-zero speed mean with solid boundary conditions
+        if self.Environment.dimensionality == "1D" and self.Environment.boundary_conditions == "solid" and self.speed_mean != 0:
+            warnings.warn(
+                "Warning: You have solid 1D boundary conditions and non-zero speed mean."
+            )
 
         if ratinabox.verbose is True:
             print(
@@ -222,6 +217,7 @@ class Agent:
                 self.pos = self.Environment.apply_boundary_conditions(self.pos)
             # Calculate the velocity of the step that, after all that, was taken.
             self._measure_velocity_of_step_taken()
+
        
     
         # Update position along the imported trajectory if one has been provided
@@ -236,9 +232,8 @@ class Agent:
             self._update_position_to_forced_next_position(forced_next_position)
             self._measure_velocity_of_step_taken(overwrite_velocity=True)
         
-    
-        
         self._update_head_direction(**kwargs)
+        self._update_distance_travelled(**kwargs)
         self.save_to_history(**kwargs)
 
     def _update_position_to_forced_next_position(self, forced_next_position):
@@ -320,7 +315,7 @@ class Agent:
 
             return 
     
-    def _drift_velocity_update(self, drift_velocity, drift_to_random_strength_ratio): 
+    def _drift_velocity_update(self, drift_velocity, drift_to_random_strength_ratio, **kwargs): 
         """This function updates the velocity of the Agent to drift it towards a target velocity. We use the inbuilt ornstein_uhlenbeck function to do this but since there is no noise (noise scale = 0) its not a random update its just vel = (1 - 1/tau)*vel + (1/tau)*drift_vel. The higher the drift_to_random_strength_ratio the lower the timescale of this update there to more strongly that the velocity will be updated to the drift velocity (in favour of, say, the random motion update).
 
         Args:
@@ -445,6 +440,12 @@ class Agent:
         Args:
             • overwrite_velocity: if True, self.velocity and self.rotational_velocity will be updated to match self.measured_velocity and self.measured_rotational_velocity. This is useful when forced or imported trajectories are being used to keep self.velocity and self.rotational_velocity in sync with the actual motion of the Agent.
         """
+        #if np.nan is in self.pos or self.prev_pos then set the velocities to be saved as nans
+        if np.isnan(self.pos).any() or np.isnan(self.prev_pos).any():
+            self.measured_velocity = np.full((self.Environment.D,), np.nan)
+            self.measured_rotational_velocity = np.nan
+            return
+
         d_pos = self.Environment.get_vectors_between___accounting_for_environment(
             pos1=self.pos, pos2=self.prev_pos ) #TODO this recalculation of velocity might be slowing things down more than it's worth
         self.measured_velocity = (d_pos.reshape(-1) / self.dt)  # accounts for periodic
@@ -491,6 +492,13 @@ class Agent:
             # normalize the head direction
             self.head_direction = self.head_direction / np.linalg.norm(self.head_direction)
 
+    def _update_distance_travelled(self, **kwargs):
+        #if np.nan is in self.pos or self.prev_pos then add 0 to the distance travelled
+        if np.isnan(self.pos).any() or np.isnan(self.prev_pos).any():
+            self.distance_travelled += 0
+        else: 
+            self.distance_travelled += self.Environment.get_distances_between___accounting_for_environment(self.pos, self.prev_pos)[0][0]
+
     def save_to_history(self, **kwargs):
         """Saves the current state of the Agent to the history dictionary. This is called automatically by the update() function. 
 
@@ -498,12 +506,27 @@ class Agent:
             • **kwargs: in case you overwrite this function with something else."""
         self.history["t"].append(self.t)
         self.history["pos"].append(list(self.pos))
+        self.history["distance_travelled"].append(self.distance_travelled)
         self.history["vel"].append(list(self.measured_velocity))
         self.history["head_direction"].append(list(self.head_direction))
         if self.Environment.dimensionality == "2D":
             self.history["rot_vel"].append(self.measured_rotational_velocity)     
         return
 
+    def initialise_position_and_velocity(self):
+        """Resamples the position (self.pos) and velocity (self.velocity) of the Agent. Note this leaves self.prev_pos and self.measured_velocity etc. unchanged."""
+        self.pos = self.Environment.sample_positions(n=1, method="random")[0]
+        if self.Environment.dimensionality == "2D":
+            direction = np.random.uniform(0, 2 * np.pi)
+            self.velocity = self.speed_mean * np.array(
+                [np.cos(direction), np.sin(direction)]
+            )
+            self.rotational_velocity = 0
+            
+        if self.Environment.dimensionality == "1D":
+            self.velocity = np.array([self.speed_mean]) + 1e-8 #to avoid nans 
+        return 
+    
     def reset_history(self):
         """Clears the history dataframe, primarily intended for saving memory when running long simulations."""
         for key in self.history.keys():
@@ -666,6 +689,12 @@ class Agent:
         agent_color = kwargs.get("agent_color", "r") #color of the agent if show_agent is True
         trajectory_cmap = kwargs.get("trajectory_cmap", matplotlib.colormaps["viridis_r"]) #colormap to use when color == 'changing' 
         xlim = kwargs.get("xlim", None)  #In 1D, forces the xlim to be a certain time (minutes) (useful if animating this function)
+        #Below are the kargs if you want to just manually pass in the data (which is not recommended) which will be plotted rather than using the history data between t_start and t_end. Note this is NOT recommended but is possible. You must provide all or none of the below. TODO For now this only works when plotting a single agent.
+        time = kwargs.get("time", None)  
+        trajectory = kwargs.get("trajectory", None)  
+        head_direction = kwargs.get("head_direction", None) 
+
+    
 
         # loop over all agents in the Environment if plot_all_agents is True
         if plot_all_agents == False:
@@ -676,13 +705,21 @@ class Agent:
             agent_list = self.Environment.Agents
         replot_env = True
         for i, self_ in enumerate(agent_list):
-            t_end = t_end or self_.history["t"][-1]
-            slice = self_.get_history_slice(
-                t_start=t_start, t_end=t_end, framerate=framerate
-            )
-            time = np.array(self_.history["t"])[slice]
-            trajectory = np.array(self_.history["pos"])[slice]
-            head_direction = np.array(self_.history["head_direction"])[slice]
+            if time is None or trajectory is None:
+                #get times and trjectory from history data (normal)  
+                t_end = t_end or self_.history["t"][-1]
+                slice = self_.get_history_slice(t_start=t_start, t_end=t_end, framerate=framerate)
+                if (self_.history_array_cache["last_cache_time"] != self.t): 
+                    self_.cache_history_as_arrays()
+                time = self_.history_array_cache["t"][slice]
+                trajectory = self_.history_array_cache["pos"][slice]
+                head_direction = self_.history_array_cache["head_direction"][slice]
+            else:
+                # data has been passed in manually 
+                t_start, t_end = time[0], time[-1]
+
+
+
             if color is None:
                 color_list = [f"C{self_.agent_idx}"] * len(time)
             elif (color == "changing") or isinstance(color, matplotlib.colors.Colormap):
@@ -736,7 +773,7 @@ class Agent:
                             trajectory[-1, 0],
                             trajectory[-1, 1],
                             s=200,
-                            alpha=alpha,
+                            alpha=1,
                             zorder=zorder,
                             c=agent_color,
                             linewidth=0,
@@ -1029,8 +1066,9 @@ class Agent:
             • t_end: end time in seconds (default = self.history["t"][-1])
             • framerate: frames per second (default = None --> step=0 so, just whatever the data frequency (1/Ag.dt) is)
         """
-
-        t = np.array(self.history["t"])
+        if self.history_array_cache["last_cache_time"] != self.t:
+            self.cache_history_as_arrays()
+        t = self.history_array_cache["t"]
         t_start = t_start or t[0]
         startid = np.nanargmin(np.abs(t - (t_start)))
         t_end = t_end or t[-1]
@@ -1041,3 +1079,14 @@ class Agent:
             skiprate = max(1, int((1 / framerate) / self.dt))
 
         return slice(startid, endid, skiprate)
+
+    def cache_history_as_arrays(self):
+        """Converts anything in the current history dictionary into a numpy array along with the time this cache was made. This is useful for speeding up animating functions which require slicing the history data but repeatedly converting to arrays is expensive. This is called automatically by the plot_trajectory function if the history data has not been cached yet.
+        TODO This should probably be improved, right now it will convert and cache _all_ history data, even if only some of it is needed."""
+        self.history_array_cache = {}
+        self.history_array_cache["last_cache_time"] = self.t
+        for key in self.history.keys():
+            try: #will skip if for any reason this key cannot be converted to an array, so you can still save random stuff into the history dict without breaking this function
+                self.history_array_cache[key] = np.array(self.history[key])
+            except: pass 
+        return
