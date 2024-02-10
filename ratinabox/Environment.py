@@ -609,7 +609,7 @@ class Environment:
                 n_remaining = n - n_uniformly_distributed
                 if n_remaining > 0:
                     # sample remaining from available positions with further jittering (delta = delta/2)
-                    positions_remaining = np.array([positions[i] for i in np.random.choice(range(len(positions)),n_remaining, replace=False)])
+                    positions_remaining = np.array([positions[i] for i in np.random.choice(range(len(positions)),n_remaining, replace=True)])
                     delta /= 2
                     positions_remaining += np.random.uniform(
                         -0.45 * delta, 0.45 * delta, positions_remaining.shape

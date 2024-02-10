@@ -345,6 +345,10 @@ class Neurons:
         Returns:
             fig, ax
         """
+        #Set kwargs (TODO make lots of params accessible here as kwargs) 
+        spikes_color = kwargs.get("spikes_color", self.color) or "C1"
+
+
         # GET DATA
         if method[:11] == "groundtruth":
             try:
@@ -509,7 +513,7 @@ class Neurons:
                         linewidth=0,
                         alpha=0.7,
                         zorder=1.2,
-                        color=(self.color if self.color is not None else "C1"),
+                        color=spikes_color,
                     )
 
         # PLOT 1D
@@ -557,7 +561,7 @@ class Neurons:
                     ax.scatter(
                         pos_where_spiked,
                         h,
-                        color=(self.color if self.color is not None else "C1"),
+                        color=spikes_color,
                         alpha=0.5,
                         s=2,
                         linewidth=0,
@@ -587,6 +591,7 @@ class Neurons:
                 subplot_kw={"projection": "polar"},
             )
 
+
         # get rate maps at all head directions and all positions
         # the object will end up having shape (n_neurons, n_positions, n_headdirections)
         rm = np.zeros_like(self.get_state(evaluate_at='all',head_direction=np.array([1,0])))
@@ -610,6 +615,13 @@ class Neurons:
             ax[i].set_ylim([0, 1.1*np.max(rm_hd[n,:])])
             ax[i].tick_params(pad=-20)
             ax[i].set_xticklabels(["E", "N", "W", "S"])
+        
+
+
+        for i, ax_ in enumerate(axes):
+            _, ax_ = self.Agent.Environment.plot_environment(
+                fig, ax_, autosave=False, **kwargs
+            )
         
         ratinabox.utils.save_figure(fig, self.name + "_angularratemaps", save=autosave)
 

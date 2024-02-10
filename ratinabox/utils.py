@@ -293,7 +293,7 @@ def rotate(vector, theta):
     """rotates a vector shape (2,) anticlockwise by angle theta .
     Args:
         vector (array): the 2d vector
-        theta (flaot): the rotation angle
+        theta (flaot): the rotation angle, radians
     """
     R = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])
     vector_new = np.matmul(R, vector)
