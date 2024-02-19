@@ -124,6 +124,9 @@ class Neurons:
         self.history["firingrate"] = []
         self.history["spikes"] = []
 
+        self._last_history_array_cache_time = None
+        self._history_arrays = {} # this dictionary is the same as self.history except the data is in arrays not lists BUT it should only be accessed via its getter-function `self.get_history_arrays()`. This is because the lists are only converted to arrays when they are accessed, not on every step, so as to save time.
+
         self.colormap = "inferno" # default colormap for plotting ratemaps 
 
         if ratinabox.verbose is True:
@@ -347,6 +350,7 @@ class Neurons:
         """
         #Set kwargs (TODO make lots of params accessible here as kwargs) 
         spikes_color = kwargs.get("spikes_color", self.color) or "C1"
+        bin_size = kwargs.get("bin_size", 0.04) #only relevant if you are plotting by method="history"
 
 
         # GET DATA
@@ -367,25 +371,25 @@ class Neurons:
                 method = "history"
 
         if method == "history" or spikes == True:
-            t = np.array(self.history["t"])
+            history_data = self.get_history_arrays() # converts lists to arrays (if this wasn't just done) and returns them in a dict same as self.history but with arrays not lists
+            t = history_data["t"]
             # times to plot
             if len(t) == 0:
-                print(
-                    "Can't plot rate map by method='history' since there is no available data to plot. "
-                )
+                print("Can't plot rate map by method='history', nor plot spikes, since there is no available data to plot. ")
                 return
             t_end = t_end or t[-1]
             position_data_agent = kwargs.get("position_data_agent", self.Agent) # In rare cases you may like to plot this cells rate/spike data against the position of a diffferent Agent. This kwarg enables that. 
+            position_agent_history_data = position_data_agent.get_history_arrays()
             slice = position_data_agent.get_history_slice(t_start, t_end)
-            pos = np.array(position_data_agent.history["pos"])[slice]
+            pos = position_agent_history_data["pos"][slice]
             t = t[slice]
 
             if method == "history":
-                rate_timeseries = np.array(self.history["firingrate"])[slice].T
+                rate_timeseries = history_data["firingrate"][slice].T
                 if len(rate_timeseries) == 0:
                     print("No historical data with which to calculate ratemap.")
             if spikes == True:
-                spike_data = np.array(self.history["spikes"])[slice].T
+                spike_data = history_data["spikes"][slice].T
                 if len(spike_data) == 0:
                     print("No historical data with which to plot spikes.")
         if method == "ratemaps_provided":
@@ -468,20 +472,32 @@ class Neurons:
                         )
                         im = ax_.imshow(rate_map, extent=ex, zorder=0, cmap=self.colormap)
                     elif method == "history":
+                        bin_size = kwargs.get("bin_size", 0.05)
                         rate_timeseries_ = rate_timeseries[chosen_neurons[i], :]
-                        rate_map = utils.bin_data_for_histogramming(
+                        rate_map, zero_bins = utils.bin_data_for_histogramming(
                             data=pos,
                             extent=ex,
-                            dx=0.05,
+                            dx=bin_size,
                             weights=rate_timeseries_,
                             norm_by_bincount=True,
+                            return_zero_bins=True,
                         )
+                        #rather than just "nan-ing" the regions where no data was observed we'll plot ontop a "mask" overlay which blocks with a grey square regions where no data was observed. The benefit of this technique is it still allows us to use "bicubic" interpolation which is much smoother than the default "nearest" interpolation.
+                        binary_colors = [(0,0,0,0),ratinabox.LIGHTGREY] #transparent if theres data, grey if there isn't
+                        binary_cmap = matplotlib.colors.ListedColormap(binary_colors)
                         im = ax_.imshow(
                             rate_map,
                             extent=ex,
                             cmap=self.colormap,
                             interpolation="bicubic",
                             zorder=0,
+                        )
+                        no_data_mask = ax_.imshow(
+                            zero_bins,
+                            extent=ex,
+                            cmap=binary_cmap,
+                            interpolation="nearest",
+                            zorder=0.001,
                         )
                     ims.append(im)
                     vmin, vmax = (
@@ -749,7 +765,18 @@ class Neurons:
             chosen_neurons = list(chosen_neurons.astype(int))
 
         return chosen_neurons
-
+    
+    def get_history_arrays(self):
+        """Returns the history dataframe as a dictionary of numpy arrays (as opposed to lists). This getter-function only updates the self._history_arrays if the Agent/Neuron has updates since the last time it was called. This avoids expensive repeated conversion of lists to arrays during animations."""
+        if (self._last_history_array_cache_time != self.Agent.t): 
+            self._history_arrays = {}
+            self._last_history_array_cache_time = self.Agent.t
+            for key in self.history.keys():
+                try: #will skip if for any reason this key cannot be converted to an array, so you can still save random stuff into the history dict without breaking this function
+                    self._history_arrays[key] = np.array(self.history[key])
+                except: pass 
+        return self._history_arrays
+    
 
 """Specific subclasses """
 

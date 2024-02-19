@@ -45,7 +45,7 @@ class Agent:
         • initialise_position_and_velocity()
         • get_history_slice()
         • get_all_default_params()
-        • cache_history_as_arrays()
+        • get_history_arrays()
 
     The default params for this agent are:
         default_params = {
@@ -115,7 +115,9 @@ class Agent:
         self.history["vel"] = []
         self.history["rot_vel"] = []
         self.history["head_direction"] = []
-        self.history_array_cache = {"last_cache_time":None} # this is used to cache the history data as an arrays for faster plotting/animating
+
+        self._last_history_array_cache_time = None
+        self._history_arrays = {} # this is used to cache the history data as an arrays for faster plotting/animating
 
         self.Neurons = []  # each new Neurons class belonging to this Agent will append itself to this list
 
@@ -711,11 +713,10 @@ class Agent:
                 #get times and trjectory from history data (normal)  
                 t_end = t_end or self_.history["t"][-1]
                 slice = self_.get_history_slice(t_start=t_start, t_end=t_end, framerate=framerate)
-                if (self_.history_array_cache["last_cache_time"] != self.t): 
-                    self_.cache_history_as_arrays()
-                time = self_.history_array_cache["t"][slice]
-                trajectory = self_.history_array_cache["pos"][slice]
-                head_direction = self_.history_array_cache["head_direction"][slice]
+                history_data = self.get_history_arrays() # gets history dataframe as dictionary of arrays (only recomputing arrays from lists if necessary) 
+                time = history_data["t"][slice]
+                trajectory = history_data["pos"][slice]
+                head_direction = history_data["head_direction"][slice]
             else:
                 # data has been passed in manually 
                 t_start, t_end = time[0], time[-1]
@@ -1068,9 +1069,7 @@ class Agent:
             • t_end: end time in seconds (default = self.history["t"][-1])
             • framerate: frames per second (default = None --> step=0 so, just whatever the data frequency (1/Ag.dt) is)
         """
-        if self.history_array_cache["last_cache_time"] != self.t:
-            self.cache_history_as_arrays()
-        t = self.history_array_cache["t"]
+        t = self.get_history_arrays()["t"]
         t_start = t_start or t[0]
         startid = np.nanargmin(np.abs(t - (t_start)))
         t_end = t_end or t[-1]
@@ -1081,14 +1080,14 @@ class Agent:
             skiprate = max(1, int((1 / framerate) / self.dt))
 
         return slice(startid, endid, skiprate)
-
-    def cache_history_as_arrays(self):
-        """Converts anything in the current history dictionary into a numpy array along with the time this cache was made. This is useful for speeding up animating functions which require slicing the history data but repeatedly converting to arrays is expensive. This is called automatically by the plot_trajectory function if the history data has not been cached yet.
-        TODO This should probably be improved, right now it will convert and cache _all_ history data, even if only some of it is needed."""
-        self.history_array_cache = {}
-        self.history_array_cache["last_cache_time"] = self.t
-        for key in self.history.keys():
-            try: #will skip if for any reason this key cannot be converted to an array, so you can still save random stuff into the history dict without breaking this function
-                self.history_array_cache[key] = np.array(self.history[key])
-            except: pass 
-        return
+    
+    def get_history_arrays(self):
+        """Returns the history dataframe as a dictionary of numpy arrays (as opposed to lists). This getter-function only updates the self._history_arrays if the Agent/Neuron has updates since the last time it was called. This avoids expensive repeated conversion of lists to arrays during animations."""
+        if (self._last_history_array_cache_time != self.t): 
+            self._history_arrays = {}
+            self._last_history_array_cache_time = self.t
+            for key in self.history.keys():
+                try: #will skip if for any reason this key cannot be converted to an array, so you can still save random stuff into the history dict without breaking this function
+                    self._history_arrays[key] = np.array(self.history[key])
+                except: pass 
+        return self._history_arrays
