@@ -120,6 +120,7 @@ class Agent:
         self.Neurons = []  # each new Neurons class belonging to this Agent will append itself to this list
 
         # time and runID
+        self.prev_t = 0 
         self.t = 0
         self.average_measured_speed = max(self.speed_mean, self.speed_std)
         self.use_imported_trajectory = False
@@ -151,6 +152,7 @@ class Agent:
                 Import external trajectory data using Ag.import_trajectory(). Plot trajectory using Ag.plot_trajectory().
                 Other plotting functions are available."""
             )
+
         return
 
     def update(self, dt=None, drift_velocity=None, drift_to_random_strength_ratio=1, **kwargs):
@@ -188,6 +190,7 @@ class Agent:
         # Update the time - eventually this "clock" will live in the Environment class 
         dt = (dt or self.dt)
         self.dt = dt # by setting dt this means you can use dt anywhere else and know it was dt used in the latest update 
+        self.prev_t = self.t
         self.t += dt
         self.pos = np.array(self.pos,dtype=float) 
         self.velocity = np.array(self.velocity,dtype=float)
@@ -254,9 +257,8 @@ class Agent:
             self.pos = self.pos_interp(interp_time)
 
         else:  # just jump one count along the trajectory, we do NOT recommend using this option as it will break at the end of the trajectory and dt may not match the trajectory dt
-            old_time = self.history['t'][-1]
-            self.t = self.times[self.imported_trajectory_id]
-            self.dt = self.t - old_time # Must reset these to ensure dt is correct
+            self.t = self.times[self.imported_trajectory_id] #overwrites the time
+            self.dt = self.t - self.prev_t # Must reset these to ensure dt is correct
             self.pos = self.positions[self.imported_trajectory_id]
             self.imported_trajectory_id = (self.imported_trajectory_id + 1) % len(self.times)
         return 
