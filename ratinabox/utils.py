@@ -272,6 +272,7 @@ def get_angle(segment, is_array=False):
 
     return angs
 
+
 def get_bearing(segment, is_array=False):
     """Given a 'segment' (either 2x2 start and end positions or 2x1 direction vector)
          returns the 'bearing' of this segment modulo 2pi measured CLOCKwise from North e.g. [0,1]--> 0, [1,0]--> pi/2, ...[-1,0] --> 3pi/2. This uses the get_angle() function since...
@@ -526,7 +527,7 @@ def distribution_sampler(
 """Plotting functions"""
 
 
-def bin_data_for_histogramming(data, extent, dx, weights=None, norm_by_bincount=False):
+def bin_data_for_histogramming(data, extent, dx, weights=None, norm_by_bincount=False, return_zero_bins=False):
     """Bins data ready for plotting.
     So for example if the data is 1D the extent is broken up into bins (leftmost edge = extent[0], rightmost edge = extent[1]) and then data is
     histogrammed into these bins.
@@ -560,11 +561,13 @@ def bin_data_for_histogramming(data, extent, dx, weights=None, norm_by_bincount=
         )
         if norm_by_bincount:
             bincount, xedges, yedges = np.histogram2d(
-                data[:, 0], data[:, 1], bins=[bins_x, bins_y]
-            )
-            bincount[bincount == 0] = 1
+                data[:, 0], data[:, 1], bins=[bins_x, bins_y])
+            zero_bins = (bincount == 0)
+            bincount[zero_bins] = 1
             heatmap = heatmap / bincount
         heatmap = heatmap.T[::-1, :]
+        if return_zero_bins:
+            return (heatmap, zero_bins.T[::-1, :])
         return heatmap
 
 
