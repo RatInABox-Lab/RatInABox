@@ -441,6 +441,7 @@ class Environment:
                 fig, ax = plt.subplots(
                     figsize=(3 * (extent[1] - extent[0]), 3 * (extent[3] - extent[2]))
                 )
+            fig.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=None, hspace=None) #remove border
             # plot background/arena
             background = matplotlib.patches.Polygon(
                 xy=np.array(self.boundary), facecolor=ratinabox.LIGHTGREY, zorder=-1
