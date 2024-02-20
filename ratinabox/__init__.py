@@ -16,6 +16,7 @@ MOUNTAIN_PLOT_WIDTH_MM = (
 )  # width of mountain plots (e.g rate timeseries plots and 1D ratemaps)
 MOUNTAIN_PLOT_SHIFT_MM = 2  # this is the shift between the nth mountain plot line and the (n+1)th mountain plot line
 MOUNTAIN_PLOT_OVERLAP = 2.2  # this is the max fraction the nth mountain plot line will over lap into the (n+1)th mountain plot line
+FIGURE_INCH_PER_ENVIRONMENT_METRE = 2.5 # this is the size of the figure in inches per metre of the environment 
 
 DARKGREY = [0.3,0.3,0.3,1]
 GREY = [0.5,0.5,0.5,1]

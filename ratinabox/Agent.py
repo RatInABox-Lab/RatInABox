@@ -49,7 +49,7 @@ class Agent:
 
     The default params for this agent are:
         default_params = {
-            "dt": 0.1,
+            "dt": 0.05,
             "speed_coherence_time": 0.7,
             "speed_mean": 0.08,
             "speed_std": 0.08,
@@ -67,7 +67,7 @@ class Agent:
 
     default_params = {
         "name": None,
-        "dt": 0.1,
+        "dt": 0.05,
         # Speed params (leave empty if you are importing trajectory data)
         # These defaults are fit to match data from Sargolini et al. (2016)
         # also given are the parameter names as refered to in the methods section of the paper

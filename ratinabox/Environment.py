@@ -439,7 +439,7 @@ class Environment:
             extent, walls = self.extent, self.walls
             if fig is None and ax is None:
                 fig, ax = plt.subplots(
-                    figsize=(3 * (extent[1] - extent[0]), 3 * (extent[3] - extent[2]))
+                    figsize=(ratinabox.FIGURE_INCH_PER_ENVIRONMENT_METRE * (extent[1] - extent[0]), ratinabox.FIGURE_INCH_PER_ENVIRONMENT_METRE * (extent[3] - extent[2]))
                 )
             fig.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=None, hspace=None) #remove border
             # plot background/arena
