@@ -614,8 +614,9 @@ def mountain_plot(
     c = color if color is not None else "C1"
     c = np.array(matplotlib.colors.to_rgb(c))
     fc = 0.3 * c + (1 - 0.3) * np.array([1, 1, 1])  # convert rgb+alpha to rgb
-
-    NbyX = overlap * NbyX / (np.max(np.abs(NbyX)) if norm_by == "max" else norm_by)
+    norm = np.max(np.abs(NbyX)) if norm_by == "max" else norm_by
+    if norm <= 1e-6: norm=100 #large
+    NbyX = overlap * NbyX / norm
     if fig is None and ax is None:
         w, h = width / 25, len(NbyX) * shift / 25
         # fig, ax = plt.subplots()
@@ -651,7 +652,6 @@ def mountain_plot(
     ax.set_ylim()
     if xlim is not None:
         ax.set_xlim(right=xlim)
-
     return fig, ax
 
 
