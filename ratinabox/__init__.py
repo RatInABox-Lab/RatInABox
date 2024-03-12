@@ -22,11 +22,13 @@ DARKGREY = [0.3,0.3,0.3,1]
 GREY = [0.5,0.5,0.5,1]
 LIGHTGREY = [0.9,0.9,0.9,1]
 
-from .Environment import *
+from .Environment import * # these will allow you to do `from ratinabox import Environment` as a shortcut for `from ratinabox.Environment import Environment`
 from .Agent import *
 from .Neurons import *
 
 from . import contribs
+
+import numpy as np 
 
 
 def stylize_plots():
