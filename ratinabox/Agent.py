@@ -709,24 +709,22 @@ class Agent:
             agent_list = self.Environment.Agents
         replot_env = True
         for i, self_ in enumerate(agent_list):
-            if time is None or trajectory is None:
-                #get times and trjectory from history data (normal)  
-                t_end = t_end or self_.history["t"][-1]
-                slice = self_.get_history_slice(t_start=t_start, t_end=t_end, framerate=framerate)
-                history_data = self.get_history_arrays() # gets history dataframe as dictionary of arrays (only recomputing arrays from lists if necessary) 
-                time = history_data["t"][slice]
-                trajectory = history_data["pos"][slice]
-                head_direction = history_data["head_direction"][slice]
-            else:
-                # data has been passed in manually 
-                t_start, t_end = time[0], time[-1]
+            #get times and trjectory from history data (normal) 
+            # t_start and t_end are provided by the user but t_start_ and t_end_ are the actual times used for plotting (in case t_end is None or similar)
+            t_end_ = t_end or self_.history["t"][-1]
+            slice = self_.get_history_slice(t_start=t_start, t_end=t_end_, framerate=framerate)
+            history_data = self_.get_history_arrays() # gets history dataframe as dictionary of arrays (only recomputing arrays from lists if necessary) 
+            time = history_data["t"][slice]
+            trajectory = history_data["pos"][slice]
+            head_direction = history_data["head_direction"][slice]
+            t_start_, t_end_ = time[0], time[-1]
+            print("t_start_:", t_start_)
 
 
 
             if color is None:
                 color_list = [f"C{self_.agent_idx}"] * len(time)
             elif (color == "changing") or isinstance(color, matplotlib.colors.Colormap):
-                trajectory_cmap = matplotlib.colormaps["viridis_r"]
                 color_list = [trajectory_cmap(t / len(time)) for t in range(len(time))]
                 decay_point_size = (
                     False  # if changing colour, may as well show WHOLE trajectory
@@ -792,7 +790,7 @@ class Agent:
                     cbar = plt.colorbar(sm, cax=cax)
                     cbar.set_label("Time / min",labelpad=-12) #<--padding depends of label rounding
                     cbar.set_ticks([0, len(time)])
-                    cbar.set_ticklabels([round(t_start / 60, 2), round(t_end / 60, 2)])
+                    cbar.set_ticklabels([round(t_start_ / 60, 2), round(t_end_ / 60, 2)])
                     cbar.outline.set_visible(False)
                     cbar.ax.tick_params(length=0)
                     
@@ -815,18 +813,18 @@ class Agent:
                 ax.scatter(
                     time / 60, trajectory, alpha=alpha, linewidth=0, c=color_list, s=5
                 )
-                ax.spines["left"].set_position(("data", t_start / 60))
+                ax.spines["left"].set_position(("data", t_start_ / 60))
                 ax.set_xlabel("Time / min")
                 ax.set_ylabel("Position / m")
-                ax.set_xlim([t_start / 60, t_end / 60])
+                ax.set_xlim([t_start_ / 60, t_end_ / 60])
                 if xlim is not None:
                     ax.set_xlim(right=xlim)
 
                 ax.set_ylim(bottom=0, top=self_.Environment.extent[1])
                 ax.spines["right"].set_visible(False)
                 ax.spines["top"].set_visible(False)
-                ax.set_xticks([t_start / 60, t_end / 60])
-                ax.set_xticklabels([round(t_start / 60, 2), round(t_end / 60, 2)])
+                ax.set_xticks([t_start_ / 60, t_end_ / 60])
+                ax.set_xticklabels([round(t_start_ / 60, 2), round(t_end_ / 60, 2)])
                 ex = self_.Environment.extent
                 ax.set_yticks([ex[1]])
 
@@ -869,7 +867,7 @@ class Agent:
             ax.clear()
             if self.Environment.dimensionality == "2D":
                 fig, ax = self.Environment.plot_environment(
-                    fig=fig, ax=ax, autosave=False
+                    fig=fig, ax=ax, autosave=False, **kwargs
                 )
             fig, ax = self.plot_trajectory(
                 t_start=t_start,
