@@ -226,11 +226,12 @@ class Neurons:
         Returns:
             fig, ax
         """
-        t = np.array(self.history["t"])
+        history_arrays = self.get_history_arrays() #gets history data as dictionary of arrays
+        t = history_arrays["t"]
         t_end = t_end or t[-1]
         slice = self.Agent.get_history_slice(t_start, t_end)
-        rate_timeseries = np.array(self.history["firingrate"][slice])
-        spike_data = np.array(self.history["spikes"][slice])
+        rate_timeseries = history_arrays["firingrate"][slice]
+        spike_data = history_arrays["spikes"][slice]
         t = t[slice]
 
         # neurons to plot
@@ -470,7 +471,9 @@ class Neurons:
                         rate_map = rate_maps[chosen_neurons[i], :].reshape(
                             self.Agent.Environment.discrete_coords.shape[:2]
                         )
-                        im = ax_.imshow(rate_map, extent=ex, zorder=0, cmap=self.colormap)
+                        im = ax_.imshow(rate_map, extent=ex, zorder=0, cmap=self.colormap, 
+                                        interpolation="bicubic", # smooths rate maps but this does slow down the plotting a bit 
+                                        )
                     elif method == "history":
                         bin_size = kwargs.get("bin_size", 0.05)
                         rate_timeseries_ = rate_timeseries[chosen_neurons[i], :]
