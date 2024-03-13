@@ -9,7 +9,7 @@ import shapely
 
 
 import warnings
-from typing import Union
+from typing import Union, List
 
 from ratinabox import utils
 from ratinabox.Agent import Agent
@@ -87,7 +87,7 @@ class Environment:
         utils.update_class_params(self, self.params, get_all_defaults=True)
         utils.check_params(self, params.keys())
 
-        self.Agents : list[Agent] = []  # each new Agent will append itself to this list
+        self.Agents : List[Agent] = []  # each new Agent will append itself to this list
         self.agents_dict = {} # this is a dictionary which allows you to lookup a agent by name
 
         if self.dimensionality == "1D":
@@ -206,17 +206,17 @@ class Environment:
         return all_default_params
 
     
-    def agent_lookup(self, agent_names:Union[str, list[str]]  = None) -> list[Agent]:
+    def agent_lookup(self, agent_names:Union[str, List[str]]  = None) -> List[Agent]:        
         '''
         This function will lookup a agent by name and return it. This assumes that the agent has been 
         added to the Environment.agents list and that each agent object has a unique name associated with it.
 
 
         Args:
-            agent_names (str, list[str]): the name of the agent you want to lookup. 
+            agent_names (str, List[str]): the name of the agent you want to lookup. 
         
         Returns:
-            agents (list[Agent]): a list of agents that match the agent_names. If agent_names is a string, then a list of length 1 is returned. If agent_names is None, then None is returned
+            agents (List[Agent]): a list of agents that match the agent_names. If agent_names is a string, then a list of length 1 is returned. If agent_names is None, then None is returned
 
         '''
 
@@ -226,7 +226,7 @@ class Environment:
         if isinstance(agent_names, str):
             agent_names = [agent_names]
 
-        agents: list[Agent] = []
+        agents: List[Agent] = []
 
         for agent_name in agent_names:
             agent = self._agent_lookup(agent_name)
@@ -846,7 +846,7 @@ class Environment:
         returns new_pos
         TODO update this so if pos is in one of the holes the Agent is returned to the ~nearest legal location inside the Environment
         """
-        if self.check_if_position_is_in_environment(pos) is True: return
+        if self.check_if_position_is_in_environment(pos) is True: return pos
 
         if self.dimensionality == "1D":
             if self.boundary_conditions == "periodic":

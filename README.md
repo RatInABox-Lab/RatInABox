@@ -1,6 +1,6 @@
 # RatInABox ![Tests](https://github.com/RatInABox-Lab/RatInABox/actions/workflows/test.yml/badge.svg)   [![PyPI version](https://badge.fury.io/py/ratinabox.svg)](https://badge.fury.io/py/ratinabox) [![Downloads](https://static.pepy.tech/badge/ratinabox)](https://pepy.tech/project/ratinabox)<img align="right" src=".images/readme/logo.png" width=150> 
 
-`RatInABox` (see [paper](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v5)) is a toolkit for generating synthetic behaviour and neural data for spatially and/or velocity selective cell types in complex continuous environments. 
+`RatInABox` (see [paper](https://elifesciences.org/articles/85274)) is a toolkit for generating synthetic behaviour and neural data for spatially and/or velocity selective cell types in complex continuous environments. 
 
 [**Install**](#installing-and-importing) | [**Demos**](#get-started) | [**Features**](#feature-run-down) | [**Contributions and Questions**](#contribute) | [**Cite**](#cite)
 
@@ -443,26 +443,30 @@ Questions? Just ask! Ideally via opening an issue so others can see the answer t
 Thanks to all contributors so far:
 ![GitHub Contributors Image](https://contrib.rocks/image?repo=RatInABox-Lab/RatInABox)
 
-## Cite [![](http://img.shields.io/badge/bioRxiv-10.1101/2022.08.10.503541-B31B1B.svg)](https://doi.org/10.1101/2022.08.10.503541) 
+## Cite 
 
 If you use `RatInABox` in your research or educational material, please cite the work as follows: 
+
 Bibtex:
 ```
-@article{ratinabox2022,
-	doi = {10.1101/2022.08.10.503541},
-	url = {https://doi.org/10.1101%2F2022.08.10.503541},
-	year = 2022,
-	month = {aug},
-	publisher = {Cold Spring Harbor Laboratory},
-	author = {Tom M George and William de Cothi and Claudia Clopath and Kimberly Stachenfeld and Caswell Barry},
-	title = {{RatInABox}: A toolkit for modelling locomotion and neuronal activity in continuous environments}
+@article{George2024,
+  title = {RatInABox,  a toolkit for modelling locomotion and neuronal activity in continuous environments},
+  volume = {13},
+  ISSN = {2050-084X},
+  url = {http://dx.doi.org/10.7554/eLife.85274},
+  DOI = {10.7554/elife.85274},
+  journal = {eLife},
+  publisher = {eLife Sciences Publications,  Ltd},
+  author = {George,  Tom M and Rastogi,  Mehul and de Cothi,  William and Clopath,  Claudia and Stachenfeld,  Kimberly and Barry,  Caswell},
+  year = {2024},
+  month = feb 
 }
 ```
 
 Formatted:
 ```
-Tom M George, William de Cothi, Claudia Clopath, Kimberly Stachenfeld, Caswell Barry. "RatInABox: A toolkit for modelling locomotion and neuronal activity in continuous environments" (2022).
+Tom M George, Mehul Rastogi, William de Cothi, Claudia Clopath, Kimberly Stachenfeld, Caswell Barry. "RatInABox, a toolkit for modelling locomotion and neuronal activity in continuous environments" (2024), eLife, https://doi.org/10.7554/eLife.85274 .
 ``` 
-The research paper corresponding to the above citation can be found [here](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v4).
+The research paper corresponding to the above citation can be found [here](https://elifesciences.org/articles/85274).
 
 

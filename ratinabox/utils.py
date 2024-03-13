@@ -368,20 +368,22 @@ def ornstein_uhlenbeck(dt, x, drift=0.0, noise_scale=0.2, coherence_time=5.0):
     return dx
 
 
-def interpolate_and_smooth(x, y, sigma=None):
+def interpolate_and_smooth(x, y, sigma=None, resolution_increase=10):
     """Interpolates with cublic spline x and y to 10x resolution then smooths these with a gaussian kernel of width sigma.
     Currently this only works for 1-dimensional x.
     Args:
         x
         y
         sigma
+        resolution_increase
     Returns (x_new,y_new)
     """
     from scipy.ndimage.filters import gaussian_filter1d
     from scipy.interpolate import interp1d
 
     y_cubic = interp1d(x, y, kind="cubic")
-    x_new = np.arange(x[0], x[-1], (x[1] - x[0]) / 10)
+    # x_new = np.arange(x[0], x[-1], (x[1] - x[0]) / resolution_increase)
+    x_new = np.linspace(x[0], x[-1], len(x) * resolution_increase)
     y_interpolated = y_cubic(x_new)
     if sigma is not None:
         y_smoothed = gaussian_filter1d(
@@ -541,16 +543,20 @@ def bin_data_for_histogramming(data, extent, dx, weights=None, norm_by_bincount=
 
     Returns:
         (heatmap,bin_centres): if 1D
-        (heatmap): if 2D
+        (heatmap): if 2D --> you should be able ot infer the bin centres from the extent and dx you passed 
+            in either case if return_zero_bins is True, the zero_bins array is also returned as the last element of the tuple
     """
     if len(extent) == 2:  # dimensionality = "1D"
         bins = np.arange(extent[0], extent[1] + dx, dx)
         heatmap, xedges = np.histogram(data, bins=bins, weights=weights)
         if norm_by_bincount:
             bincount = np.histogram(data, bins=bins)[0]
-            bincount[bincount == 0] = 1
+            zero_bins = (bincount == 0)
+            bincount[zero_bins] = 1
             heatmap = heatmap / bincount
         centres = (xedges[1:] + xedges[:-1]) / 2
+        if return_zero_bins:
+            return (heatmap, centres, zero_bins)
         return (heatmap, centres)
 
     elif len(extent) == 4:  # dimensionality = "2D"
@@ -578,6 +584,7 @@ def mountain_plot(
     xlabel="",
     ylabel="",
     xlim=None,
+    nan_bins=None,
     fig=None,
     ax=None,
     norm_by="max",
@@ -599,6 +606,7 @@ def mountain_plot(
         xlabel (str, optional): x axis label. Defaults to "".
         ylabel (str, optional): y axis label. Defaults to "".
         xlim (_type_, optional): fix xlim to this is desired. Defaults to None.
+        nan_bins (array, optional): Optionally pass a boolean array of the same shape as X which is True where you want to plot a gap in the mountain plot. Defaults to None (ie skipped).
         fig (_type_, optional): fig to plot over if desired. Defaults to None.
         ax (_type_, optional): ax to plot on if desider. Defaults to None.
         norm_by: what to normalise each line of the mountainplot by.
@@ -630,11 +638,13 @@ def mountain_plot(
         )
 
     zorder = 1
+    X_ = X.copy()
+    if nan_bins is not None: X_[nan_bins] = np.nan
     for i in range(len(NbyX)):
-        ax.plot(X, NbyX[i] + i + 1, c=c, zorder=zorder, lw=linewidth)
+        ax.plot(X_, NbyX[i] + i + 1, c=c, zorder=zorder, lw=linewidth)
         zorder -= 0.01
         ax.fill_between(
-            X, NbyX[i] + i + 1, i + 1, color=fc, zorder=zorder, alpha=0.8, linewidth=0
+            X_, NbyX[i] + i + 1, i + 1, color=fc, zorder=zorder, alpha=0.8, linewidth=0
         )
         zorder -= 0.01
     ax.spines["left"].set_bounds(1, len(NbyX))

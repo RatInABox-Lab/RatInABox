@@ -475,7 +475,9 @@ class Neurons:
                                         interpolation="bicubic", # smooths rate maps but this does slow down the plotting a bit 
                                         )
                     elif method == "history":
-                        bin_size = kwargs.get("bin_size", 0.05)
+                        default_2D_bin_size = 0.05
+                        bin_size = kwargs.get("bin_size", default_2D_bin_size)
+                        print(f"Using bin size of {bin_size} for rate map calculation")
                         rate_timeseries_ = rate_timeseries[chosen_neurons[i], :]
                         rate_map, zero_bins = utils.bin_data_for_histogramming(
                             data=pos,
@@ -537,24 +539,31 @@ class Neurons:
 
         # PLOT 1D
         elif self.Agent.Environment.dimensionality == "1D":
+            zero_bins = None 
             if method == "groundtruth":
                 rate_maps = rate_maps[chosen_neurons, :]
                 x = self.Agent.Environment.flattened_discrete_coords[:, 0]
             if method == "history":
                 ex = self.Agent.Environment.extent
+                default_1D_bin_size = 0.01
+                bin_size = kwargs.get("bin_size", default_1D_bin_size)
                 pos_ = pos[:, 0]
                 rate_maps = []
                 for neuron_id in chosen_neurons:
-                    rate_map, x = utils.bin_data_for_histogramming(
+                    (rate_map, x, zero_bins) = utils.bin_data_for_histogramming(
                         data=pos_,
                         extent=ex,
-                        dx=0.01,
+                        dx=bin_size,
                         weights=rate_timeseries[neuron_id, :],
                         norm_by_bincount=True,
+                        return_zero_bins=True,
                     )
-                    x, rate_map = utils.interpolate_and_smooth(x, rate_map, sigma=0.03)
+                    resolution_increase = 10
+                    x, rate_map = utils.interpolate_and_smooth(x, rate_map, sigma=0.01, resolution_increase=resolution_increase)
                     rate_maps.append(rate_map)
+                zero_bins = np.repeat(zero_bins, resolution_increase)                
                 rate_maps = np.array(rate_maps)
+
 
             if fig is None and ax is None:
                 fig, ax = plt.subplots(
@@ -569,7 +578,7 @@ class Neurons:
 
             if method != "neither":
                 fig, ax = utils.mountain_plot(
-                    X=x, NbyX=rate_maps, color=self.color, fig=fig, ax=ax, **kwargs
+                    X=x, NbyX=rate_maps, color=self.color, nan_bins=zero_bins, fig=fig, ax=ax, **kwargs
                 )
 
             if spikes is True:
