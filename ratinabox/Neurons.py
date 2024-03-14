@@ -351,6 +351,7 @@ class Neurons:
         """
         #Set kwargs (TODO make lots of params accessible here as kwargs) 
         spikes_color = kwargs.get("spikes_color", self.color) or "C1"
+        color = kwargs.pop("color", self.color) or "C1"
         bin_size = kwargs.get("bin_size", 0.04) #only relevant if you are plotting by method="history"
 
 
@@ -405,7 +406,7 @@ class Neurons:
         if self.color is None:
             coloralpha = None
         else:
-            coloralpha = list(matplotlib.colors.to_rgba(self.color))
+            coloralpha = list(matplotlib.colors.to_rgba(color))
             coloralpha[-1] = 0.5
 
         chosen_neurons = self.return_list_of_neurons(chosen_neurons=chosen_neurons)
@@ -578,7 +579,7 @@ class Neurons:
 
             if method != "neither":
                 fig, ax = utils.mountain_plot(
-                    X=x, NbyX=rate_maps, color=self.color, nan_bins=zero_bins, fig=fig, ax=ax, **kwargs
+                    X=x, NbyX=rate_maps, color=color, nan_bins=zero_bins, fig=fig, ax=ax, **kwargs
                 )
 
             if spikes is True:

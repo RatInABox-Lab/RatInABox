@@ -718,7 +718,6 @@ class Agent:
             trajectory = history_data["pos"][slice]
             head_direction = history_data["head_direction"][slice]
             t_start_, t_end_ = time[0], time[-1]
-            print("t_start_:", t_start_)
 
 
 
