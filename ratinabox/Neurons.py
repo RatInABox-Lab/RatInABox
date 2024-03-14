@@ -478,7 +478,6 @@ class Neurons:
                     elif method == "history":
                         default_2D_bin_size = 0.05
                         bin_size = kwargs.get("bin_size", default_2D_bin_size)
-                        print(f"Using bin size of {bin_size} for rate map calculation")
                         rate_timeseries_ = rate_timeseries[chosen_neurons[i], :]
                         rate_map, zero_bins = utils.bin_data_for_histogramming(
                             data=pos,
