@@ -1488,6 +1488,8 @@ class BoundaryVectorCells(VectorCells):
         "n": 10,
         "name": "BoundaryVectorCells",
         "dtheta": 2, #angular resolution in degrees used for integration over all angles (smaller is more accurate but slower)
+        "max_fr":1.0, # note the max_fr of a BVC is environment-dependent so is epirically estimated at initialisation by calculating the firing rate at all points in the environment, this can lead to small overshoots (see issue #110 for discussion)
+        "min_fr":0.0,
     }
 
     def __init__(self, Agent, params={}):
