@@ -1540,7 +1540,8 @@ class BoundaryVectorCells(VectorCells):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             # ignores the warning raised during initialisation of the BVCs
-            self.cell_fr_norm = np.max(self.get_state(evaluate_at=None, pos=locs), axis=1)
+            cell_fr_norm = np.max(self.get_state(evaluate_at=None, pos=locs), axis=1)
+            self.cell_fr_norm = (cell_fr_norm - self.min_fr) / (self.max_fr - self.min_fr)
 
         # list of colors for each cell, just used by `.display_vector_cells()` plotting function
         color = np.array(matplotlib.colors.to_rgba(self.color if self.color is not None else "C1")).reshape(1,-1)
