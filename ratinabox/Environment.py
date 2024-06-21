@@ -93,7 +93,7 @@ class Environment:
         if self.dimensionality == "1D":
             self.D = 1
             self.extent = np.array([0, self.scale])
-            self.centre = np.array([self.scale / 2, self.scale / 2])
+            self.centre = np.array([self.scale / 2])
             if self.boundary is not None:
                 warnings.warn(
                     "You have passed a boundary into a 1D environment. This is ignored."
@@ -189,7 +189,17 @@ class Environment:
         self.flattened_discrete_coords = self.discrete_coords.reshape(
             -1, self.discrete_coords.shape[-1]
         )
-
+        # dimensions dictionary
+        if self.D == 1:
+            self.dimensions = {'x' : self.discrete_coords[:,0]}
+            self.dim_names = ['x']
+        elif self.D == 2:
+            self.dimensions = {
+                'y' : self.discrete_coords[:,0,1],
+                'x' : self.discrete_coords[0,:,0],
+                }
+            self.dim_names = ['y','x'] # this is ordered according to the order of the dimensions in the discrete_coords array (y then x)
+            
         if ratinabox.verbose is True:
             print(
                 f"\nAn Environment has been initialised with parameters: {self.params}. Use Env.add_wall() to add a wall into the Environment. Plot Environment using Env.plot_environment()."
@@ -390,7 +400,7 @@ class Environment:
                          plot_objects=True,
                          autosave=None,
                          **kwargs,):
-        """Plots the environment on the x axis, dark grey lines show the walls
+        """Plots the environment (in 1D space is plotted along the x axis), dark grey lines show the walls
         Args:
             fig,ax: the fig and ax to plot on (can be None)
             gridlines: if True, plots gridlines
@@ -409,10 +419,10 @@ class Environment:
                     )
                 )
             ax.set_xlim(left=extent[0], right=extent[1])
-            ax.spines["left"].set_color("none")
-            ax.spines["right"].set_color("none")
+            ax.spines["left"].set_visible(False)
+            ax.spines["right"].set_visible(False)
             ax.spines["bottom"].set_position("zero")
-            ax.spines["top"].set_color("none")
+            ax.spines["top"].set_visible(False)
             ax.set_yticks([])
             ax.set_xticks([extent[0], extent[1]])
             ax.set_xlabel("Position / m")
@@ -636,9 +646,9 @@ class Environment:
         if self.dimensionality == "2D":
             [miny, maxy] = list(self.extent[2:])
             self.y_array = np.arange(miny + dx / 2, maxy, dx)[::-1]
-            x_mesh, y_mesh = np.meshgrid(self.x_array, self.y_array)
+            x_mesh, y_mesh = np.meshgrid(self.x_array, self.y_array) # note meshgrid flips inputs so that y is the first axis
             coordinate_mesh = np.array([x_mesh, y_mesh])
-            discrete_coords = np.swapaxes(np.swapaxes(coordinate_mesh, 0, 1), 1, 2)
+            discrete_coords = np.swapaxes(np.swapaxes(coordinate_mesh, 0, 1), 1, 2) #
         return discrete_coords
 
     def get_vectors_between___accounting_for_environment(
