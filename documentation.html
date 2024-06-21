@@ -14,29 +14,29 @@
   
   <script data-cfasync="false">
     document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
-    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
   </script>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="_static/styles/theme.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
-<link href="_static/styles/bootstrap.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
-<link href="_static/styles/pydata-sphinx-theme.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+  <link href="_static/styles/theme.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+<link href="_static/styles/bootstrap.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
 
   
-  <link href="_static/vendor/fontawesome/6.5.1/css/all.min.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
-  <link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.5.1/webfonts/fa-solid-900.woff2" />
-<link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.5.1/webfonts/fa-brands-400.woff2" />
-<link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.5.1/webfonts/fa-regular-400.woff2" />
+  <link href="_static/vendor/fontawesome/6.5.2/css/all.min.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.5.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.5.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.5.2/webfonts/fa-regular-400.woff2" />
 
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8d27b9dea8ad943066ae" />
-<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8d27b9dea8ad943066ae" />
-  <script src="_static/vendor/fontawesome/6.5.1/js/all.min.js?digest=8d27b9dea8ad943066ae"></script>
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=3ee479438cf8b5e0d341" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=3ee479438cf8b5e0d341" />
+  <script src="_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=3ee479438cf8b5e0d341"></script>
 
-    <script src="_static/documentation_options.js?v=917f31bf"></script>
-    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/documentation_options.js?v=8f5b6f32"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'documentation';</script>
@@ -54,27 +54,23 @@
 
   
   
-  <a id="pst-skip-link" class="skip-link" href="#main-content">Skip to main content</a>
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
   
   <div id="pst-scroll-pixel-helper"></div>
   
   <button type="button" class="btn rounded-pill" id="pst-back-to-top">
-    <i class="fa-solid fa-arrow-up"></i>
-    Back to top
-  </button>
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
 
   
   <input type="checkbox"
           class="sidebar-toggle"
-          name="__primary"
-          id="__primary"/>
-  <label class="overlay overlay-primary" for="__primary"></label>
+          id="pst-primary-sidebar-checkbox"/>
+  <label class="overlay overlay-primary" for="pst-primary-sidebar-checkbox"></label>
   
   <input type="checkbox"
           class="sidebar-toggle"
-          name="__secondary"
-          id="__secondary"/>
-  <label class="overlay overlay-secondary" for="__secondary"></label>
+          id="pst-secondary-sidebar-checkbox"/>
+  <label class="overlay overlay-secondary" for="pst-secondary-sidebar-checkbox"></label>
   
   <div class="search-button__wrapper">
     <div class="search-button__overlay"></div>
@@ -96,12 +92,17 @@
   <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
 </form></div>
   </div>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
   
-    <header class="bd-header navbar navbar-expand-lg bd-navbar">
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
 <div class="bd-header__inner bd-page-width">
-  <label class="sidebar-toggle primary-toggle" for="__primary">
+  <button class="sidebar-toggle primary-toggle" aria-label="Site navigation">
     <span class="fa-solid fa-bars"></span>
-  </label>
+  </button>
   
   
   <div class="col-lg-3 navbar-header-items__start">
@@ -139,26 +140,26 @@
 <nav class="navbar-nav">
   <ul class="bd-navbar-elements navbar-nav">
     
-                    <li class="nav-item">
-                      <a class="nav-link nav-internal" href="why-riab/index.html">
-                        Why RatInABox?
-                      </a>
-                    </li>
-                
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="why-riab/index.html">
+    Why RatInABox?
+  </a>
+</li>
 
-                    <li class="nav-item">
-                      <a class="nav-link nav-internal" href="get-started/index.html">
-                        Get started
-                      </a>
-                    </li>
-                
 
-                    <li class="nav-item current active">
-                      <a class="nav-link nav-internal" href="#">
-                        Documentation
-                      </a>
-                    </li>
-                
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="get-started/index.html">
+    Get started
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item current active">
+  <a class="nav-link nav-internal" href="#">
+    Documentation
+  </a>
+</li>
+
   </ul>
 </nav></div>
       
@@ -230,9 +231,9 @@ document.write(`
   
 
   
-    <label class="sidebar-toggle secondary-toggle" for="__secondary" tabindex="0">
+    <button class="sidebar-toggle secondary-toggle" aria-label="On this page">
       <span class="fa-solid fa-outdent"></span>
-    </label>
+    </button>
   
 </div>
 
@@ -253,32 +254,35 @@ document.write(`
     
       <div class="sidebar-header-items__center">
         
-          <div class="navbar-item">
+          
+          
+            <div class="navbar-item">
 <nav class="navbar-nav">
   <ul class="bd-navbar-elements navbar-nav">
     
-                    <li class="nav-item">
-                      <a class="nav-link nav-internal" href="why-riab/index.html">
-                        Why RatInABox?
-                      </a>
-                    </li>
-                
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="why-riab/index.html">
+    Why RatInABox?
+  </a>
+</li>
 
-                    <li class="nav-item">
-                      <a class="nav-link nav-internal" href="get-started/index.html">
-                        Get started
-                      </a>
-                    </li>
-                
 
-                    <li class="nav-item current active">
-                      <a class="nav-link nav-internal" href="#">
-                        Documentation
-                      </a>
-                    </li>
-                
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="get-started/index.html">
+    Get started
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item current active">
+  <a class="nav-link nav-internal" href="#">
+    Documentation
+  </a>
+</li>
+
   </ul>
 </nav></div>
+          
         
       </div>
     
@@ -336,13 +340,13 @@ document.write(`
 
       </div>
       
-      <main id="main-content" class="bd-main">
+      <main id="main-content" class="bd-main" role="main">
         
         
           <div class="bd-content">
             <div class="bd-article-container">
               
-              <div class="bd-header-article">
+              <div class="bd-header-article d-print-none">
 <div class="header-article-items header-article__inner">
   
     <div class="header-article-items__start">
@@ -351,7 +355,7 @@ document.write(`
 
 
 
-<nav aria-label="Breadcrumb">
+<nav aria-label="Breadcrumb" class="d-print-none">
   <ul class="bd-breadcrumbs">
     
     <li class="breadcrumb-item breadcrumb-home">
@@ -420,7 +424,8 @@ document.write(`
 </pre></div>
 </div>
 <p>Here are some easy to make examples.</p>
-<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/walls.png"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/walls.png" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/walls.png" style="width: 1000px;" /></a>
+<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/walls.png"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/walls.png" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/walls.png" style="width: 1000px;" />
+</a>
 </section>
 <section id="complex-environments-polygons-curves-and-holes">
 <h3><strong>Complex <code class="docutils literal notranslate"><span class="pre">Environment</span></code>s: Polygons, curves, and holes</strong><a class="headerlink" href="#complex-environments-polygons-curves-and-holes" title="Link to this heading">#</a></h3>
@@ -445,7 +450,8 @@ document.write(`
     <span class="p">})</span>
 </pre></div>
 </div>
-<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/complex_envs.png"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/complex_envs.png" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/complex_envs.png" style="width: 1000px;" /></a>
+<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/complex_envs.png"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/complex_envs.png" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/complex_envs.png" style="width: 1000px;" />
+</a>
 </section>
 <section id="objects">
 <h3><strong>Objects</strong><a class="headerlink" href="#objects" title="Link to this heading">#</a></h3>
@@ -456,7 +462,8 @@ Objects are defined by a list of points and a position. Objects can be used as v
 <span class="n">Envirnoment</span><span class="o">.</span><span class="n">add_object</span><span class="p">(</span><span class="nb">object</span><span class="o">=</span><span class="p">[</span><span class="mf">0.5</span><span class="p">,</span><span class="mf">0.7</span><span class="p">],</span><span class="nb">type</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 </pre></div>
 </div>
-<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/objects.png"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/objects.png" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/objects.png" style="width: 300px;" /></a>
+<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/objects.png"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/objects.png" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/objects.png" style="width: 300px;" />
+</a>
 </section>
 <section id="boundary-conditions">
 <h3><strong>Boundary conditions</strong><a class="headerlink" href="#boundary-conditions" title="Link to this heading">#</a></h3>
@@ -466,7 +473,8 @@ Objects are defined by a list of points and a position. Objects can be used as v
 <span class="p">)</span> 
 </pre></div>
 </div>
-<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/boundary_conditions.png"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/boundary_conditions.png" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/boundary_conditions.png" style="width: 500px;" /></a>
+<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/boundary_conditions.png"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/boundary_conditions.png" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/boundary_conditions.png" style="width: 500px;" />
+</a>
 </section>
 <section id="or-2-dimensions">
 <h3><strong>1–or-2-dimensions</strong><a class="headerlink" href="#or-2-dimensions" title="Link to this heading">#</a></h3>
@@ -476,7 +484,8 @@ Objects are defined by a list of points and a position. Objects can be used as v
 <span class="p">)</span> 
 </pre></div>
 </div>
-<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/one_dimension.png"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/one_dimension.png" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/one_dimension.png" style="width: 500px;" /></a>
+<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/one_dimension.png"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/one_dimension.png" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/one_dimension.png" style="width: 500px;" />
+</a>
 </section>
 </section>
 <section id="ii-agent-features">
@@ -484,7 +493,8 @@ Objects are defined by a list of points and a position. Objects can be used as v
 <section id="random-motion-model">
 <h3><strong>Random motion model</strong><a class="headerlink" href="#random-motion-model" title="Link to this heading">#</a></h3>
 <p>By defaut the <code class="docutils literal notranslate"><span class="pre">Agent</span></code> follows a random motion policy.  Random motion is stochastic but smooth. The speed (and rotational speed, if in 2D) of an Agent take constrained random walks governed by Ornstein-Uhlenbeck processes. You can change the means, variance and coherence times of these processes to control the shape of the trajectory. Default parameters are fit to real rat locomotion data from Sargolini et al. (2006):</p>
-<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/riab_vs_sargolini.gif"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/riab_vs_sargolini.gif" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/riab_vs_sargolini.gif" style="width: 500px;" /></a>
+<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/riab_vs_sargolini.gif"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/riab_vs_sargolini.gif" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/riab_vs_sargolini.gif" style="width: 500px;" />
+</a>
 <p>The default parameters can be changed to obtain different style trajectories. The following set of trajectories were generated by modifying the rotational speed parameter <code class="docutils literal notranslate"><span class="pre">Agent.rotational_velocity_std</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">Agent</span><span class="o">.</span><span class="n">speed_mean</span> <span class="o">=</span> <span class="mf">0.08</span> <span class="c1">#m/s</span>
 <span class="n">Agent</span><span class="o">.</span><span class="n">speed_coherence_time</span> <span class="o">=</span> <span class="mf">0.7</span>
@@ -492,7 +502,8 @@ Objects are defined by a list of points and a position. Objects can be used as v
 <span class="n">Agent</span><span class="o">.</span><span class="n">rotational_velocity_coherence_time</span> <span class="o">=</span> <span class="mf">0.08</span>
 </pre></div>
 </div>
-<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/motion_model.png"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/motion_model.png" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/motion_model.png" style="width: 800px;" /></a>
+<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/motion_model.png"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/motion_model.png" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/motion_model.png" style="width: 800px;" />
+</a>
 </section>
 <section id="importing-trajectories">
 <h3><strong>Importing trajectories</strong><a class="headerlink" href="#importing-trajectories" title="Link to this heading">#</a></h3>
@@ -504,7 +515,8 @@ Objects are defined by a list of points and a position. Objects can be used as v
 
 </pre></div>
 </div>
-<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/imported_trajectory.png"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/imported_trajectory.png" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/imported_trajectory.png" style="width: 200px;" /></a>
+<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/imported_trajectory.png"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/imported_trajectory.png" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/imported_trajectory.png" style="width: 200px;" />
+</a>
 </section>
 <section id="policy-control">
 <h3><strong>Policy control</strong><a class="headerlink" href="#policy-control" title="Link to this heading">#</a></h3>
@@ -512,7 +524,8 @@ Objects are defined by a list of points and a position. Objects can be used as v
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">Agent</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">drift_velocity</span><span class="o">=</span><span class="n">drift_velocity</span><span class="p">)</span>
 </pre></div>
 </div>
-<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/motion.gif"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/motion.gif" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/motion.gif" style="width: 600px;" /></a>
+<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/motion.gif"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/motion.gif" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/motion.gif" style="width: 600px;" />
+</a>
 </section>
 <section id="wall-repelling">
 <h3><strong>Wall repelling</strong><a class="headerlink" href="#wall-repelling" title="Link to this heading">#</a></h3>
@@ -520,18 +533,21 @@ Objects are defined by a list of points and a position. Objects can be used as v
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">Αgent</span><span class="o">.</span><span class="n">thigmotaxis</span> <span class="o">=</span> <span class="mf">0.8</span> <span class="c1">#1 = high thigmotaxis (left plot), 0 = low (right)</span>
 </pre></div>
 </div>
-<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/wall_repel.png"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/wall_repel.png" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/wall_repel.png" style="width: 900px;" /></a>
+<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/wall_repel.png"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/wall_repel.png" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/wall_repel.png" style="width: 900px;" />
+</a>
 </section>
 <section id="multiple-agents">
 <h3><strong>Multiple <code class="docutils literal notranslate"><span class="pre">Agent</span></code>s</strong><a class="headerlink" href="#multiple-agents" title="Link to this heading">#</a></h3>
 <p>There is nothing to stop multiple <code class="docutils literal notranslate"><span class="pre">Agent</span></code>s being added to the same <code class="docutils literal notranslate"><span class="pre">Environment</span></code>. When plotting/animating trajectories set the kwarg <code class="docutils literal notranslate"><span class="pre">plot_all_agents=True</span></code> to visualise all <code class="docutils literal notranslate"><span class="pre">Agent</span></code>s simultaneously.</p>
 <p>The following animation shows three <code class="docutils literal notranslate"><span class="pre">Agent</span></code>s in an <code class="docutils literal notranslate"><span class="pre">Environment</span></code>. Drift velocities are set so that <code class="docutils literal notranslate"><span class="pre">Agent</span></code>s weally locally attract one another creating “interactive” behaviour.</p>
-<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/multi_agents.gif"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/multi_agents.gif" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/multi_agents.gif" style="width: 350px;" /></a>
+<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/multi_agents.gif"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/multi_agents.gif" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/multi_agents.gif" style="width: 350px;" />
+</a>
 </section>
 <section id="advanced-agent-classes">
 <h3><strong>Advanced <code class="docutils literal notranslate"><span class="pre">Agent</span></code> classes</strong><a class="headerlink" href="#advanced-agent-classes" title="Link to this heading">#</a></h3>
 <p>One can make more advanced Agent classes, for example <code class="docutils literal notranslate"><span class="pre">ThetaSequenceAgent()</span></code> where the position “sweeps” (blue) over the position of an underlying true (regular) <code class="docutils literal notranslate"><span class="pre">Agent()</span></code> (purple), highly reminiscent of theta sequences observed when one decodes position from the hippocampal populaton code on sub-theta (10 Hz) timescales. This class can be found in the <a class="reference external" href="https://github.com/RatInABox-Lab/RatInABox/tree/main/ratinabox/contribs"><code class="docutils literal notranslate"><span class="pre">contribs</span></code></a> directory.</p>
-<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/theta_sequences.gif"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/theta_sequences.gif" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/theta_sequences.gif" style="width: 350px;" /></a>
+<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/theta_sequences.gif"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/theta_sequences.gif" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/theta_sequences.gif" style="width: 350px;" />
+</a>
 </section>
 </section>
 <section id="iii-neurons-features">
@@ -563,7 +579,8 @@ Objects are defined by a list of points and a position. Objects can be used as v
 <span class="p">})</span>
 </pre></div>
 </div>
-<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/noise.png"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/noise.png" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/noise.png" style="width: 1000px;" /></a>
+<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/noise.png"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/noise.png" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/noise.png" style="width: 1000px;" />
+</a>
 </section>
 <section id="spiking">
 <h3>Spiking<a class="headerlink" href="#spiking" title="Link to this heading">#</a></h3>
@@ -571,7 +588,8 @@ Objects are defined by a list of points and a position. Objects can be used as v
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Neurons</span><span class="o">.</span><span class="n">plot_ratemap</span><span class="p">(</span><span class="n">spikes</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
-<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/spikes.png"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/spikes.png" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/spikes.png" style="width: 1000px;" /></a>
+<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/spikes.png"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/spikes.png" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/spikes.png" style="width: 1000px;" />
+</a>
 </section>
 <section id="rate-maps">
 <h3><strong>Rate maps</strong><a class="headerlink" href="#rate-maps" title="Link to this heading">#</a></h3>
@@ -581,7 +599,8 @@ Objects are defined by a list of points and a position. Objects can be used as v
 <span class="n">Neurons</span><span class="o">.</span><span class="n">plot_rate_map</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s2">&quot;history&quot;</span><span class="p">)</span> <span class="c1">#plots rate map by firing-rate-weighted position heatmap</span>
 </pre></div>
 </div>
-<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/rate_map.png"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/rate_map.png" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/rate_map.png" style="width: 600px;" /></a>
+<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/rate_map.png"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/rate_map.png" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/rate_map.png" style="width: 600px;" />
+</a>
 </section>
 <section id="place-cell-models">
 <h3><strong>Place cell models</strong><a class="headerlink" href="#place-cell-models" title="Link to this heading">#</a></h3>
@@ -594,14 +613,17 @@ Objects are defined by a list of points and a position. Objects can be used as v
 <li><p><code class="docutils literal notranslate"><span class="pre">&quot;one_hot&quot;</span></code>: the closest place cell to any given location is established. This and only this cell fires.</p></li>
 </ul>
 <p>This last place cell type, <code class="docutils literal notranslate"><span class="pre">&quot;one_hot&quot;</span></code> is particularly useful as it essentially rediscretises space and tabularises the state space (gridworld again). This can be used to  contrast and compare learning algorithms acting over continuous vs discrete state spaces. This figure compares the 5 place cell models for population of 9 place cells (top left shows centres of place cells, and in all cases the <code class="docutils literal notranslate"><span class="pre">&quot;widths&quot;</span></code> parameters is set to  0.2 m, or irrelevant in the case of <code class="docutils literal notranslate"><span class="pre">&quot;one_hot&quot;</span></code>s)</p>
-<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/placecellmodels.png"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/placecellmodels.png" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/placecellmodels.png" style="width: 800px;" /></a>
+<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/placecellmodels.png"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/placecellmodels.png" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/placecellmodels.png" style="width: 800px;" />
+</a>
 <p>These place cells (with the exception of <code class="docutils literal notranslate"><span class="pre">&quot;one_hot&quot;</span></code>s) can all be made to phase precess by instead initialising them with the <code class="docutils literal notranslate"><span class="pre">PhasePrecessingPlaceCells()</span></code> class currently residing in the <code class="docutils literal notranslate"><span class="pre">contribs</span></code> folder. This figure shows example output data.</p>
-<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/phaseprecession.png"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/phaseprecession.png" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/phaseprecession.png" style="width: 500px;" /></a>
+<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/phaseprecession.png"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/phaseprecession.png" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/phaseprecession.png" style="width: 500px;" />
+</a>
 </section>
 <section id="geometry-of-placecells">
 <h3><strong>Geometry of <code class="docutils literal notranslate"><span class="pre">PlaceCells</span></code></strong><a class="headerlink" href="#geometry-of-placecells" title="Link to this heading">#</a></h3>
 <p>Choose how you want <code class="docutils literal notranslate"><span class="pre">PlaceCells</span></code> to interact with walls in the <code class="docutils literal notranslate"><span class="pre">Environment</span></code>. We provide three types of geometries.</p>
-<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/wall_geometry.png"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/wall_geometry.png" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/wall_geometry.png" style="width: 900px;" /></a>
+<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/wall_geometry.png"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/wall_geometry.png" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/wall_geometry.png" style="width: 900px;" />
+</a>
 </section>
 <section id="egocentric-encodings">
 <h3><strong>Egocentric encodings</strong><a class="headerlink" href="#egocentric-encodings" title="Link to this heading">#</a></h3>
@@ -620,7 +642,8 @@ Objects are defined by a list of points and a position. Objects can be used as v
 <span class="p">})</span>
 </pre></div>
 </div>
-<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/field_of_view.gif"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/field_of_view.gif" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/field_of_view.gif" style="width: 600px;" /></a>
+<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/field_of_view.gif"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/field_of_view.gif" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/field_of_view.gif" style="width: 600px;" />
+</a>
 </section>
 <section id="reinforcement-learning-and-successor-features">
 <h3><strong>Reinforcement Learning and Successor Features</strong><a class="headerlink" href="#reinforcement-learning-and-successor-features" title="Link to this heading">#</a></h3>
@@ -637,7 +660,8 @@ Objects are defined by a list of points and a position. Objects can be used as v
 <li><p><code class="docutils literal notranslate"><span class="pre">FeedForwardLayer</span></code> linearly sums their inputs with a set of weights.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">NeuralNetworkNeurons</span></code> are more general, they pass their inputs through a user-provided deep neural network (for this we use <code class="docutils literal notranslate"><span class="pre">pytorch</span></code>).</p></li>
 </ul>
-<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/functionapproximators.gif"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/functionapproximators.gif" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/functionapproximators.gif" style="width: 800px;" /></a>
+<a class="reference internal image-reference" href="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/functionapproximators.gif"><img alt="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/functionapproximators.gif" src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/functionapproximators.gif" style="width: 800px;" />
+</a>
 <p>Both of these classes can be used as the building block for constructing complex multilayer networks of <code class="docutils literal notranslate"><span class="pre">Neurons</span></code> (e.g. <code class="docutils literal notranslate"><span class="pre">FeedForwardLayers</span></code> are <code class="docutils literal notranslate"><span class="pre">RatInABox.Neurons</span></code> in their own right so can be used as inputs to other <code class="docutils literal notranslate"><span class="pre">FeedForwardLayers</span></code>). Their parameters can be accessed and set (or “trained”) to create neurons with complex receptive fields. In the case of <code class="docutils literal notranslate"><span class="pre">DeepNeuralNetwork</span></code> neurons the firing rate attached to the computational graph is stored so gradients can be taken. Examples can be found <a class="reference external" href="https://github.com/RatInABox-Lab/RatInABox/blob/main/demos/path_integration_example.ipynb">here (path integration)</a>, <a class="reference external" href="https://github.com/RatInABox-Lab/RatInABox/blob/main/demos/reinforcement_learning_example.ipynb">here (reinforcement learning)</a>, <a class="reference external" href="https://github.com/RatInABox-Lab/RatInABox/blob/main/demos/successor_features_example.ipynb">here (successor features)</a> and <a class="reference external" href="https://github.com/RatInABox-Lab/RatInABox/blob/main/demos/actor_critic_example.ipynb">here (actor_critic_demo)</a>.</p>
 </section>
 <section id="creating-your-own-neuron-types">
@@ -690,7 +714,7 @@ Objects are defined by a list of points and a position. Objects can be used as v
               
               
               
-                <footer class="prev-next-footer">
+                <footer class="prev-next-footer d-print-none">
                   
 <div class="prev-next-area">
     <a class="left-prev"
@@ -782,8 +806,8 @@ Objects are defined by a list of points and a position. Objects can be used as v
   </div>
   
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script src="_static/scripts/bootstrap.js?digest=8d27b9dea8ad943066ae"></script>
-<script src="_static/scripts/pydata-sphinx-theme.js?digest=8d27b9dea8ad943066ae"></script>
+  <script src="_static/scripts/bootstrap.js?digest=3ee479438cf8b5e0d341"></script>
+<script src="_static/scripts/pydata-sphinx-theme.js?digest=3ee479438cf8b5e0d341"></script>
 
   <footer class="bd-footer">
 <div class="bd-footer__inner bd-page-width">
@@ -803,7 +827,7 @@ Objects are defined by a list of points and a position. Objects can be used as v
         <div class="footer-item">
 
   <p class="sphinx-version">
-    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.2.6.
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
     <br/>
   </p>
 </div>
@@ -816,7 +840,7 @@ Objects are defined by a list of points and a position. Objects can be used as v
       
         <div class="footer-item">
 <p class="theme-version">
-  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.15.2.
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.15.3.
 </p></div>
       
     </div>
