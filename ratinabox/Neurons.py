@@ -1035,7 +1035,7 @@ class GridCells(Neurons):
     - truncnorm ----------------------------- (low, high, loc, scale)
     For example to get three modules of gridcells I could set params = {'gridscale_distribution':'modules', 'gridscale':(0.5, 1, 1.5)} which would give me three modules of grid cells with grid scales 0.5, 1 and 1.5. 
 
-    params['description'] gives the place cells model being used. Currently either rectified sum of three cosines "three_rectified_cosines" or a shifted sum of three cosines "three_shifted_cosines" (which is similar, just a little softer at the edges, see Solstad et al. 2006)
+    params['description'] gives the place cells model being used. Currently either rectified sum of three cosines "rectified_cosines" or a shifted sum of three cosines "shifted_cosines" (which is similar, just a little softer at the edges, see Solstad et al. 2006)
     
     List of functions:
         • get_state()
@@ -1045,11 +1045,11 @@ class GridCells(Neurons):
     """
 
     default_params = {
-        "n": 10,
-        "gridscale_distribution": "uniform",
-        "gridscale": (0.50, 1),
-        "orientation_distribution": "uniform",
-        "orientation": (0, 2 * np.pi), #radians 
+        "n": 30,
+        "gridscale_distribution": "modules",
+        "gridscale": (0.3, 0.5, 0.8),
+        "orientation_distribution": "modules",
+        "orientation": (0, 0.1, 0.2), #radians 
         "phase_offset_distribution": "uniform",
         "phase_offset": (0, 2 * np.pi), #degrees 
         "description": "rectified_cosines",  # can also be "shifted_cosines" as in Solstad 2006 Eq. (2)

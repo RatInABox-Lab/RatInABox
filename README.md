@@ -99,6 +99,7 @@ Here is a list of features loosely organised into those pertaining to
 * [Plotting rate maps](#rate-maps)
 * [Place cell models](#place-cell-models) 
 * [Place cell geometry](#geometry-of-placecells)
+* [Grid cell models](#grid-cell-models)
 * [Egocentric encodings](#egocentric-encodings)
 * [Reinforcement learning and successor features](#reinforcement-learning-and-successor-features)
 * [Deep neural networks](#neurons-as-function-approximators)
@@ -322,26 +323,36 @@ Choose how you want `PlaceCells` to interact with walls in the `Environment`. We
 <img src=".images/readme/wall_geometry.png" width=900>
 
 #### **Grid cell models** 
-The default grid cell model is a _rectified sum of three cosines_ (see paper) with an additional parameter controlling the field-width : gri spacing ratio.
+The default grid cell model is a _rectified sum of three cosines_ (see paper) with an additional parameter controlling the field-width : gri spacing ratio. There is also a _shifted cosine_ model. And analagous models are defined in 1D as well. 
 
-There is also a _shifted cosine_ model. And analagous models are defined in 1D as well. 
+<img src=".images/readme/grid_geometry.png" width=600>
 
-To initialise grid cells users specify their (i) `params['gridscale']`, (ii) `params['orientation']` and (iii) `params['phase_offset']`. These can be handed in as either: 
+
+By default 30 grid cells are samples in evenly sized `"modules"` of increasing gridscale and orientation and offsets are `"uniform"` random between 0 and 2 $\pi$.
+
+To initialise non-default grid cells users specify their (i) `params['gridscale']`, (ii) `params['orientation']` and (iii) `params['phase_offset']`. These can be handed in as either: 
 - lists/arrays: in which case they are set to these _exact_ values, one per cell)
 - tuples: in which case the values inside the tuples define the parameters of a distribution (the string defined by params['<param>_distribution']) from which the parameters are sampled. 
-
-By default gridscales are sampled from a `"uniform"` distribution between 0.5 and 1 m. Orientations and phase offsets are `"uniform"` from 0 to 2$\pi$. Check out the `"modules"` distribution if you want multiple modules of grid cells. 
 
 ```python
 GCs = GridCells(Ag,
                 params = {
-                    'n':1,
-                    'gridscale':[0.3,]
-                    'width_ratio:0.5
+                    "n": 30,
+                    "gridscale_distribution": "modules",
+                    "gridscale": (0.3, 0.5, 0.8),
+                    "orientation_distribution": "modules",
+                    "orientation": (0, 0.1, 0.2), #radians 
+                    "phase_offset_distribution": "uniform",
+                    "phase_offset": (0, 2 * np.pi), #degrees 
+                    "description": "rectified_cosines",  
+                    "width_ratio":4/(3*np.sqrt(3)), 
                 })
 ```
 
-<img src=".images/readme/grid_geometry.png" width=600>
+<img src=".images/readme/gridcells_default.png" width=600>
+
+
+
 
 #### **Egocentric encodings**
 Most `RatInABox` cell classes are allocentric (e.g. `PlaceCells`, `GridCells` etc. do not depend on the agents point of view) not egocentric. `BoundaryVectorCells` (BVCs) and `ObjectVectorCells` (OVCs) can be either. `FieldOfViewNeurons` exploit this by arranging sets of egocentric BVC or OVCs to tile to agents local field of view creating a comprehensive egocentric encoding of what boundaries or objects the agent can 'see' from it's current point of view. A custom plotting function displays the tiling and the firing rates as shown below. With an adequately defined field of view these can make, for example, "whisker cells". 
