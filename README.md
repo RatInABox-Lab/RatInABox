@@ -11,6 +11,8 @@ With `RatInABox` you can:
 * **Generate artificial neuronal data** for various location- or velocity-selective cells found in the brain (e.g., but not limited to, Hippocampal cell types), or build your own more complex cell types. 
 * **Build and train complex multi-layer networks** of cells, powered by data generated with `RatInABox`. 
 
+> **User notice: RatInABox is currently pinned to `numpy<2.0.0` versions until associated packages (`matplotlib`, `scipy` etc.) support it.** 
+
 <img src=".images/readme/ratinabox.gif" width=850>
 
 `RatInABox` is an open source project welcoming [contributions](#contribute). If you use `RatInABox` please [cite](#cite) the paper and consider giving this repository a star ☆. It contains three classes: 
