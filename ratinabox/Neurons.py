@@ -64,7 +64,7 @@ class Neurons:
             firingrate = .....
             ###
                 Insert here code which calculates the firing rate.
-                This may work differently depending on what you set evaluate_at as. For example, evaluate_at == 'agent' should means that the position or velocity (or whatever determines the firing rate) will by evaluated using the agents current state. You might also like to have an option like evaluate_at == "all" (all positions across an environment are tested simultaneously - plot_rate_map() tries to call this, for example) or evaluate_at == "last" (in a feedforward layer just look at the last firing rate saved in the input layers saves time over recalculating them.). **kwargs allows you to pass position or velocity in manually.
+                This may work differently depending on what you set evaluate_at as. For example, evaluate_at == 'agent' should mean that the position or velocity (or whatever determines the firing rate) will by evaluated using the agents current state. You might also like to have an option like evaluate_at == "all" (all positions across an environment are tested simultaneously - plot_rate_map() tries to call this, for example) or evaluate_at == "last" (in a feedforward layer just look at the last firing rate saved in the input layers saves time over recalculating them.). **kwargs allows you to pass position or velocity in manually.
 
                 By default, the Neurons.update() calls Neurons.get_state() rwithout passing any arguments. So write the default behaviour of get_state() to be what you want it to do in the main training loop, .
             ###
@@ -351,9 +351,11 @@ class Neurons:
         """
         #Set kwargs (TODO make lots of params accessible here as kwargs) 
         spikes_color = kwargs.get("spikes_color", self.color) or "C1"
+        spikes_size = kwargs.get("spikes_size", (5 if self.Agent.Environment.dimensionality == "2D" else 2))
         color = kwargs.pop("color", self.color) or "C1"
         bin_size = kwargs.get("bin_size", 0.04) #only relevant if you are plotting by method="history"
-
+        optimise_plot_for_single_neuron = kwargs.get("optimise_plot_for_single_neuron", False) #if True will optimise the plot for when you are only visualising the rate map of a single neuron (e.g. chosen_neurons = [5], if False will plot as a mountain plot
+        
 
         # GET DATA
         if method[:11] == "groundtruth":
@@ -418,7 +420,7 @@ class Neurons:
 
             if fig is None and ax is None:
                 if shape is None:
-                    Nx, Ny = 1, len(chosen_neurons)
+                    Nx, Ny = len(chosen_neurons), 1
                 else:
                     Nx, Ny = shape[0], shape[1]
                 env_fig, env_ax = self.Agent.Environment.plot_environment(
@@ -427,16 +429,15 @@ class Neurons:
                 width, height = env_fig.get_size_inches()
                 plt.close(env_fig)
                 plt.show
-                fig = plt.figure(figsize=(height * Ny, width * Nx))
+                fig = plt.figure(figsize=(width * Nx, height * Ny))
                 if colorbar == True and (method in ["groundtruth", "history", "groundtruth_headdirectionaveraged"]):
                     cbar_mode = "single"
                 else:
                     cbar_mode = None
                 axes = ImageGrid(
                     fig,
-                    # (0, 0, 3, 3),
                     111,
-                    nrows_ncols=(Nx, Ny),
+                    nrows_ncols=(Ny, Nx),
                     axes_pad=0.05,
                     cbar_location="right",
                     cbar_mode=cbar_mode,
@@ -530,7 +531,7 @@ class Neurons:
                     ax_.scatter(
                         pos_where_spiked[:, 0],
                         pos_where_spiked[:, 1],
-                        s=5,
+                        s=spikes_size,
                         linewidth=0,
                         alpha=0.7,
                         zorder=1.2,
@@ -577,9 +578,34 @@ class Neurons:
                 )
 
             if method != "neither":
-                fig, ax = utils.mountain_plot(
-                    X=x, NbyX=rate_maps, color=color, nan_bins=zero_bins, fig=fig, ax=ax, **kwargs
-                )
+                if (N_neurons > 1 or 
+                    (N_neurons == 1 and optimise_plot_for_single_neuron == False)):
+                    fig, ax = utils.mountain_plot(
+                        X=x, NbyX=rate_maps, color=color, nan_bins=zero_bins, fig=fig, ax=ax, ylabel="Neurons", **kwargs)
+                    if N_neurons == 1 and optimise_plot_for_single_neuron == False:
+                        warnings.warn("Use kwarg `optimise_plot_for_single_neuron = True` to optimise this plot when visualising the rate map of a single neuron.")
+                else: 
+                    # If there is only one neuron passed this is a special case and we won't use mountain plot 
+                    X_ = x.copy()
+                    c = color if color is not None else "C1"
+                    c = np.array(matplotlib.colors.to_rgb(c))
+                    fc =  0.3 * c + (1 - 0.3) * np.array([1, 1, 1]) 
+                    if zero_bins is not None: X_[zero_bins] = np.nan
+                    ax.plot(X_, rate_maps[0], color=color, linewidth=1)
+                    ax.fill_between(X_, rate_maps[0], 0, alpha=0.8, color=fc)
+                    ax.spines['left'].set_visible(True)
+                    ax.spines['left'].set_position(('outward', 0))
+                    ax.spines['bottom'].set_position(('data', 0))
+                    fig.set_figheight(0.15*ratinabox.MOUNTAIN_PLOT_WIDTH_MM / 25,)
+                    ax.set_ylabel("Firing rate\n/ Hz")
+                    y_min, y_max = ax.get_ylim()
+                    ax.set_yticks([y_min, y_max])
+                    #remove the first tick label so it doesn't overlap with the y-axis label
+                    x_ticks = ax.get_xticks()
+                    if x_ticks[0] == 0:
+                        ax.set_xticks(x_ticks[1:])
+
+
 
             if spikes is True:
                 for i in range(len(chosen_neurons)):
@@ -591,11 +617,10 @@ class Neurons:
                         h,
                         color=spikes_color,
                         alpha=0.5,
-                        s=2,
+                        s=spikes_size,
                         linewidth=0,
                     )
             ax.set_xlabel("Position / m")
-            ax.set_ylabel("Neurons")
 
             axes = ax
         ratinabox.utils.save_figure(fig, self.name + "_ratemaps", save=autosave)
@@ -618,7 +643,7 @@ class Neurons:
                 figsize=(2 * len(chosen_neurons), 2),
                 subplot_kw={"projection": "polar"},
             )
-
+        ax = np.array(ax).reshape(-1)
 
         # get rate maps at all head directions and all positions
         # the object will end up having shape (n_neurons, n_positions, n_headdirections)
@@ -644,12 +669,10 @@ class Neurons:
             ax[i].tick_params(pad=-20)
             ax[i].set_xticklabels(["E", "N", "W", "S"])
         
-
-
-        for i, ax_ in enumerate(axes):
-            _, ax_ = self.Agent.Environment.plot_environment(
-                fig, ax_, autosave=False, **kwargs
-            )
+        # for i, ax_ in enumerate(axes):
+        #     _, ax_ = self.Agent.Environment.plot_environment(
+        #         fig, ax_, autosave=False, **kwargs
+        #     )
         
         ratinabox.utils.save_figure(fig, self.name + "_angularratemaps", save=autosave)
 
@@ -1029,7 +1052,8 @@ class GridCells(Neurons):
         "orientation": (0, 2 * np.pi), #radians 
         "phase_offset_distribution": "uniform",
         "phase_offset": (0, 2 * np.pi), #degrees 
-        "description": "three_rectified_cosines",  # can also be "three_shifted_cosines" as in Solstad 2006 Eq. (2)
+        "description": "rectified_cosines",  # can also be "shifted_cosines" as in Solstad 2006 Eq. (2)
+        "width_ratio":4/(3*np.sqrt(3)), # (relevant only for "rectified_cosines") ratio of field_width to interfield_distance.
         "min_fr": 0,
         "max_fr": 1,
         "name": "GridCells",
@@ -1055,6 +1079,12 @@ class GridCells(Neurons):
             warnings.warn(
                 "the GridCell API has changed slightly, 'random_gridscales', 'random_orientations' and 'random_phase_offsets' are no longer accepted as parameters. Please use 'gridscale','gridscale_distribution','orientation','orientation_distribution','phase_offset' and 'phase_offset_distribution' instead. See docstring or 1.7.0 release notes for instructions."
             )
+        
+        if self.params["description"] == "three_rectified_cosines" or self.params["description"] == "three_shifted_cosines":
+            self.params["description"] = self.params["description"][6:] #remove the "three_" part of the description
+            warnings.warn(
+                f"the 'three_' prefix on the 'description' parameter is deprecated, in the future please use '{self.params['description']}' instead"
+            )
 
         # Initialise the gridscales
         if type(self.params["gridscale"]) in (
@@ -1079,7 +1109,7 @@ class GridCells(Neurons):
 
         # Initialise phase offsets for each grid cell
         if (type(self.params["phase_offset"]) in (list,np.ndarray,)
-            and len(np.array(self.params["phase_offset"]).shape) == 2
+            and len(np.array(self.params["phase_offset"]).shape) == self.Agent.Environment.D
         ):
             self.phase_offsets = np.array(self.params["phase_offset"])
             assert (
@@ -1089,40 +1119,41 @@ class GridCells(Neurons):
             self.phase_offsets = utils.distribution_sampler(
                 distribution_name=self.params["phase_offset_distribution"],
                 distribution_parameters=self.params["phase_offset"],
-                shape=(self.params["n"], 2),
+                shape=(self.params["n"], self.Agent.Environment.D),
             )
+            if self.Agent.Environment.dimensionality == "1D": 
+                self.phase_offsets = self.phase_offsets.reshape(-1) #make it a 1D array 
             if self.params["phase_offset_distribution"] == "grid":
-                self.phase_offsets = self.set_phase_offsets_on_grid()
+                self.phase_offsets = self.set_phase_offsets_on_grid() # I think this only works in 2D 
 
-        # Initialise orientations for each grid cell
-        if type(self.params["orientation"]) in (
-            list,
-            np.ndarray,
-        ):
-            self.orientations = np.array(self.params["orientation"])
-            assert (
-                len(self.orientations) == self.params["n"]
-            ), "number of orientations supplied incompatible with number of neurons"
-        else:
-            self.orientations = utils.distribution_sampler(
-                distribution_name=self.params["orientation_distribution"],
-                distribution_parameters=self.params["orientation"],
-                shape=(self.params["n"],),
-            )
+        if self.Agent.Environment.dimensionality == "2D":
+            # Initialise orientations for each grid cell, only relevant in 2D
+            if type(self.params["orientation"]) in (
+                list,
+                np.ndarray,
+            ):
+                self.orientations = np.array(self.params["orientation"])
+                assert (
+                    len(self.orientations) == self.params["n"]
+                ), "number of orientations supplied incompatible with number of neurons"
+            else:
+                self.orientations = utils.distribution_sampler(
+                    distribution_name=self.params["orientation_distribution"],
+                    distribution_parameters=self.params["orientation"],
+                    shape=(self.params["n"],),
+                )
 
-        # Initialise grid cells
-        assert (
-            self.Agent.Environment.dimensionality == "2D"
-        ), "grid cells only available in 2D"
-
-        w = []
-        for i in range(self.n):
-            w1 = np.array([1, 0])
-            w1 = utils.rotate(w1, self.orientations[i])
-            w2 = utils.rotate(w1, np.pi / 3)
-            w3 = utils.rotate(w1, 2 * np.pi / 3)
-            w.append(np.array([w1, w2, w3]))
-        self.w = np.array(w)
+            w = []
+            for i in range(self.n):
+                w1 = np.array([1, 0])
+                w1 = utils.rotate(w1, self.orientations[i])
+                w2 = utils.rotate(w1, np.pi / 3)
+                w3 = utils.rotate(w1, 2 * np.pi / 3)
+                w.append(np.array([w1, w2, w3]))
+            self.w = np.array(w)
+        
+        if self.description == "rectified_cosines":
+            assert self.width_ratio > 0 and self.width_ratio <= 1, "width_ratio must be between 0 and 1"
 
         if ratinabox.verbose is True:
             print(
@@ -1146,31 +1177,54 @@ class GridCells(Neurons):
         pos = np.array(pos)
         pos = pos.reshape(-1, pos.shape[-1])
 
-        # grid cells are modelled as the thresholded sum of three cosines all at 60 degree offsets
-        # vectors to grids cells "centred" at their (random) phase offsets
-        origin = self.gridscales.reshape(-1, 1) * self.phase_offsets / (2 * np.pi)
-        vecs = utils.get_vectors_between(origin, pos)  # shape = (N_cells,N_pos,2)
-        w1 = np.tile(np.expand_dims(self.w[:, 0, :], axis=1), reps=(1, pos.shape[0], 1))
-        w2 = np.tile(np.expand_dims(self.w[:, 1, :], axis=1), reps=(1, pos.shape[0], 1))
-        w3 = np.tile(np.expand_dims(self.w[:, 2, :], axis=1), reps=(1, pos.shape[0], 1))
-        gridscales = np.tile(
-            np.expand_dims(self.gridscales, axis=1), reps=(1, pos.shape[0])
-        )
-        phi_1 = ((2 * np.pi) / gridscales) * (vecs * w1).sum(axis=-1)
-        phi_2 = ((2 * np.pi) / gridscales) * (vecs * w2).sum(axis=-1)
-        phi_3 = ((2 * np.pi) / gridscales) * (vecs * w3).sum(axis=-1)
-
-        if self.description == "three_rectified_cosines":
-            firingrate = (1 / 3) * ((np.cos(phi_1) + np.cos(phi_2) + np.cos(phi_3)))
-            firingrate[firingrate < 0] = 0
-        elif self.description == "three_shifted_cosines":
-            firingrate = (2 / 3) * (
-                (1 / 3) * (np.cos(phi_1) + np.cos(phi_2) + np.cos(phi_3)) + (1 / 2)
+        if self.Agent.Environment.dimensionality == "2D":
+            # grid cells are modelled as the thresholded sum of three cosines all at 60 degree offsets
+            # vectors to grids cells "centred" at their (random) phase offsets
+            origin = self.gridscales.reshape(-1, 1) * self.phase_offsets / (2 * np.pi)
+            vecs = utils.get_vectors_between(origin, pos)  # shape = (N_cells,N_pos,2)
+            w1 = np.tile(np.expand_dims(self.w[:, 0, :], axis=1), reps=(1, pos.shape[0], 1))
+            w2 = np.tile(np.expand_dims(self.w[:, 1, :], axis=1), reps=(1, pos.shape[0], 1))
+            w3 = np.tile(np.expand_dims(self.w[:, 2, :], axis=1), reps=(1, pos.shape[0], 1))
+            gridscales = np.tile(
+                np.expand_dims(self.gridscales, axis=1), reps=(1, pos.shape[0])
             )
+            phi_1 = ((2 * np.pi) / gridscales) * (vecs * w1).sum(axis=-1)
+            phi_2 = ((2 * np.pi) / gridscales) * (vecs * w2).sum(axis=-1)
+            phi_3 = ((2 * np.pi) / gridscales) * (vecs * w3).sum(axis=-1)
 
+            if self.description == "rectified_cosines":
+                firingrate = (1 / 3) * ((np.cos(phi_1) + np.cos(phi_2) + np.cos(phi_3)))
+                
+                #calculate the firing rate at the width fraction then shift, scale and rectify at the level
+                a, b, c = np.array([1,0])@np.array([1,0]), np.array([np.cos(np.pi/3),np.sin(np.pi/3)])@np.array([1,0]), np.array([np.cos(np.pi/3),-np.sin(np.pi/3)])@np.array([1,0])
+                firing_rate_at_full_width = (1 / 3) * (np.cos(np.pi*self.width_ratio*a) + 
+                                             np.cos(np.pi*self.width_ratio*b) + 
+                                             np.cos(np.pi*self.width_ratio*c))
+                firing_rate_at_full_width = (1 / 3) * (2*np.cos(np.sqrt(3)*np.pi*self.width_ratio/2) + 1)
+                firingrate -= firing_rate_at_full_width
+                firingrate /= (1 - firing_rate_at_full_width)
+                firingrate[firingrate < 0] = 0
+            elif self.description == "shifted_cosines":
+                firingrate = (2 / 3) * (
+                    (1 / 3) * (np.cos(phi_1) + np.cos(phi_2) + np.cos(phi_3)) + (1 / 2)
+                )
+
+        elif self.Agent.Environment.dimensionality == "1D":
+            firingrate = np.cos(((2 * np.pi)/ self.gridscales) * pos - self.phase_offsets)
+            if self.description[-17:] == "rectified_cosines":
+                #calculate the firing rate at the width fraction then shift, scale and rectify at the level
+                firing_rate_at_full_width = np.cos(self.width_ratio * np.pi)
+                firingrate -= firing_rate_at_full_width
+                firingrate /= (1 - firing_rate_at_full_width)
+                firingrate[firingrate < 0] = 0
+            elif self.description[-15:] == "shifted_cosines":
+                firingrate = 0.5*(firingrate + 1)
+
+            firingrate = firingrate.T
         firingrate = (
             firingrate * (self.max_fr - self.min_fr) + self.min_fr
         )  # scales from being between [0,1] to [min_fr, max_fr]
+
         return firingrate
 
     def set_phase_offsets_on_grid(self):
@@ -2835,7 +2889,7 @@ class RandomSpatialNeurons(Neurons):
                     print("Geodesic wall geometry only possible in environments with one or no additional walls. Using 'line_of_sight' instead. If this is slow, consider trying 'euclidean'")
                     self.wall_geometry = 'line_of_sight'
 
-        # We densely sample locations across the environment and then distance covariance matrix using a squared exponential kernel. Using this covariance we sample targets   (according to an exponential because it is way too expensive to use the default dx=0.01 we have to initially create a lower resolution array of poionts. We will sample from the prior over these points and then, for any other points, "infer" the firing rate from these samples. For all other points we'll take the mean of the posterior based on these samples.
+        # We densely sample locations across the environment and then distance covariance matrix using a squared exponential kernel. Using this covariance we sample targets   (according to an exponential because it is way too expensive to use the default dx=0.01 we have to initially create a lower resolution array of points. We will sample from the prior over these points and then, for any other points, "infer" the firing rate from these samples. For all other points we'll take the mean of the posterior based on these samples.
 
         assert self.lengthscale >= 0.02, "lengthscale must be greater than 0.02 m"
         self.X = self.Agent.Environment.discretise_environment(dx=min(0.05,self.lengthscale)) 
