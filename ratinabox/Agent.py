@@ -307,6 +307,8 @@ class Agent:
                 noise_scale=1,
                 coherence_time=speed_coherence_time,)
             speed_new = utils.normal_to_rayleigh(normal_variable, sigma=speed_mean)
+            if self.speed_std == 0:
+                speed_new = speed_mean
             self.velocity = (speed_new / speed) * self.velocity
         
         elif self.Environment.dimensionality == "1D":
