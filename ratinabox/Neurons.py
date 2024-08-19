@@ -683,8 +683,8 @@ class Neurons:
             self.Agent.dt * self.firingrate
         )
         self.history["t"].append(self.Agent.t)
-        self.history["firingrate"].append(list(self.firingrate))
-        self.history["spikes"].append(list(cell_spikes))
+        self.history["firingrate"].append(self.firingrate.tolist())
+        self.history["spikes"].append(cell_spikes.tolist())
 
     def reset_history(self):
         for key in self.history.keys():
