@@ -511,10 +511,10 @@ class Agent:
         Args: 
             • **kwargs: in case you overwrite this function with something else."""
         self.history["t"].append(self.t)
-        self.history["pos"].append(list(self.pos))
+        self.history["pos"].append(self.pos.tolist())
         self.history["distance_travelled"].append(self.distance_travelled)
-        self.history["vel"].append(list(self.measured_velocity))
-        self.history["head_direction"].append(list(self.head_direction))
+        self.history["vel"].append(self.measured_velocity.tolist())
+        self.history["head_direction"].append(self.head_direction.tolist())
         if self.Environment.dimensionality == "2D":
             self.history["rot_vel"].append(self.measured_rotational_velocity)     
         return
@@ -556,7 +556,7 @@ class Agent:
             positions (_type_): list or array of positions
             dataset: if `sargolini' will load `sargolini' trajectory data from './data/sargolini.npz' (Sargolini et al. 2006).
                Else you can pass a path to a .npz file which must contain time and trajectory data under keys 't' and 'pos'
-            interpolate (bool, True): Whether to smoothyl interpolate this trajectory or not.
+            interpolate (bool, True): Whether to smoothly interpolate this trajectory or not.
         """
         from scipy.interpolate import interp1d
 
@@ -603,7 +603,6 @@ class Agent:
         assert len(positions) == len(
             times
         ), "time and position arrays must have same length"
-
         times = times - min(times)
         print(f"Total of {times[-1]:.1f} s of data available")
 
@@ -632,7 +631,9 @@ class Agent:
                 )
             else:
                 self.positions = positions
-                self.times = times
+                self.times = times 
+                self.t = -self.dt # current time can't be equal to the next time (first time in self.times) 
+                self.prev_t = - (times[1] - times[0])
                 self.imported_trajectory_id = 0
 
         if self.Environment.dimensionality == "1D":
