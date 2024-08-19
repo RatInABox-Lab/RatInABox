@@ -193,13 +193,14 @@ class Environment:
         if self.D == 1:
             self.dimensions = {'x' : self.discrete_coords[:,0]}
             self.dim_names = ['x']
+            self.rate_map_dim_order = ['x']
         elif self.D == 2:
             self.dimensions = {
                 'y' : self.discrete_coords[:,0,1],
                 'x' : self.discrete_coords[0,:,0],
                 }
-            self.dim_names = ['y','x'] # this is ordered according to the order of the dimensions in the discrete_coords array (y then x)
-            
+            self.dim_names = ['x','y'] # this is ordering of the dimensions in, for example, the agents position
+            self.rate_map_dim_order = ['y','x'] # this is the order of the dimensions in rate maps (y then x)
         if ratinabox.verbose is True:
             print(
                 f"\nAn Environment has been initialised with parameters: {self.params}. Use Env.add_wall() to add a wall into the Environment. Plot Environment using Env.plot_environment()."
