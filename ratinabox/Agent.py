@@ -728,9 +728,9 @@ class Agent:
                 color_list = [f"C{self_.agent_idx}"] * len(time)
             elif (color == "changing") or isinstance(color, matplotlib.colors.Colormap):
                 color_list = [trajectory_cmap(t / len(time)) for t in range(len(time))]
-                decay_point_size = (
-                    False  # if changing colour, may as well show WHOLE trajectory
-                )
+                # decay_point_size = (
+                    # False  # if changing colour, may as well show WHOLE trajectory
+                # )
             else:
                 color_list = [color] * len(time)
 
