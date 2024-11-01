@@ -653,7 +653,8 @@ class Agent:
                 self.positions = positions
                 self.times = times
                 self.imported_trajectory_id = 0
-
+        self.pos = self.pos_interp(0)
+        self.prev_pos = self.pos.copy()
         return
 
     def plot_trajectory(
@@ -840,7 +841,7 @@ class Agent:
         t_start=None, 
         t_end=None, 
         fps=15, 
-        speed_up=1, 
+        speed_up=5, #by default the animation is 5x faster than real time 
         autosave=None, 
         **kwargs
     ):
