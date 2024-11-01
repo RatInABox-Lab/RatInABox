@@ -672,6 +672,7 @@ def save_figure(
         "mp4",
     ],
     save=True,
+    **save_kwargs,
 ):
     """
     Saves a figure in a dated-folder with the current time appended to save_title, as both '.png' and '.svg'. Same for animations but as ".gif" and ".mp4".
@@ -750,7 +751,9 @@ def save_figure(
                     break
                 else:
                     break
-            fig.savefig(f"{path}.{filetype}", bbox_inches="tight")
+            save_kwargs_ = {'dpi':300, 'bbox_inches':'tight'}
+            save_kwargs_.update(save_kwargs)
+            fig.savefig(f"{path}.{filetype}", **save_kwargs_)
 
     elif type(fig) == matplotlib.animation.FuncAnimation:
         file_type = "Animation"
@@ -765,7 +768,9 @@ def save_figure(
                     break
                 else:
                     break
-            fig.save(f"{path}.{filetype}", dpi=300)
+            save_kwargs_ = {'dpi':300}
+            save_kwargs_.update(save_kwargs)
+            fig.save(f"{path}.{filetype}", **save_kwargs_)
 
     print(f"{file_type} saved to {os.path.abspath(path)}.{save_types}")
 
