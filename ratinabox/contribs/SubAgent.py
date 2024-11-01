@@ -53,10 +53,17 @@ class SubAgent(Agent):
                         
                         # other kwargs for SubAgent.plot_trajectory()
                         **kwargs):
-        """A bespoke plotting function taking the same arguments as Agent.plot_trajectory() except now it will jointly plot the True SubAgent and LeadAgent trajectories. By default all kwargs refer to how the SubAgent trajectory is plots and LeadaAgent trajectory is plotted in a dimmer colour (although this can be controlled with lead_agent_plot_kwargs).
+        """A bespoke plotting function taking the same arguments as Agent.plot_trajectory() except now it will jointly plot the True SubAgent and LeadAgent trajectories. By default all kwargs refer to how the SubAgent trajectory is plots and LeadAgent trajectory is plotted in a dimmer colour and smaller point size (although this can be controlled with lead_agent_plot_kwargs).
+        
+        Args:
+            • t_start --> autosave: see Agent.plot_trajectory
+            specific args for SubAgent classes
+            • ontop: if True, plot the SubAgent trajectory on top of the LeadAgent trajectory
+            • plot_error: if True, will plot an arrow showing the error between the SubAgent and LeadAgent at the end of the trajectory
+            • show_lead_agent: if True, will plot the trajectory of the LeadAgent
+            • lead_agent_plot_kwargs: kwargs for plotting the LeadAgent trajectory e.g. it's color, alpha, point size etc. (any kwarg you would pass to Agent.plot_trajectory() can be passed here)    
+            • kwargs: any other kwargs you would pass to Agent.plot_trajectory() can be passed here
 
-        • ontop (bool, default False): determines whether the SubAgent trajectory get plotted ontop of or below the LeadAgent trajectory.
-        • show_lead_agent (bool, default True): determines whether the LeadAgent trajectory is plotted at all.
         """
         fig, ax = super().plot_trajectory(
             t_start=t_start, 
