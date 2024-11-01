@@ -35,30 +35,76 @@ class SubAgent(Agent):
         self.t = self.LeadAgent.t
         super().update(**kwargs)
 
-    def plot_trajectory(self, ontop=False, show_lead_agent=True, **kwargs):
-        """A bespoke plotting function taking the same arguments as Agent.plot_trajectory() except now it will jointly plot the True SubAgent and LeadAgent trajectories.
+    def plot_trajectory(self, 
+                        # standard kwargs for Agent.plot_trajectory()
+                        t_start=0,
+                        t_end=None,
+                        framerate=10,
+                        fig=None,
+                        ax=None,
+                        color=None, 
+                        autosave=None,
+
+                        # special kwargs
+                        ontop=False, 
+                        plot_error=False,
+                        show_lead_agent=True, 
+                        lead_agent_plot_kwargs={}, # defaults outlined below
+                        
+                        # other kwargs for SubAgent.plot_trajectory()
+                        **kwargs):
+        """A bespoke plotting function taking the same arguments as Agent.plot_trajectory() except now it will jointly plot the True SubAgent and LeadAgent trajectories. By default all kwargs refer to how the SubAgent trajectory is plots and LeadaAgent trajectory is plotted in a dimmer colour (although this can be controlled with lead_agent_plot_kwargs).
 
         • ontop (bool, default False): determines whether the SubAgent trajectory get plotted ontop of or below the LeadAgent trajectory.
         • show_lead_agent (bool, default True): determines whether the LeadAgent trajectory is plotted at all.
         """
+        fig, ax = super().plot_trajectory(
+            t_start=t_start, 
+            t_end=t_end, 
+            framerate=framerate,
+            fig=fig,
+            ax=ax,
+            color=color,
+            autosave=False, # don't save this intermediate plot
+            **kwargs,
+            )
+        
+        lead_agent_plot_kwargs_ = copy.deepcopy(kwargs)
+        default_lead_agent_plot_kwargs = {
+                            'color':'k',
+                            'point_size': 15, 
+                            'alpha': 0.2,
+                            'show_agent':False, # don't show a big point at the end of the trajectory
+                            }
+        lead_agent_plot_kwargs_.update(default_lead_agent_plot_kwargs)
+        lead_agent_plot_kwargs_.update(lead_agent_plot_kwargs)
+        if show_lead_agent == True: 
+            fig, ax = self.LeadAgent.plot_trajectory(
+                t_start=t_start,
+                t_end=t_end,
+                framerate=framerate,
+                fig=fig,
+                ax=ax,
+                zorder=1.1 - 1e-3*ontop,
+                autosave=autosave,
+                **lead_agent_plot_kwargs_
+        )
 
-        kwargs_ = kwargs.copy()
-        kwargs_["color"] = "C1"
-        kwargs_["show_agent"] = False
-        kwargs_["decay_point_timescale"] = 2
-        kwargs_["autosave"] = False
-        kwargs_["framerate"] = kwargs.pop("subagent_framerate", 10)
-
-        fig, ax = super().plot_trajectory(**kwargs_)
-        kwargs["fig"] = fig
-        kwargs["ax"] = ax
-        kwargs["alpha"] = 0.2 # only show lead agent very dimly
-        kwargs["zorder"] = 1.1 - 1e-3*ontop #if ontop is False then lead agent is ABOVE subagent
-        if "time" in kwargs: 
-            kwargs.pop("time")
-            kwargs.pop("trajectory")
-            kwargs.pop("head_direction")
-        if show_lead_agent == True: fig, ax = self.LeadAgent.plot_trajectory(**kwargs)
+        if plot_error == True:
+            if t_end == None: t = self.history['t'][-1]
+            if (self._last_history_array_cache_time != self.t): 
+                self.cache_history_as_arrays()
+                self.LeadAgent.cache_history_as_arrays()
+            slice = self.get_history_slice(t_start=t_end-1, t_end=t_end)
+            self_pos = self._history_arrays["pos"][slice][-1]
+            lead_pos = self.LeadAgent._history_arrays["pos"][slice][-1]
+            [x,y] = list(lead_pos)
+            [dx, dy] = list(self_pos - lead_pos)
+            # add an arrow 
+            ax.arrow(x, y, dx, dy, head_width=0.015, fc='k', ec=None, linewidth=0.5, length_includes_head=True, zorder=1.2)
+            # add text saying "δ" half way along the arrow 
+            # ax.text(x + dx/2, y + dy/2, "δ", fontsize=6, color='k')
+            pass
 
         return fig, ax
     
@@ -125,26 +171,6 @@ class DumbAgent(SubAgent):
         self.displacement = self.Environment.get_vectors_between___accounting_for_environment(pos, self.LeadAgent.pos)[0,0,:]
         super().update(forced_next_position=pos)
     
-    def plot_trajectory(self, t_end=None, plot_error=False, **kwargs):
-        """Plots the trajectory of the DumbAgent. By default this is plotted alongside the LeadAgent's trajectory."""
-        fig, ax = super().plot_trajectory(t_end=t_end, **kwargs)
-        if plot_error == True:
-            if t_end == None: t = self.history['t'][-1]
-            if (self.history_array_cache["last_cache_time"] != self.t): 
-                print("caching")
-                self.cache_history_as_arrays()
-                self.LeadAgent.cache_history_as_arrays()
-            slice = self.get_history_slice(t_start=t_end-1, t_end=t_end)
-            self_pos = self.history_array_cache["pos"][slice][-1]
-            lead_pos = self.LeadAgent.history_array_cache["pos"][slice][-1]
-            [x,y] = list(lead_pos)
-            [dx, dy] = list(self_pos - lead_pos)
-            # add an arrow 
-            ax.arrow(x, y, dx, dy, head_width=0.02, fc='k', ec=None, length_includes_head=True)
-            # add text saying "δ" half way along the arrow 
-            # ax.text(x + dx/2, y + dy/2, "δ", fontsize=12, color='k')
-            pass
-        return fig, ax
 
 class ThetaSequenceAgent(SubAgent):
     """ThetaSequneceAgent is a type of Agent who's position is NOT the true position but instead a "theta sequence" over the position. This starts from behind the "true" position and rapidly moves to infront of the true position (default sequence speed = 5ms-1) once every "theta cycle" (default 10Hz). Each theta sequence is split into the following phases (marked as fraction of the theta cycle):
@@ -174,6 +200,7 @@ class ThetaSequenceAgent(SubAgent):
         "theta_freq": 10.0,  # theta frequency
         "theta_frac": 0.5,  # fraction of theta cycle over which
         }
+    
 
     def __init__(self, LeadAgent, params={}):
 
@@ -315,11 +342,11 @@ class ThetaSequenceAgent(SubAgent):
 
         return
     
-    def plot_trajectory(self, framerate=10, **kwargs):
-        subagent_framerate = framerate * 0.75 * self.v_sequence / self.LeadAgent.speed_mean
-        kwargs['subagent_framerate'] = subagent_framerate
-        fig, ax = super().plot_trajectory(**kwargs)
-        return fig, ax  
+    # def plot_trajectory(self, framerate=10, **kwargs):
+    #     subagent_framerate = framerate * 0.75 * self.v_sequence / self.LeadAgent.speed_mean
+    #     kwargs['subagent_framerate'] = subagent_framerate
+    #     fig, ax = super().plot_trajectory(**kwargs)
+    #     return fig, ax  
 
 class ReplayAgent(SubAgent):
     """This agents position usually equals the position of the LeagAgent but it can, at times, initiate a "replay" event where the Agent disconnects, moves to another region of the environment and explores their for a short time."""
@@ -428,8 +455,23 @@ class ReplayAgent(SubAgent):
 
         return fig, ax
 
+
+class ShiftAgent(SubAgent):
+    """
+    ShiftAgent reports the position of the LeadAgent but with a fixed shift in position shift_m ahead of it along its current heading direction. Can be positive or negative. 
+    """
+    
+    default_params = {
+        "shift_m" : 0.01, #distance ahead of the LeadAgent (can be negative)
+    }
+    
+    def update(self,):
+        pos = self.LeadAgent.pos + self.LeadAgent.head_direction * self.shift_m
+        super().update(forced_next_position=pos)
+        return
+
 class UnrelatedAgent(SubAgent):
-    """The SubAgent is totally indepdendent from the LeadAgent"""
+    """The SubAgent is totally indepdendent from the LeadAgent. This is just to exploit the plotting functionality."""
 
     default_params = {}
     def __init__(self, LeadAgent: Agent, params={}):
@@ -438,3 +480,4 @@ class UnrelatedAgent(SubAgent):
     def update(self):
         super().update()
         return
+    
