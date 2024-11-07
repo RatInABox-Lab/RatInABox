@@ -730,7 +730,7 @@ def save_figure(
         return
 
     # make today-specific directory inside figure directory
-    today = datetime.strftime(datetime.now(), "%d_%m_%y")
+    today = datetime.strftime(datetime.now(), "%y_%m_%d")
     figdir = os.path.join(figure_directory, f"{today}")
     os.makedirs(figdir, exist_ok=True)
 
