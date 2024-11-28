@@ -1542,8 +1542,8 @@ class BoundaryVectorCells(VectorCells):
         "n": 10,
         "name": "BoundaryVectorCells",
         "dtheta": 2, #angular resolution in degrees used for integration over all angles (smaller is more accurate but slower)
-        "max_fr":1.0, # note the max_fr of a BVC is environment-dependent so is epirically estimated at initialisation by calculating the firing rate at all points in the environment, this can lead to small overshoots (see issue #110 for discussion)
-        "min_fr":0.0,
+        "max_fr": 1.0, # note the max_fr of a BVC is now computed analytically, and therefore reflects its maximal activity, regardless of the actual environment (see issue #110 for discussion)
+        "min_fr": 0.0,
     }
 
     def __init__(self, Agent, params={}):
@@ -1587,17 +1587,13 @@ class BoundaryVectorCells(VectorCells):
         self.test_directions = np.array(test_directions)
         self.test_angles = np.array(test_angles)
         
-        
-        # calculate normalising constants for BVS firing rates in the current environment. Any extra walls you add from here onwards you add will likely push the firingrate up further.
-        locs = self.Agent.Environment.discretise_environment(dx=0.04)
-        locs = locs.reshape(-1, locs.shape[-1])
-        
-        self.cell_fr_norm = np.ones(self.n) #value for initialization
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            # ignores the warning raised during initialisation of the BVCs
-            cell_fr_norm = np.max(self.get_state(evaluate_at=None, pos=locs), axis=1)
-            self.cell_fr_norm = (cell_fr_norm - self.min_fr) / (self.max_fr - self.min_fr)
+        # calculate maximum possible firing rates for each BVC to use as normalization values.
+        self.cell_fr_norm = utils.von_mises(
+            theta=self.test_angles.reshape(1, -1),
+            mu=0,
+            sigma=self.sigma_angles.reshape(-1, 1),
+            norm=1,
+        ).sum(axis=1)
 
         # list of colors for each cell, just used by `.display_vector_cells()` plotting function
         color = np.array(matplotlib.colors.to_rgba(self.color if self.color is not None else "C1")).reshape(1,-1)
