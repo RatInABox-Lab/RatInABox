@@ -33,7 +33,7 @@ The top animation shows an example use case: an `Agent` randomly explores a 2D `
 
 
 ## Key features
-* **Non-specific**: Trajectories can be randomly generated, imported, or adaptively controlled making `RatInABox` a powerful engine for many tasks involving continuous motion (e.g. control theory or [reinforcement learning](#policy-control)). 
+* **Non-specific**: Trajectories can be randomly generated, imported, or adaptively controlled making `RatInABox` a powerful engine for many tasks involving continuous motion (e.g. control theory or reinforcement learning). 
 * **Biological**:   Simulate large populations of spatially and/or velocity modulated cell types. Neurons can be rate based or spiking. The random motion model is fitted to match real rodent motion. 
 * **Flexible**:     Simulate environments in 1D or 2D with arbitrarily wall, boundary and hole arrangements.  Combine premade or bespoke `Neurons` classes into arbitrary deep networks (examples given).
 * **Fast**:         Simulating 1 minute of exploration in a 2D environment with 100 place cells (dt=10 ms) take just 2 seconds on a laptop (no GPU needed).
