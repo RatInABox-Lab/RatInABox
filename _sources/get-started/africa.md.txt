@@ -1,6 +1,6 @@
 # Africa 
 
-This animation was made by students on the [TReND in Africa computational neuroscience summer school](https://trendinafrica.org/computational-neuroscience-basics/). Code is provided below. 
+This animation was made by students on the [TReND in Africa computational neuroscience summer school](https://trendinafrica.org/trend-camina/). Code is provided below. 
 
 <img src="https://raw.githubusercontent.com/RatInABox-Lab/RatInABox/main/.images/readme/riab_africa.gif" width=1000>
 
