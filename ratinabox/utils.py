@@ -592,6 +592,7 @@ def mountain_plot(
     width=ratinabox.MOUNTAIN_PLOT_WIDTH_MM,
     overlap=ratinabox.MOUNTAIN_PLOT_OVERLAP,
     shift=ratinabox.MOUNTAIN_PLOT_SHIFT_MM,
+    shade_kwargs=dict(),
     **kwargs,
 ):
     """Make a mountain plot.
@@ -615,6 +616,7 @@ def mountain_plot(
         width: width of figure in mm
         overlap: how much each plots overlap by (> 1 = overlap, < 1 = no overlap) (overlap is not relevant if you also set "norm_by")
         shift: distance between lines in mm
+        shade_kwargs: keyword arguments passed to the fill_between function for the mountain plot shading
 
     Returns:
         fig, ax: _description_
@@ -644,7 +646,7 @@ def mountain_plot(
     for i in range(len(NbyX)):
         ax.plot(X_, NbyX[i] + i + 1 + global_shift, c=c, zorder=zorder, lw=linewidth)
         zorder -= 0.01
-        ax.fill_between(X_, NbyX[i] + i + 1 + global_shift, i + 1 + global_shift, color=fc, zorder=zorder, alpha=0.8, linewidth=0)
+        ax.fill_between(X_, NbyX[i] + i + 1 + global_shift, i + 1 + global_shift, color=fc, zorder=zorder, alpha=0.8, linewidth=0, **shade_kwargs)
         zorder -= 0.01
     ax.spines["left"].set_bounds(1, len(NbyX))
     ax.spines["bottom"].set_position(("outward", 1))
