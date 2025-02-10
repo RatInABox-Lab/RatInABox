@@ -1513,7 +1513,7 @@ class VectorCells(Neurons):
             facecolor = np.array(matplotlib.colors.to_rgba(facecolor))
             facecolor_array = np.tile(np.array(facecolor), (self.n, 1))
         else:
-            facecolor_array = self.cell_colors #made in child class init. Each cell can have a different plot color. 
+            facecolor_array = self.cell_colors.copy() #made in child class init. Each cell can have a different plot color. 
             # e.g. if cells are slective to different object types or however you like 
         facecolor_array[:, -1] = 0.7*np.maximum(
             0, np.minimum(1, fr / (0.5 * self.max_fr))
