@@ -394,6 +394,18 @@ def interpolate_and_smooth(x, y, sigma=None, resolution_increase=10):
         return x_new, y_interpolated
 
 
+def get_rayleigh_sigma(mean):
+    """Returns the standard deviation (sigma) of a Rayleigh distribution based on its mean"""
+    sigma = mean / np.sqrt(np.pi / 2)
+    return sigma
+
+
+def get_rayleigh_mean(sigma):
+    """Returns the mean of a Rayleigh distribution based on its standard deviation (sigma)."""
+    mean = sigma * np.sqrt(np.pi / 2)
+    return mean
+
+
 def normal_to_rayleigh(x, sigma=1):
     """Converts a normally distributed variable (mean 0, var 1) to a rayleigh distributed variable (sigma)"""
     x = stats.norm.cdf(x)  # norm to uniform)
