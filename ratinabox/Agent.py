@@ -72,8 +72,8 @@ class Agent:
         # These defaults are fit to match data from Sargolini et al. (2016)
         # also given are the parameter names as refered to in the methods section of the paper
         "speed_coherence_time": 0.7,  # time over which speed decoheres, τ_v1 & τ_v2
-        "speed_mean": 0.08,  # mean of speed, σ_v2 μ_v1
-        "speed_std": 0.08,  # std of speed (meaningless in 2D where speed ~rayleigh), σ_v1
+        "speed_mean": 0.08,  # mean of speed in 1D environment, μ_v1 (and in 2D environment if speed_std is set to 0). Otherwise, std of speed ~rayleigh in 2D environment, σ_v2. Can be computed based on a target speed mean using utils.get_rayleigh_sigma().
+        "speed_std": 0.08,  # std of speed in 1D environment, σ_v1 (ignored in 2D where speed ~rayleigh, unless set to 0. If set to 0, speed_mean is used.)
         "rotational_velocity_coherence_time": 0.08,  # time over which speed decoheres, τ_w
         "rotational_velocity_std": (120 * (np.pi / 180)),  # std of rotational speed, σ_w wall following parameter
         "head_direction_smoothing_timescale" : 0.15, # timescale over which head direction is smoothed (head dir = normalised smoothed velocity).
