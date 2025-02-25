@@ -62,10 +62,10 @@ def vector_intercepts(vector_list_a, vector_list_b, return_collisions=False):
     vector_list_a = vector_list_a.reshape(-1, 2, 2)
     vector_list_b = vector_list_b.reshape(-1, 2, 2)
     vector_list_a = vector_list_a + np.random.normal(
-        scale=1e-6, size=vector_list_a.shape
+        scale=1e-9, size=vector_list_a.shape
     )
     vector_list_b = vector_list_b + np.random.normal(
-        scale=1e-6, size=vector_list_b.shape
+        scale=1e-9, size=vector_list_b.shape
     )
 
     N_a = vector_list_a.shape[0]
