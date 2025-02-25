@@ -423,22 +423,23 @@ class Agent:
     def _check_and_handle_wall_collisions(self):
         """This function checks to see if the vector from self.prev_pos to self.pos collides with any walls. If it does, then you've nothing to worry about. If it does, then you need to bounce off the wall and update the velocity and position accordingly. This is done in the handle_wall_collisions() function.
         TODO strictly wall collisions are only considered in 2D but this function should be extended to 1D too, for completeness."""
-        proposed_step = np.array([self.prev_pos, self.pos])
-        wall_check = self.Environment.check_wall_collisions(proposed_step) #returns (None, None) for 1D Envs 
-        walls = wall_check[0]  # shape=(N_walls,2,2)
-        wall_collisions = wall_check[1]  # shape=(N_walls,)
+        while True: # keep checking until no wall collisions
+            proposed_step = np.array([self.prev_pos, self.pos])
+            wall_check = self.Environment.check_wall_collisions(proposed_step) #returns (None, None) for 1D Envs 
+            walls = wall_check[0]  # shape=(N_walls,2,2)
+            wall_collisions = wall_check[1]  # shape=(N_walls,)
 
-        # If no wall collsions it is safe to move to the next position so do nothing
-        if (wall_collisions is None) or (True not in wall_collisions): return
- 
-        # Bounce off walls you collide with
-        elif True in wall_collisions:
-            colliding_wall = walls[np.argwhere(wall_collisions == True)[0][0]]
-            self.velocity = utils.wall_bounce(self.velocity, colliding_wall)
-            self.velocity = (0.5 * self.speed_mean / (np.linalg.norm(self.velocity))) * self.velocity
-            # TODO strictly in the event of a collision the position should be updated away from the wall starting from the collision point (and only for the remaining fraction of dt), not the prev position. Small detail but worth fixing.
-            self.pos = self.prev_pos + self.velocity * self.dt
-        return
+            # If no wall collsions it is safe to move to the next position so do nothing
+            if (wall_collisions is None) or (True not in wall_collisions): return
+    
+            # Bounce off walls you collide with
+            elif True in wall_collisions:
+                colliding_wall = walls[np.argwhere(wall_collisions == True)[0][0]]
+                self.velocity = utils.wall_bounce(self.velocity, colliding_wall)
+                self.velocity = (0.5 * self.speed_mean / (np.linalg.norm(self.velocity))) * self.velocity
+                # TODO strictly in the event of a collision the position should be updated away from the wall starting from the collision point (and only for the remaining fraction of dt), not the prev position. Small detail but worth fixing.
+                self.pos = self.prev_pos + self.velocity * self.dt
+         
     
     def _measure_velocity_of_step_taken(self, overwrite_velocity=False):
         """This function takes self.prev_pos and self.pos and uses them to update self.measured_velocity. Then it takes self.prev_measured_velocity and self.measured_velocity and calculates self.measured_rotational_velocity. These "measured" velocities are typically the same as self.velocity and self.rotational_velocity but not always. The reason for this is that when the Agent is near a wall it is possible for the dynamical updates to adjust its position without adjusting its velocity (e.g. conveyor belt drift), in which case the absolute velocities of the agent (which are the one we want to save into the history dataframe) may be subtely different from the velocity used in the motion updates thinks it has (self.velocity) and which it will use for dynamical updates on subsequent steps.
