@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
+import pandas as pd
 import scipy
 import inspect
 import os
@@ -8,6 +9,9 @@ import warnings
 from datetime import datetime
 from scipy import stats as stats
 from typing import Union
+
+from typing import Union, Tuple, List
+
 import ratinabox
 
 """OTHER USEFUL FUNCTIONS"""
@@ -984,8 +988,6 @@ def activate(x, activation="sigmoid", deriv=False, other_args={}):
             return other_args["gain"] / (1 + np.exp(-(x - other_args["threshold"])))
 
 
-
-
 # ** Manifold Functions **
 
 def create_uniform_radial_assembly(distance_range: list = [0.0, 0.2],
@@ -1176,3 +1178,114 @@ def create_random_assembly(
     sigma_angle *= np.pi / 180 # convert to radians
 
     return tuning_distance, tuning_angle, sigma_distance, sigma_angle
+
+
+
+def export_history(history_dict: dict,
+                   filename:Union[str,None] = None,
+                   keys_to_export: Union[str, List[str], None] = None,
+                   filename_prefix:Union[str,None] = None,
+                   save_to_file: bool = True,
+                   format: str = "parquet",
+                   **kwargs
+                   ) -> pd.DataFrame:
+    """Exports the history dictionary to a file in the specified format.
+    Args:
+        filename (str, optional): name of the file to save the history to. Defaults to None, in which case it is saved to the history directory with the name "history.{format}".
+        history_dict (dict, optional): history dictionary to export. Defaults to None, in which case it uses ratinabox.history.
+        keys_to_export (list[str], optional): list of parameters to export from the history dictionary. If None, all parameters are exported.
+        format (str, optional): file format to save as, either "parquet" or "csv". Defaults to "parquet".
+    """
+    
+    if history_dict is None:
+        raise ValueError("history_dict must be provided")
+
+    # Validate format
+    if format.lower() not in ["parquet", "csv"]:
+        raise ValueError("format must be either 'parquet' or 'csv'")
+    
+    format = format.lower()
+
+    if filename is None:
+        filename = f"history.{format}"
+    else:
+        # Remove any existing extension and add the correct one for the format
+        filename = filename.split('.')[0] + f".{format}"
+            
+    # add the prefix to the filename if it is provided
+    if filename_prefix is not None:
+        if not filename_prefix.endswith("_"):
+            filename_prefix += "_"
+        
+        # get the directory of the filename
+        directory = os.path.dirname(filename) if filename else ""
+        # get the base name of the filename
+        base_name = os.path.basename(filename) if filename else f"history.{format}"
+        # create the new filename with the prefix
+        if directory:
+            filename = os.path.join(directory, f"{filename_prefix}{base_name}")
+        else:
+            filename = f"{filename_prefix}{base_name}"
+        
+        
+        
+
+    # get the all the keys from the history dictionary
+    history_keys = list(history_dict.keys())
+    
+    # if keys_to_export is None, export all keys_to_export
+    if keys_to_export is None:
+        keys_to_export = history_keys
+    else:
+        if isinstance(keys_to_export, str):
+            keys_to_export = [keys_to_export]
+        # check that all keys_to_export are in the history_keys
+        for param in keys_to_export:
+            if param not in history_keys:
+                raise ValueError(f"Parameter {param} not found in history keys_to_export.")
+    
+    history_to_export = {key: history_dict[key] for key in keys_to_export}
+    
+    df = pd.DataFrame(history_to_export)
+    if save_to_file:
+        # save the dataframe in the specified format
+        if format == "parquet":
+            df.to_parquet(filename, index=False)
+        elif format == "csv":
+            df.to_csv(filename, index=False)
+        print(f"History exported to {filename}")
+    return df
+
+def import_history(filename: str) -> pd.DataFrame:
+    """Imports history data from a CSV or Parquet file.
+    
+    Args:
+        filename (str): path to the file to import. Can be either .csv or .parquet format.
+        
+    Returns:
+        pd.DataFrame: DataFrame containing the imported history data
+        
+    Raises:
+        FileNotFoundError: if the specified file doesn't exist
+        ValueError: if the file format is not supported (not .csv or .parquet)
+    """
+    
+    if not os.path.exists(filename):
+        raise FileNotFoundError(f"File not found: {filename}")
+    
+    # Get file extension to determine format
+    _, ext = os.path.splitext(filename)
+    ext = ext.lower()
+    
+    if ext == '.csv':
+        df = pd.read_csv(filename)
+        print(f"History imported from CSV: {filename}")
+    elif ext == '.parquet':
+        df = pd.read_parquet(filename)
+        print(f"History imported from Parquet: {filename}")
+    else:
+        raise ValueError(f"Unsupported file format: {ext}. Only .csv and .parquet are supported.")
+    
+    return df
+
+

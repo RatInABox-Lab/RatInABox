@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
 import shapely
+import pandas as pd
 
 
 import warnings
@@ -63,6 +64,7 @@ class Environment:
     """
 
     default_params = {
+        "name": "Environment",  # name of the environment
         "dimensionality": "2D",  # 1D or 2D environment
         "boundary_conditions": "solid",  # solid vs periodic
         "scale": 1,  # scale of environment (in metres)
@@ -90,6 +92,8 @@ class Environment:
         self.Agents : list[Agent] = []  # each new Agent will append itself to this list
         self.agents_dict = {} # this is a dictionary which allows you to lookup a agent by name
 
+        self.name = self.params["name"]
+        
         if self.dimensionality == "1D":
             self.D = 1
             self.extent = np.array([0, self.scale])
@@ -285,7 +289,6 @@ class Environment:
         self.Agents.append(agent)
         self.agents_dict[agent.name] = agent
 
-
     def remove_agent(self, agent: Union[str, Agent]  = None):
 
         """
@@ -303,11 +306,7 @@ class Environment:
 
         self.Agents.remove(agent)
         self.agents_dict.pop(agent.name)
-        
-    
-
-
-    
+  
     def add_wall(self, wall):
         """Add a wall to the (2D) environment.
         Extends self.walls array to include one new wall.
@@ -837,3 +836,37 @@ class Environment:
                 else:  # polygon shaped env, just resample random position
                     pos = self.sample_positions(n=1, method="random").reshape(-1)
         return pos
+
+    def export_agents_history(self,
+                              agent_names: Union[str, list[str], None] = None,
+                              keys_to_export: Union[str, list[str],None] = None,
+                              verbose: bool = False,
+                              save_to_file: bool = True):
+        """Exports the history of the agents in the environment.
+        Args:
+            agent_names (str, list[str]): the name of the agent you want to export the history for. If None, exports all agents.
+            save (bool): whether to save the history to a file
+            verbose (bool): whether to print the history to the console
+        Returns:
+            dict: a dictionary of all the default parameters of the class, including those inherited from its parents.
+        """
+        agents = self.Agents
+        if agent_names is not None:
+            agents = self.agent_lookup(agent_names)
+        
+        combined_df = pd.DataFrame()
+        
+        for agent in agents:
+            if verbose:
+                print(f"Exporting history for agent {agent.name}")
+            df = agent.export_history(keys_to_export=keys_to_export, 
+                                 save_to_file=save_to_file,
+                                 filename_prefix=f"{self.name}")
+            if df is not None:
+                if combined_df.empty:
+                    combined_df = df
+                else:
+                    combined_df = pd.concat([combined_df, df], axis=0, ignore_index=True)
+        
+        return combined_df
+            

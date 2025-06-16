@@ -8,7 +8,7 @@ import numpy as np
 
 
 class ValueNeuron(FeedForwardLayer):
-    """
+    r"""
     Contributer: Tom George tomgeorge1@btinternet.com
 
     The ValueNeuron class defines neuron(s) which learns the "value" of a policy using TD learning. For n > 1 the reward function is assumed to be multidimensional and n value functions (one neuron for each reward function) will be learned under the current policy.  

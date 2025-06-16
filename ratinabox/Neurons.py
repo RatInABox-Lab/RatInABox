@@ -10,6 +10,8 @@ import scipy
 from scipy import stats as stats
 import warnings
 from matplotlib.collections import EllipseCollection
+import pandas as pd
+from typing import Union
 
 from ratinabox import utils
 
@@ -116,6 +118,8 @@ class Neurons:
 
         utils.update_class_params(self, self.params, get_all_defaults=True)
         utils.check_params(self, params.keys())
+        
+        self.name = self.params["name"]
 
         self.firingrate = np.zeros(self.n)
         self.noise = np.zeros(self.n)
@@ -616,12 +620,123 @@ class Neurons:
         self.history["t"].append(self.Agent.t)
         self.history["firingrate"].append(list(self.firingrate))
         self.history["spikes"].append(list(cell_spikes))
+        
 
     def reset_history(self):
         for key in self.history.keys():
             self.history[key] = []
         return
+    
+    def export_history(self, 
+                    filename:Union[str,None] = None,
+                    keys_to_export: Union[str, list[str],None] = None,
+                    save_to_file:bool = True,
+                    **kwargs
+                    ) -> pd.DataFrame:
+        """Exports the Neuron history to a csv file at the given filename.Only the parameters saved to history are exported, not the agent parameters.
+        Args:
+            filename (str, optional): The name of the file to save the history to. Defaults to "agent_history.csv".
+            params_to_export (list, optional): A list of parameters to export from the agent. If None, exports all parameters.
+        """
+        
+        if filename is None:
+            if self.name is None:
+                filename = "neuron_history.csv"
+            else:
+                filename = f"neuron_{self.name}_history.csv"
+                
+        dict_to_export = self.history.copy()
+        
+        dict_to_export["agent_name"] = [self.Agent.name] * len(self.history["t"])
+        dict_to_export["neuron_group"] = [self.name] * len(self.history["t"])
+        
+        # convert any numpy arrays to lists
+        for key in dict_to_export.keys():
+            if type(dict_to_export[key]) is list:
+                # convert to numpy array first and the to list to ensure all elements are lists
+                dict_to_export[key] = np.array(dict_to_export[key])
+                
+                # limit the float to np.float32
+                if dict_to_export[key].dtype == np.float64:
+                    dict_to_export[key] = dict_to_export[key].astype(np.float32)
+                    
+                elif dict_to_export[key].dtype == np.bool:
+                    dict_to_export[key] = dict_to_export[key].astype(int)
+                    
 
+            # convert numpy arrays to lists
+            if type(dict_to_export[key]) is np.ndarray:
+                dict_to_export[key] = dict_to_export[key].tolist()
+                    
+                    
+        
+        
+        return utils.export_history(
+                history_dict=dict_to_export,
+                filename=filename,
+                keys_to_export=keys_to_export,
+                save_to_file=save_to_file,
+                **kwargs,
+            )
+
+    def import_history(self, 
+                       filename: str):
+        """Imports neuron history from a CSV or Parquet file that was previously exported using export_history.
+        
+        Args:
+            filename (str): path to the file to import (either .csv or .parquet format)
+        Returns:
+            None
+            
+        Raises:
+            FileNotFoundError: if the specified file doesn't exist
+            ValueError: if the file format is not supported or data is invalid
+        """
+        
+        # Import the dataframe using utils function
+        df = utils.import_history(filename)
+        
+        # Convert DataFrame back to neuron history format
+        n_timesteps = len(df)
+        
+        if n_timesteps == 0:
+            print("Warning: No data found in imported file")
+            return
+        
+        if 'firingrate' not in df.columns or 'spikes' not in df.columns:
+            raise ValueError("The imported file must contain 'firingrate' and 'spikes' columns.")
+        
+        # Reset the history
+        self.reset_history()
+        
+        # if the filename had csv in it, then convert the  firingrate and spikes columns to lists of numpy arrays
+        if filename.endswith(".csv"):
+            # convert the firingrate and spikes columns to lists of numpy arrays
+            # from string 
+            df['firingrate'] = df['firingrate'].apply(lambda x: np.fromstring(x[1:-1], sep=',') if isinstance(x, str) else x)
+            df['spikes'] = df['spikes'].apply(lambda x: np.fromstring(x[1:-1], sep=',') if isinstance(x, str) else x)
+        
+        # ensure the columns : firingrate, spikes i nthe correct format
+        # convert the firingrate into arrays
+        df['firingrate'] = df['firingrate'].apply(lambda x: np.array(x) if isinstance(x, list) else x)
+        # convert the spikes into arrays
+        df['spikes'] = df['spikes'].apply(lambda x: np.array(x) if isinstance(x, list) else x)
+        
+        df['spikes'] = df['spikes'].apply(lambda x: x.astype(bool) if isinstance(x, np.ndarray) else x)
+        # Time data
+        if 't' in df.columns:
+            self.history["t"].extend(df['t'].tolist())
+            
+        firingrate_df = [np.array(row) for row in df.firingrate]
+        self.history["firingrate"] = firingrate_df
+        
+        spikes_df = [np.array(row) for row in df.spikes]
+        self.history["spikes"] = spikes_df
+        
+        
+        
+        print(f"Successfully imported {n_timesteps} timesteps of neuron history from {filename}")
+        
     def animate_rate_timeseries(
         self,
         t_start=None,

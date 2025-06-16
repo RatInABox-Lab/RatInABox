@@ -7,7 +7,8 @@ import os
 import matplotlib
 from matplotlib import pyplot as plt
 import warnings
-
+from typing import Union
+import pandas as pd
 
 from ratinabox import utils
 
@@ -492,12 +493,161 @@ class Agent:
 
     def save_to_history(self):
         self.history["t"].append(self.t)
-        self.history["pos"].append(list(self.pos))
-        self.history["vel"].append(list(self.save_velocity))
-        self.history["head_direction"].append(list(self.head_direction))
+        self.history["pos"].append(self.pos.copy())
+        self.history["vel"].append(self.save_velocity.copy())
+        self.history["head_direction"].append(self.head_direction.copy())
         if self.Environment.dimensionality == "2D":
             self.history["rot_vel"].append(self.rotational_velocity)     
         return
+    
+    def export_history(self, 
+                    filename:Union[str,None] = None,
+                    keys_to_export: Union[str, list[str], None] = None,
+                    save_to_file: bool = True,
+                    **kwargs
+                    )-> pd.DataFrame:
+        """Exports the agent history to a csv file at the given filename.Only the parameters saved to history are exported, not the agent parameters.
+        Args:
+            filename (str, optional): The name of the file to save the history to. Defaults to "agent_history.csv".
+            params_to_export (list, optional): A list of parameters to export from the agent. If None, exports all parameters.
+        """
+        
+        if save_to_file and filename is None:
+            if self.name is None:
+                filename = "agent_history.csv"
+            else:
+                filename = f"agent_{self.name}_history.csv"
+                
+        # process the history dict for correct format 
+        dict_to_export = {} 
+        
+        dict_to_export["agent_name"] = [self.name] * len(self.history["t"])
+        
+        if keys_to_export is None:
+            keys_to_export = list(self.history.keys())
+        elif isinstance(keys_to_export, str):
+            keys_to_export = [keys_to_export]
+        
+        if "t" in keys_to_export:
+            dict_to_export["t"] = self.history["t"]
+            
+        if "pos" in keys_to_export:
+            pos = np.array(self.history["pos"]).astype(np.float32)
+            if self.Environment.dimensionality == "2D":
+                dict_to_export["pos_x"] = pos[:, 0]
+                dict_to_export["pos_y"] = pos[:, 1]
+            elif self.Environment.dimensionality == "1D":
+                dict_to_export["pos_x"] = pos[:, 0]
+                dict_to_export["pos_y"] = np.zeros_like(pos[:, 0])
+                
+        if "vel" in keys_to_export:
+            vel = np.array(self.history["vel"]).astype(np.float32)
+            if self.Environment.dimensionality == "2D":
+                dict_to_export["vel_x"] = vel[:, 0]
+                dict_to_export["vel_y"] = vel[:, 1]
+            elif self.Environment.dimensionality == "1D":
+                dict_to_export["vel_x"] = vel[:, 0]
+                dict_to_export["vel_y"] = np.zeros_like(vel[:, 0])
+                
+        if "rot_vel" in keys_to_export:
+            if self.Environment.dimensionality == "2D":
+                rot_vel_ = np.array(self.history["rot_vel"]).astype(np.float32)
+                dict_to_export["rot_vel"] = rot_vel_
+                
+        if "head_direction" in keys_to_export:
+            head_direction = np.array(self.history["head_direction"]).astype(np.float32)
+            if self.Environment.dimensionality == "2D":
+                dict_to_export["head_dir_x"] = head_direction[:, 0]
+                dict_to_export["head_dir_y"] = head_direction[:, 1]
+            elif self.Environment.dimensionality == "1D":
+                dict_to_export["head_dir_x"] = head_direction[:, 0]
+                dict_to_export["head_dir_y"] = np.zeros_like(head_direction[:, 0])
+        
+        
+        return utils.export_history(
+                history_dict=dict_to_export,
+                filename=filename,
+                save_to_file=save_to_file,
+                **kwargs
+            )
+        
+    def import_history(self, 
+                       filename: str):
+        """Imports agent history from a CSV or Parquet file that was previously exported using export_history.
+        
+        Args:
+            filename (str): path to the file to import (either .csv or .parquet format)
+        Returns:
+            None
+            
+        Raises:
+            FileNotFoundError: if the specified file doesn't exist
+            ValueError: if the file format is not supported or data is invalid
+        """
+        
+        # Import the dataframe using utils function
+        df = utils.import_history(filename)
+        
+        
+        # Convert DataFrame back to agent history format
+        n_timesteps = len(df)
+        
+        if n_timesteps == 0:
+            print("Warning: No data found in imported file")
+            return
+        
+        # Time data
+        if 't' in df.columns:
+            self.history["t"].extend(df['t'].tolist())
+        
+        # Position data - reconstruct from pos_x, pos_y columns as numpy arrays
+        if 'pos_x' in df.columns:
+            if self.Environment.dimensionality == "2D" and 'pos_y' in df.columns:
+                pos_data = [np.array([x, y]) for x, y in zip(df['pos_x'], df['pos_y'])]
+            elif self.Environment.dimensionality == "1D":
+                pos_data = [np.array([x]) for x in df['pos_x']]
+            else:
+                raise ValueError("Position data format doesn't match environment dimensionality")
+            self.history["pos"].extend(pos_data)
+        
+        # Velocity data - reconstruct from vel_x, vel_y columns as numpy arrays
+        if 'vel_x' in df.columns:
+            if self.Environment.dimensionality == "2D" and 'vel_y' in df.columns:
+                vel_data = [np.array([x, y]) for x, y in zip(df['vel_x'], df['vel_y'])]
+            elif self.Environment.dimensionality == "1D":
+                vel_data = [np.array([x]) for x in df['vel_x']]
+            else:
+                raise ValueError("Velocity data format doesn't match environment dimensionality")
+            self.history["vel"].extend(vel_data)
+        
+        # Rotational velocity data (2D only)
+        if 'rot_vel' in df.columns and self.Environment.dimensionality == "2D":
+            self.history["rot_vel"].extend(df['rot_vel'].tolist())
+        
+        # Head direction data - reconstruct from head_dir_x, head_dir_y columns as numpy arrays
+        if 'head_dir_x' in df.columns:
+            if self.Environment.dimensionality == "2D" and 'head_dir_y' in df.columns:
+                head_dir_data = [np.array([x, y]) for x, y in zip(df['head_dir_x'], df['head_dir_y'])]
+            elif self.Environment.dimensionality == "1D":
+                head_dir_data = [np.array([x]) for x in df['head_dir_x']]
+            else:
+                raise ValueError("Head direction data format doesn't match environment dimensionality")
+            self.history["head_direction"].extend(head_dir_data)
+        
+        # Update agent time to match the last imported time
+        if len(self.history["t"]) > 0:
+            self.t = self.history["t"][-1]
+        
+        print(f"Successfully imported {n_timesteps} timesteps of agent history from {filename}")
+        
+        # Verify agent name matches if available
+        if 'agent_name' in df.columns:
+            imported_agent_name = df['agent_name'].iloc[0]
+            if imported_agent_name != self.name:
+                print(f"Warning: Imported agent name '{imported_agent_name}' doesn't match current agent name '{self.name}'")
+
+        
+        
 
     def reset_history(self):
         for key in self.history.keys():
