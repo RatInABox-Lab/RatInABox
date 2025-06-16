@@ -20,7 +20,7 @@ autodoc_mock_imports = []
 # use os.path.abspath to make it absolute, like shown here.
 sys.path.insert(0, os.path.abspath("../.."))
 
-project = "ratinabox"
+project = "RatInABox"
 copyright = "2022, Tom George"
 author = "Tom George"
 try:
@@ -110,7 +110,7 @@ html_theme_options = {
         }
     ],
     "logo": {
-        "text": f"{project} v{release}",
+        "text": f"{project}", #v{release} for release version
         "image_light": "logo_small.png",
         "image_dark": "logo_small.png",
     },

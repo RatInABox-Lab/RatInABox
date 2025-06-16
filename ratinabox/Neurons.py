@@ -66,7 +66,7 @@ class Neurons:
             firingrate = .....
             ###
                 Insert here code which calculates the firing rate.
-                This may work differently depending on what you set evaluate_at as. For example, evaluate_at == 'agent' should means that the position or velocity (or whatever determines the firing rate) will by evaluated using the agents current state. You might also like to have an option like evaluate_at == "all" (all positions across an environment are tested simultaneously - plot_rate_map() tries to call this, for example) or evaluate_at == "last" (in a feedforward layer just look at the last firing rate saved in the input layers saves time over recalculating them.). **kwargs allows you to pass position or velocity in manually.
+                This may work differently depending on what you set evaluate_at as. For example, evaluate_at == 'agent' should mean that the position or velocity (or whatever determines the firing rate) will by evaluated using the agents current state. You might also like to have an option like evaluate_at == "all" (all positions across an environment are tested simultaneously - plot_rate_map() tries to call this, for example) or evaluate_at == "last" (in a feedforward layer just look at the last firing rate saved in the input layers saves time over recalculating them.). **kwargs allows you to pass position or velocity in manually.
 
                 By default, the Neurons.update() calls Neurons.get_state() rwithout passing any arguments. So write the default behaviour of get_state() to be what you want it to do in the main training loop, .
             ###
@@ -128,6 +128,9 @@ class Neurons:
         self.history["firingrate"] = []
         self.history["spikes"] = []
 
+        self._last_history_array_cache_time = None
+        self._history_arrays = {} # this dictionary is the same as self.history except the data is in arrays not lists BUT it should only be accessed via its getter-function `self.get_history_arrays()`. This is because the lists are only converted to arrays when they are accessed, not on every step, so as to save time.
+
         self.colormap = "inferno" # default colormap for plotting ratemaps 
 
         if ratinabox.verbose is True:
@@ -174,11 +177,18 @@ class Neurons:
     def get_state(self, **kwargs):
         raise NotImplementedError("Neurons object needs a get_state() method")
 
-    def get_head_direction_averaged_state(self, evaluate_at="agent", **kwargs):
-        """Like get_state() except it calculates it at all head directions 0-->2pi and then averages over those head directions. Note this will only be relevant (although it will always "work") for Neurons which have some kind of head direction selectivity i.e. Neurons where "head_direction" is a kwarg which is used by get_state(). These include HeadDirectionCells or egocentric-BoundaryVectorCells or any cells you might build out of these. Conversely for PlaceCells, the head_direction argument into get_state() will be ignored so this will just be a more inefficient way of calling get_state()."""
+    def get_head_direction_averaged_state(self, evaluate_at="agent", angular_resolution_degrees=10, **kwargs):
+        """Like get_state() except it calculates it at all head directions 0-->2pi and then averages over those head directions. Note this will only be relevant (although it will always "work") for Neurons which have some kind of head direction selectivity i.e. Neurons where "head_direction" is a kwarg which is used by get_state(). These include HeadDirectionCells or egocentric-BoundaryVectorCells or any cells you might build out of these. Conversely for PlaceCells, the head_direction argument into get_state() will be ignored so this will just be a more inefficient way of calling get_state().
+        
+        Args: 
+            • evaluate_at: "agent" or "all" or None. If "agent" (default) then the Agent's current position is used to calculate the firing rate. If "all" then the firing rate is calculated at all positions across the environment. If None then you must provide a position or velocity array as a kwarg "pos" or "vel" respectively. Defaults to "agent".
+            • angular_resolution_degrees: the angular resolution in degrees at which to calculate the firing rate. Defaults to 10.
+            • kwargs: passed into get_state().
+        """
         firingrate = np.zeros_like(self.get_state(evaluate_at=evaluate_at, head_direction=[1,0], **kwargs))
-        firingrate = np.repeat(firingrate[:,:,np.newaxis],100,axis=2)
-        angles = np.linspace(0,2*np.pi,100)
+        n_angles = int(360 / angular_resolution_degrees)
+        firingrate = np.repeat(firingrate[:,:,np.newaxis],n_angles,axis=2)
+        angles = np.linspace(0,2*np.pi,n_angles)
         for (i,ang) in enumerate(angles):
             head_direction = np.array([np.cos(ang),np.sin(ang)])
             firingrate[:,:,i] = self.get_state(evaluate_at=evaluate_at, head_direction=head_direction, **kwargs)
@@ -220,11 +230,12 @@ class Neurons:
         Returns:
             fig, ax
         """
-        t = np.array(self.history["t"])
+        history_arrays = self.get_history_arrays() #gets history data as dictionary of arrays
+        t = history_arrays["t"]
         t_end = t_end or t[-1]
         slice = self.Agent.get_history_slice(t_start, t_end)
-        rate_timeseries = np.array(self.history["firingrate"][slice])
-        spike_data = np.array(self.history["spikes"][slice])
+        rate_timeseries = history_arrays["firingrate"][slice]
+        spike_data = history_arrays["spikes"][slice]
         t = t[slice]
 
         # neurons to plot
@@ -327,7 +338,7 @@ class Neurons:
         Args:
             •chosen_neurons: Which neurons to plot. string "10" will plot 10 of them, "all" will plot all of them, a list like [1,4,5] will plot cells indexed 1, 4 and 5. Defaults to "10".
 
-            • method: "groundtruth" "history" "neither" "ratemaps_provided": which method to use. If "groundtruth" (default) tries to calculate rate map by evaluating firing rate at all positions across the environment (note this isn't always well defined. in which case...). If "groundtruth__headdirectionaveraged" calculates rate maps but averaged over all head directions (2D environments only). If "history", plots ratemap by a weighting a histogram of positions visited by the firingrate observed at that position. If "neither" (or anything else), then neither. If "ratemaps_provided" then you must provide a rate map as a numpy array of shape (n_neurons, n_positions) under the keyworkd argument "ratemaps". This is useful if you have already calculated the rate map and want to plot it without having to recalculate it.
+            • method: "groundtruth" "history" "neither" "ratemaps_provided": which method to use. If "groundtruth" (default) tries to calculate rate map by evaluating firing rate at all positions across the environment (note this isn't always well defined. in which case...). If "groundtruth_headdirectionaveraged" calculates rate maps but averaged over all head directions (2D environments only). If "history", plots ratemap by a weighting a histogram of positions visited by the firingrate observed at that position. If "neither" (or anything else), then neither. If "ratemaps_provided" then you must provide a rate map as a numpy array of shape (n_neurons, n_positions) under the keyworkd argument "ratemaps". This is useful if you have already calculated the rate map and want to plot it without having to recalculate it.
 
             • spikes: True or False. Whether to display the occurence of spikes. If False (default) no spikes are shown. If True both ratemap and spikes are shown.
 
@@ -342,6 +353,14 @@ class Neurons:
         Returns:
             fig, ax
         """
+        #Set kwargs (TODO make lots of params accessible here as kwargs) 
+        spikes_color = kwargs.get("spikes_color", self.color) or "C1"
+        spikes_size = kwargs.get("spikes_size", (5 if self.Agent.Environment.dimensionality == "2D" else 2))
+        color = kwargs.pop("color", self.color) or "C1"
+        bin_size = kwargs.get("bin_size", 0.04) #only relevant if you are plotting by method="history"
+        optimise_plot_for_single_neuron = kwargs.get("optimise_plot_for_single_neuron", False) #if True will optimise the plot for when you are only visualising the rate map of a single neuron (e.g. chosen_neurons = [5], if False will plot as a mountain plot
+        
+
         # GET DATA
         if method[:11] == "groundtruth":
             try:
@@ -360,24 +379,25 @@ class Neurons:
                 method = "history"
 
         if method == "history" or spikes == True:
-            t = np.array(self.history["t"])
+            history_data = self.get_history_arrays() # converts lists to arrays (if this wasn't just done) and returns them in a dict same as self.history but with arrays not lists
+            t = history_data["t"]
             # times to plot
             if len(t) == 0:
-                print(
-                    "Can't plot rate map by method='history' since there is no available data to plot. "
-                )
+                print("Can't plot rate map by method='history', nor plot spikes, since there is no available data to plot. ")
                 return
             t_end = t_end or t[-1]
-            slice = self.Agent.get_history_slice(t_start, t_end)
-            pos = np.array(self.Agent.history["pos"])[slice]
+            position_data_agent = kwargs.get("position_data_agent", self.Agent) # In rare cases you may like to plot this cells rate/spike data against the position of a diffferent Agent. This kwarg enables that. 
+            position_agent_history_data = position_data_agent.get_history_arrays()
+            slice = position_data_agent.get_history_slice(t_start, t_end)
+            pos = position_agent_history_data["pos"][slice]
             t = t[slice]
 
             if method == "history":
-                rate_timeseries = np.array(self.history["firingrate"])[slice].T
+                rate_timeseries = history_data["firingrate"][slice].T
                 if len(rate_timeseries) == 0:
                     print("No historical data with which to calculate ratemap.")
             if spikes == True:
-                spike_data = np.array(self.history["spikes"])[slice].T
+                spike_data = history_data["spikes"][slice].T
                 if len(spike_data) == 0:
                     print("No historical data with which to plot spikes.")
         if method == "ratemaps_provided":
@@ -392,7 +412,7 @@ class Neurons:
         if self.color is None:
             coloralpha = None
         else:
-            coloralpha = list(matplotlib.colors.to_rgba(self.color))
+            coloralpha = list(matplotlib.colors.to_rgba(color))
             coloralpha[-1] = 0.5
 
         chosen_neurons = self.return_list_of_neurons(chosen_neurons=chosen_neurons)
@@ -404,7 +424,7 @@ class Neurons:
 
             if fig is None and ax is None:
                 if shape is None:
-                    Nx, Ny = 1, len(chosen_neurons)
+                    Nx, Ny = len(chosen_neurons), 1
                 else:
                     Nx, Ny = shape[0], shape[1]
                 env_fig, env_ax = self.Agent.Environment.plot_environment(
@@ -413,16 +433,15 @@ class Neurons:
                 width, height = env_fig.get_size_inches()
                 plt.close(env_fig)
                 plt.show
-                fig = plt.figure(figsize=(height * Ny, width * Nx))
+                fig = plt.figure(figsize=(width * Nx, height * Ny))
                 if colorbar == True and (method in ["groundtruth", "history", "groundtruth_headdirectionaveraged"]):
                     cbar_mode = "single"
                 else:
                     cbar_mode = None
                 axes = ImageGrid(
                     fig,
-                    # (0, 0, 3, 3),
                     111,
-                    nrows_ncols=(Nx, Ny),
+                    nrows_ncols=(Ny, Nx),
                     axes_pad=0.05,
                     cbar_location="right",
                     cbar_mode=cbar_mode,
@@ -458,22 +477,37 @@ class Neurons:
                         rate_map = rate_maps[chosen_neurons[i], :].reshape(
                             self.Agent.Environment.discrete_coords.shape[:2]
                         )
-                        im = ax_.imshow(rate_map, extent=ex, zorder=0, cmap=self.colormap)
+                        im = ax_.imshow(rate_map, extent=ex, zorder=0, cmap=self.colormap, 
+                                        interpolation="bicubic", # smooths rate maps but this does slow down the plotting a bit 
+                                        )
                     elif method == "history":
+                        default_2D_bin_size = 0.05
+                        bin_size = kwargs.get("bin_size", default_2D_bin_size)
                         rate_timeseries_ = rate_timeseries[chosen_neurons[i], :]
-                        rate_map = utils.bin_data_for_histogramming(
+                        rate_map, zero_bins = utils.bin_data_for_histogramming(
                             data=pos,
                             extent=ex,
-                            dx=0.05,
+                            dx=bin_size,
                             weights=rate_timeseries_,
                             norm_by_bincount=True,
+                            return_zero_bins=True,
                         )
+                        #rather than just "nan-ing" the regions where no data was observed we'll plot ontop a "mask" overlay which blocks with a grey square regions where no data was observed. The benefit of this technique is it still allows us to use "bicubic" interpolation which is much smoother than the default "nearest" interpolation.
+                        binary_colors = [(0,0,0,0),ratinabox.LIGHTGREY] #transparent if theres data, grey if there isn't
+                        binary_cmap = matplotlib.colors.ListedColormap(binary_colors)
                         im = ax_.imshow(
                             rate_map,
                             extent=ex,
                             cmap=self.colormap,
                             interpolation="bicubic",
                             zorder=0,
+                        )
+                        no_data_mask = ax_.imshow(
+                            zero_bins,
+                            extent=ex,
+                            cmap=binary_cmap,
+                            interpolation="nearest",
+                            zorder=0.001,
                         )
                     ims.append(im)
                     vmin, vmax = (
@@ -501,33 +535,40 @@ class Neurons:
                     ax_.scatter(
                         pos_where_spiked[:, 0],
                         pos_where_spiked[:, 1],
-                        s=5,
+                        s=spikes_size,
                         linewidth=0,
                         alpha=0.7,
                         zorder=1.2,
-                        color=(self.color if self.color is not None else "C1"),
+                        color=spikes_color,
                     )
 
         # PLOT 1D
         elif self.Agent.Environment.dimensionality == "1D":
+            zero_bins = None 
             if method == "groundtruth":
                 rate_maps = rate_maps[chosen_neurons, :]
                 x = self.Agent.Environment.flattened_discrete_coords[:, 0]
             if method == "history":
                 ex = self.Agent.Environment.extent
+                default_1D_bin_size = 0.01
+                bin_size = kwargs.get("bin_size", default_1D_bin_size)
                 pos_ = pos[:, 0]
                 rate_maps = []
                 for neuron_id in chosen_neurons:
-                    rate_map, x = utils.bin_data_for_histogramming(
+                    (rate_map, x, zero_bins) = utils.bin_data_for_histogramming(
                         data=pos_,
                         extent=ex,
-                        dx=0.01,
+                        dx=bin_size,
                         weights=rate_timeseries[neuron_id, :],
                         norm_by_bincount=True,
+                        return_zero_bins=True,
                     )
-                    x, rate_map = utils.interpolate_and_smooth(x, rate_map, sigma=0.03)
+                    resolution_increase = 10
+                    x, rate_map = utils.interpolate_and_smooth(x, rate_map, sigma=0.01, resolution_increase=resolution_increase)
                     rate_maps.append(rate_map)
+                zero_bins = np.repeat(zero_bins, resolution_increase)                
                 rate_maps = np.array(rate_maps)
+
 
             if fig is None and ax is None:
                 fig, ax = plt.subplots(
@@ -541,9 +582,34 @@ class Neurons:
                 )
 
             if method != "neither":
-                fig, ax = utils.mountain_plot(
-                    X=x, NbyX=rate_maps, color=self.color, fig=fig, ax=ax, **kwargs
-                )
+                if (N_neurons > 1 or 
+                    (N_neurons == 1 and optimise_plot_for_single_neuron == False)):
+                    fig, ax = utils.mountain_plot(
+                        X=x, NbyX=rate_maps, color=color, nan_bins=zero_bins, fig=fig, ax=ax, ylabel="Neurons", **kwargs)
+                    if N_neurons == 1 and optimise_plot_for_single_neuron == False:
+                        warnings.warn("Use kwarg `optimise_plot_for_single_neuron = True` to optimise this plot when visualising the rate map of a single neuron.")
+                else: 
+                    # If there is only one neuron passed this is a special case and we won't use mountain plot 
+                    X_ = x.copy()
+                    c = color if color is not None else "C1"
+                    c = np.array(matplotlib.colors.to_rgb(c))
+                    fc =  0.3 * c + (1 - 0.3) * np.array([1, 1, 1]) 
+                    if zero_bins is not None: X_[zero_bins] = np.nan
+                    ax.plot(X_, rate_maps[0], color=color, linewidth=1)
+                    ax.fill_between(X_, rate_maps[0], 0, alpha=0.8, color=fc)
+                    ax.spines['left'].set_visible(True)
+                    ax.spines['left'].set_position(('outward', 0))
+                    ax.spines['bottom'].set_position(('data', 0))
+                    fig.set_figheight(0.15*ratinabox.MOUNTAIN_PLOT_WIDTH_MM / 25,)
+                    ax.set_ylabel("Firing rate\n/ Hz")
+                    y_min, y_max = ax.get_ylim()
+                    ax.set_yticks([y_min, y_max])
+                    #remove the first tick label so it doesn't overlap with the y-axis label
+                    x_ticks = ax.get_xticks()
+                    if x_ticks[0] == 0:
+                        ax.set_xticks(x_ticks[1:])
+
+
 
             if spikes is True:
                 for i in range(len(chosen_neurons)):
@@ -553,22 +619,20 @@ class Neurons:
                     ax.scatter(
                         pos_where_spiked,
                         h,
-                        color=(self.color if self.color is not None else "C1"),
+                        color=spikes_color,
                         alpha=0.5,
-                        s=2,
+                        s=spikes_size,
                         linewidth=0,
                     )
             ax.set_xlabel("Position / m")
-            ax.set_ylabel("Neurons")
 
             axes = ax
         ratinabox.utils.save_figure(fig, self.name + "_ratemaps", save=autosave)
 
         return fig, axes
 
-
     def plot_angular_rate_map(self, chosen_neurons="all", fig=None, ax=None, autosave=None):
-        """Plots the position-averaged firing rate map of the neuron as a function of head direction. To od this ist calculates the spatial receptive fields at many head directions and averages them over position (therefore it may be slow). 
+        """Plots the position-averaged firing rate map of the neuron as a function of head direction. To do this it calculates the spatial receptive fields at many head directions and averages them over position (therefore it may be slow). 
         Args:
             chosen_neurons (str, optional): The neurons to plot. Defaults to "all".
             fig, ax (_type_, optional): matplotlib fig, ax objects ot plot onto (optional).
@@ -583,6 +647,7 @@ class Neurons:
                 figsize=(2 * len(chosen_neurons), 2),
                 subplot_kw={"projection": "polar"},
             )
+        ax = np.array(ax).reshape(-1)
 
         # get rate maps at all head directions and all positions
         # the object will end up having shape (n_neurons, n_positions, n_headdirections)
@@ -608,19 +673,22 @@ class Neurons:
             ax[i].tick_params(pad=-20)
             ax[i].set_xticklabels(["E", "N", "W", "S"])
         
+        # for i, ax_ in enumerate(axes):
+        #     _, ax_ = self.Agent.Environment.plot_environment(
+        #         fig, ax_, autosave=False, **kwargs
+        #     )
+        
         ratinabox.utils.save_figure(fig, self.name + "_angularratemaps", save=autosave)
 
         return fig, ax 
     
-
     def save_to_history(self):
         cell_spikes = np.random.uniform(0, 1, size=(self.n,)) < (
             self.Agent.dt * self.firingrate
         )
         self.history["t"].append(self.Agent.t)
-        self.history["firingrate"].append(list(self.firingrate))
-        self.history["spikes"].append(list(cell_spikes))
-        
+        self.history["firingrate"].append(self.firingrate.tolist())
+        self.history["spikes"].append(cell_spikes.tolist())
 
     def reset_history(self):
         for key in self.history.keys():
@@ -744,6 +812,7 @@ class Neurons:
         chosen_neurons="all",
         fps=15,
         speed_up=1,
+        progress_bar=False,
         autosave=None,
         **kwargs,
     ):
@@ -756,8 +825,10 @@ class Neurons:
         Args:
             • t_end (_type_, optional): _description_. Defaults to None.
             • chosen_neurons: Which neurons to plot. string "10" or 10 will plot ten of them, "all" will plot all of them, "12rand" will plot 12 random ones. A list like [1,4,5] will plot cells indexed 1, 4 and 5. Defaults to "all".
+            • fps: frames per second of end video. Defaults to 15.
+            • speed_up: #times real speed animation should come out at. Defaults to 1.
+            • progress_bar: if True, a progress bar will be shown as the animation is created. Default to False.
 
-            • speed_up: #times real speed animation should come out at.
 
         Returns:
             animation
@@ -799,13 +870,18 @@ class Neurons:
             **kwargs,
         )
 
+        frames = int((t_end - t_start) / (dt * speed_up))
+        if progress_bar:
+            from tqdm import tqdm
+            frames = tqdm(range(frames), position=0, leave=True)
+
         from matplotlib import animation
 
         anim = matplotlib.animation.FuncAnimation(
             fig,
             animate_,
             interval=1000 * dt,
-            frames=int((t_end - t_start) / (dt * speed_up)),
+            frames=frames,
             blit=False,
             fargs=(fig, ax, chosen_neurons, t_start, t_end, dt, speed_up),
         )
@@ -846,7 +922,18 @@ class Neurons:
             chosen_neurons = list(chosen_neurons.astype(int))
 
         return chosen_neurons
-
+    
+    def get_history_arrays(self):
+        """Returns the history dataframe as a dictionary of numpy arrays (as opposed to lists). This getter-function only updates the self._history_arrays if the Agent/Neuron has updates since the last time it was called. This avoids expensive repeated conversion of lists to arrays during animations."""
+        if (self._last_history_array_cache_time != self.Agent.t): 
+            self._history_arrays = {}
+            self._last_history_array_cache_time = self.Agent.t
+            for key in self.history.keys():
+                try: #will skip if for any reason this key cannot be converted to an array, so you can still save random stuff into the history dict without breaking this function
+                    self._history_arrays[key] = np.array(self.history[key])
+                except: pass 
+        return self._history_arrays
+    
 
 """Specific subclasses """
 
@@ -1070,7 +1157,7 @@ class GridCells(Neurons):
     - truncnorm ----------------------------- (low, high, loc, scale)
     For example to get three modules of gridcells I could set params = {'gridscale_distribution':'modules', 'gridscale':(0.5, 1, 1.5)} which would give me three modules of grid cells with grid scales 0.5, 1 and 1.5. 
 
-    params['description'] gives the place cells model being used. Currently either rectified sum of three cosines "three_rectified_cosines" or a shifted sum of three cosines "three_shifted_cosines" (which is similar, just a little softer at the edges, see Solstad et al. 2006)
+    params['description'] gives the place cells model being used. Currently either rectified sum of three cosines "rectified_cosines" or a shifted sum of three cosines "shifted_cosines" (which is similar, just a little softer at the edges, see Solstad et al. 2006)
     
     List of functions:
         • get_state()
@@ -1080,14 +1167,15 @@ class GridCells(Neurons):
     """
 
     default_params = {
-        "n": 10,
-        "gridscale_distribution": "uniform",
-        "gridscale": (0.50, 1),
-        "orientation_distribution": "uniform",
-        "orientation": (0, 2 * np.pi), #radians 
+        "n": 30,
+        "gridscale_distribution": "modules",
+        "gridscale": (0.3, 0.5, 0.8),
+        "orientation_distribution": "modules",
+        "orientation": (0, 0.1, 0.2), #radians 
         "phase_offset_distribution": "uniform",
         "phase_offset": (0, 2 * np.pi), #degrees 
-        "description": "three_rectified_cosines",  # can also be "three_shifted_cosines" as in Solstad 2006 Eq. (2)
+        "description": "rectified_cosines",  # can also be "shifted_cosines" as in Solstad 2006 Eq. (2)
+        "width_ratio":4/(3*np.sqrt(3)), # (relevant only for "rectified_cosines") ratio of field_width to interfield_distance.
         "min_fr": 0,
         "max_fr": 1,
         "name": "GridCells",
@@ -1113,6 +1201,12 @@ class GridCells(Neurons):
             warnings.warn(
                 "the GridCell API has changed slightly, 'random_gridscales', 'random_orientations' and 'random_phase_offsets' are no longer accepted as parameters. Please use 'gridscale','gridscale_distribution','orientation','orientation_distribution','phase_offset' and 'phase_offset_distribution' instead. See docstring or 1.7.0 release notes for instructions."
             )
+        
+        if self.params["description"] == "three_rectified_cosines" or self.params["description"] == "three_shifted_cosines":
+            self.params["description"] = self.params["description"][6:] #remove the "three_" part of the description
+            warnings.warn(
+                f"the 'three_' prefix on the 'description' parameter is deprecated, in the future please use '{self.params['description']}' instead"
+            )
 
         # Initialise the gridscales
         if type(self.params["gridscale"]) in (
@@ -1137,7 +1231,7 @@ class GridCells(Neurons):
 
         # Initialise phase offsets for each grid cell
         if (type(self.params["phase_offset"]) in (list,np.ndarray,)
-            and len(np.array(self.params["phase_offset"]).shape) == 2
+            and len(np.array(self.params["phase_offset"]).shape) == self.Agent.Environment.D
         ):
             self.phase_offsets = np.array(self.params["phase_offset"])
             assert (
@@ -1147,40 +1241,41 @@ class GridCells(Neurons):
             self.phase_offsets = utils.distribution_sampler(
                 distribution_name=self.params["phase_offset_distribution"],
                 distribution_parameters=self.params["phase_offset"],
-                shape=(self.params["n"], 2),
+                shape=(self.params["n"], self.Agent.Environment.D),
             )
+            if self.Agent.Environment.dimensionality == "1D": 
+                self.phase_offsets = self.phase_offsets.reshape(-1) #make it a 1D array 
             if self.params["phase_offset_distribution"] == "grid":
-                self.phase_offsets = self.set_phase_offsets_on_grid()
+                self.phase_offsets = self.set_phase_offsets_on_grid() # I think this only works in 2D 
 
-        # Initialise orientations for each grid cell
-        if type(self.params["orientation"]) in (
-            list,
-            np.ndarray,
-        ):
-            self.orientations = np.array(self.params["orientation"])
-            assert (
-                len(self.orientations) == self.params["n"]
-            ), "number of orientations supplied incompatible with number of neurons"
-        else:
-            self.orientations = utils.distribution_sampler(
-                distribution_name=self.params["orientation_distribution"],
-                distribution_parameters=self.params["orientation"],
-                shape=(self.params["n"],),
-            )
+        if self.Agent.Environment.dimensionality == "2D":
+            # Initialise orientations for each grid cell, only relevant in 2D
+            if type(self.params["orientation"]) in (
+                list,
+                np.ndarray,
+            ):
+                self.orientations = np.array(self.params["orientation"])
+                assert (
+                    len(self.orientations) == self.params["n"]
+                ), "number of orientations supplied incompatible with number of neurons"
+            else:
+                self.orientations = utils.distribution_sampler(
+                    distribution_name=self.params["orientation_distribution"],
+                    distribution_parameters=self.params["orientation"],
+                    shape=(self.params["n"],),
+                )
 
-        # Initialise grid cells
-        assert (
-            self.Agent.Environment.dimensionality == "2D"
-        ), "grid cells only available in 2D"
-
-        w = []
-        for i in range(self.n):
-            w1 = np.array([1, 0])
-            w1 = utils.rotate(w1, self.orientations[i])
-            w2 = utils.rotate(w1, np.pi / 3)
-            w3 = utils.rotate(w1, 2 * np.pi / 3)
-            w.append(np.array([w1, w2, w3]))
-        self.w = np.array(w)
+            w = []
+            for i in range(self.n):
+                w1 = np.array([1, 0])
+                w1 = utils.rotate(w1, self.orientations[i])
+                w2 = utils.rotate(w1, np.pi / 3)
+                w3 = utils.rotate(w1, 2 * np.pi / 3)
+                w.append(np.array([w1, w2, w3]))
+            self.w = np.array(w)
+        
+        if self.description == "rectified_cosines":
+            assert self.width_ratio > 0 and self.width_ratio <= 1, "width_ratio must be between 0 and 1"
 
         if ratinabox.verbose is True:
             print(
@@ -1204,31 +1299,54 @@ class GridCells(Neurons):
         pos = np.array(pos)
         pos = pos.reshape(-1, pos.shape[-1])
 
-        # grid cells are modelled as the thresholded sum of three cosines all at 60 degree offsets
-        # vectors to grids cells "centred" at their (random) phase offsets
-        origin = self.gridscales.reshape(-1, 1) * self.phase_offsets / (2 * np.pi)
-        vecs = utils.get_vectors_between(origin, pos)  # shape = (N_cells,N_pos,2)
-        w1 = np.tile(np.expand_dims(self.w[:, 0, :], axis=1), reps=(1, pos.shape[0], 1))
-        w2 = np.tile(np.expand_dims(self.w[:, 1, :], axis=1), reps=(1, pos.shape[0], 1))
-        w3 = np.tile(np.expand_dims(self.w[:, 2, :], axis=1), reps=(1, pos.shape[0], 1))
-        gridscales = np.tile(
-            np.expand_dims(self.gridscales, axis=1), reps=(1, pos.shape[0])
-        )
-        phi_1 = ((2 * np.pi) / gridscales) * (vecs * w1).sum(axis=-1)
-        phi_2 = ((2 * np.pi) / gridscales) * (vecs * w2).sum(axis=-1)
-        phi_3 = ((2 * np.pi) / gridscales) * (vecs * w3).sum(axis=-1)
-
-        if self.description == "three_rectified_cosines":
-            firingrate = (1 / 3) * ((np.cos(phi_1) + np.cos(phi_2) + np.cos(phi_3)))
-            firingrate[firingrate < 0] = 0
-        elif self.description == "three_shifted_cosines":
-            firingrate = (2 / 3) * (
-                (1 / 3) * (np.cos(phi_1) + np.cos(phi_2) + np.cos(phi_3)) + (1 / 2)
+        if self.Agent.Environment.dimensionality == "2D":
+            # grid cells are modelled as the thresholded sum of three cosines all at 60 degree offsets
+            # vectors to grids cells "centred" at their (random) phase offsets
+            origin = self.gridscales.reshape(-1, 1) * self.phase_offsets / (2 * np.pi)
+            vecs = utils.get_vectors_between(origin, pos)  # shape = (N_cells,N_pos,2)
+            w1 = np.tile(np.expand_dims(self.w[:, 0, :], axis=1), reps=(1, pos.shape[0], 1))
+            w2 = np.tile(np.expand_dims(self.w[:, 1, :], axis=1), reps=(1, pos.shape[0], 1))
+            w3 = np.tile(np.expand_dims(self.w[:, 2, :], axis=1), reps=(1, pos.shape[0], 1))
+            gridscales = np.tile(
+                np.expand_dims(self.gridscales, axis=1), reps=(1, pos.shape[0])
             )
+            phi_1 = ((2 * np.pi) / gridscales) * (vecs * w1).sum(axis=-1)
+            phi_2 = ((2 * np.pi) / gridscales) * (vecs * w2).sum(axis=-1)
+            phi_3 = ((2 * np.pi) / gridscales) * (vecs * w3).sum(axis=-1)
 
+            if self.description == "rectified_cosines":
+                firingrate = (1 / 3) * ((np.cos(phi_1) + np.cos(phi_2) + np.cos(phi_3)))
+                
+                #calculate the firing rate at the width fraction then shift, scale and rectify at the level
+                a, b, c = np.array([1,0])@np.array([1,0]), np.array([np.cos(np.pi/3),np.sin(np.pi/3)])@np.array([1,0]), np.array([np.cos(np.pi/3),-np.sin(np.pi/3)])@np.array([1,0])
+                firing_rate_at_full_width = (1 / 3) * (np.cos(np.pi*self.width_ratio*a) + 
+                                             np.cos(np.pi*self.width_ratio*b) + 
+                                             np.cos(np.pi*self.width_ratio*c))
+                firing_rate_at_full_width = (1 / 3) * (2*np.cos(np.sqrt(3)*np.pi*self.width_ratio/2) + 1)
+                firingrate -= firing_rate_at_full_width
+                firingrate /= (1 - firing_rate_at_full_width)
+                firingrate[firingrate < 0] = 0
+            elif self.description == "shifted_cosines":
+                firingrate = (2 / 3) * (
+                    (1 / 3) * (np.cos(phi_1) + np.cos(phi_2) + np.cos(phi_3)) + (1 / 2)
+                )
+
+        elif self.Agent.Environment.dimensionality == "1D":
+            firingrate = np.cos(((2 * np.pi)/ self.gridscales) * pos - self.phase_offsets)
+            if self.description[-17:] == "rectified_cosines":
+                #calculate the firing rate at the width fraction then shift, scale and rectify at the level
+                firing_rate_at_full_width = np.cos(self.width_ratio * np.pi)
+                firingrate -= firing_rate_at_full_width
+                firingrate /= (1 - firing_rate_at_full_width)
+                firingrate[firingrate < 0] = 0
+            elif self.description[-15:] == "shifted_cosines":
+                firingrate = 0.5*(firingrate + 1)
+
+            firingrate = firingrate.T
         firingrate = (
             firingrate * (self.max_fr - self.min_fr) + self.min_fr
         )  # scales from being between [0,1] to [min_fr, max_fr]
+
         return firingrate
 
     def set_phase_offsets_on_grid(self):
@@ -1317,6 +1435,10 @@ class VectorCells(Neurons):
             Agent. The RatInABox Agent these cells belong to. 
             params (dict, optional). Defaults to {}.
         """
+
+        if type(self) == VectorCells:
+            raise RuntimeError("Cannot instantiate VectorCells on their own. Must be instantiated through one of the subclasses, e.g., ObjectVectorCells, FieldOfView_BVCs, etc.")
+
         assert (
             self.Agent.Environment.dimensionality == "2D"
         ), "Vector cells only possible in 2D"
@@ -1353,18 +1475,30 @@ class VectorCells(Neurons):
         self.sigma_angles = None
         self.sigma_distances = None
         
-
         # set the parameters of each cell. 
         (self.tuning_distances, 
          self.tuning_angles, 
          self.sigma_distances, 
          self.sigma_angles) = self.set_tuning_parameters(**self.params)
-        self.n = len(self.tuning_distances) #ensure n is correct
+
+        # records whether n was passed as a parameter.
+        if not hasattr(self, "_warn_if_n_changes"):
+            self._warn_if_n_changes = ("n" in params.keys() and params["n"] is not None)
+
+        # raises a warning if n was passed as a parameter, but will change.
+        if self._warn_if_n_changes:
+            dont_check_equality = (isinstance(self.params["cell_arrangement"], str) and self.params["cell_arrangement"].endswith("manifold"))
+            if dont_check_equality or self.n != len(self.tuning_distances):
+                warnings.warn(f"Ignoring 'n' parameter value ({params['n']}) that was passed, and setting number of {self.name} neurons to {len(self.tuning_distances)}, inferred from the cell arrangement parameter.")
+        
+        self.n = len(self.tuning_distances) # ensure n is correct
+ 
+
         self.firingrate = np.zeros(self.n)
         self.noise = np.zeros(self.n)
         self.cell_colors = None 
 
-    
+  
     def set_tuning_parameters(self, **kwargs):
         """Get the tuning parameters for the vector cells.
          Args:
@@ -1501,7 +1635,7 @@ class VectorCells(Neurons):
             facecolor = np.array(matplotlib.colors.to_rgba(facecolor))
             facecolor_array = np.tile(np.array(facecolor), (self.n, 1))
         else:
-            facecolor_array = self.cell_colors #made in child class init. Each cell can have a different plot color. 
+            facecolor_array = self.cell_colors.copy() #made in child class init. Each cell can have a different plot color. 
             # e.g. if cells are slective to different object types or however you like 
         facecolor_array[:, -1] = 0.7*np.maximum(
             0, np.minimum(1, fr / (0.5 * self.max_fr))
@@ -1530,6 +1664,8 @@ class BoundaryVectorCells(VectorCells):
         "n": 10,
         "name": "BoundaryVectorCells",
         "dtheta": 2, #angular resolution in degrees used for integration over all angles (smaller is more accurate but slower)
+        "max_fr": 1.0, # note the max_fr of a BVC is now computed analytically, and therefore reflects its maximal activity, regardless of the actual environment (see issue #110 for discussion)
+        "min_fr": 0.0,
     }
 
     def __init__(self, Agent, params={}):
@@ -1545,6 +1681,10 @@ class BoundaryVectorCells(VectorCells):
 
         self.params = copy.deepcopy(__class__.default_params)
         self.params.update(params)
+
+        # records whether n was passed as a parameter.
+        if not hasattr(self, "_warn_if_n_changes"):
+            self._warn_if_n_changes = ("n" in params.keys() and params["n"] is not None)
 
         super().__init__(Agent, self.params)
 
@@ -1569,16 +1709,13 @@ class BoundaryVectorCells(VectorCells):
         self.test_directions = np.array(test_directions)
         self.test_angles = np.array(test_angles)
         
-        
-        # calculate normalising constants for BVS firing rates in the current environment. Any extra walls you add from here onwards you add will likely push the firingrate up further.
-        locs = self.Agent.Environment.discretise_environment(dx=0.04)
-        locs = locs.reshape(-1, locs.shape[-1])
-        
-        self.cell_fr_norm = np.ones(self.n) #value for initialization
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            # ignores the warning raised during initialisation of the BVCs
-            self.cell_fr_norm = np.max(self.get_state(evaluate_at=None, pos=locs), axis=1)
+        # calculate maximum possible firing rates for each BVC to use as normalization values.
+        self.cell_fr_norm = utils.von_mises(
+            theta=self.test_angles.reshape(1, -1),
+            mu=0,
+            sigma=self.sigma_angles.reshape(-1, 1),
+            norm=1,
+        ).sum(axis=1)
 
         # list of colors for each cell, just used by `.display_vector_cells()` plotting function
         color = np.array(matplotlib.colors.to_rgba(self.color if self.color is not None else "C1")).reshape(1,-1)
@@ -1590,7 +1727,6 @@ class BoundaryVectorCells(VectorCells):
             )
         return
     
-
 
     def get_state(self, evaluate_at="agent", **kwargs):
         """
@@ -1897,9 +2033,15 @@ class ObjectVectorCells(VectorCells):
             self.Agent.Environment.dimensionality == "2D"
         ), "object vector cells only possible in 2D"
 
+        # records whether n was passed as a parameter.
+        if not hasattr(self, "_warn_if_n_changes"):
+            self._warn_if_n_changes = ("n" in params.keys() and params["n"] is not None)
+
         super().__init__(Agent, self.params)
 
         self.object_locations = self.Agent.Environment.objects["objects"]
+        if len(self.object_locations) == 0:
+            raise RuntimeError(f"Cannot initialize {self.params['name']}, as there are no objects in the environment.")
 
         self.tuning_types = None
 
@@ -2114,7 +2256,6 @@ class FieldOfViewOVCs(ObjectVectorCells):
             warnings.warn("For FieldOfViewOVCs you must specify the object type they are selective for with the 'object_tuning_type' parameter. This can be 'random' (each cell in the field of view chooses a random object type) or any integer (all cells have the same preference for this type). For now defaulting to params['object_tuning_type'] = 0.")
             self.params["object_tuning_type"] = 0
 
-
         self.params["reference_frame"] = "egocentric"
         assert self.params["cell_arrangement"] is not None, "cell_arrangement must be set for FOV Neurons"
 
@@ -2142,12 +2283,16 @@ class AgentVectorCells(VectorCells):
 
     def __init__(self, 
                  Agent,
-                 Other_Agent = None, #this must be another riab Agent object
+                 Other_Agent, #this must be another riab Agent object
                  params={}):
 
         self.Agent = Agent
         self.params = copy.deepcopy(__class__.default_params)
         self.params.update(params)
+
+        # records whether n was passed as a parameter.
+        if not hasattr(self, "_warn_if_n_changes"):
+            self._warn_if_n_changes = ("n" in params.keys() and params["n"] is not None)
 
         super().__init__(Agent, self.params)
 
@@ -2377,6 +2522,8 @@ class HeadDirectionCells(Neurons):
                 [self.params["angular_spread_degrees"] * np.pi / 180] * self.n
             )
         if self.Agent.Environment.dimensionality == "1D":
+            if "n" in params.keys() and params["n"] != 2:
+                warnings.warn(f"Ignoring 'n' parameter value ({params['n']}) that was passed for {self.params['name']}. Only 2 head direction cells are needed for a 1D environment.")
             self.n = 2  # one left, one right
         self.params["n"] = self.n
         super().__init__(Agent, self.params)
@@ -2584,7 +2731,11 @@ class SpeedCell(Neurons):
         self.params.update(params)
 
         super().__init__(Agent, self.params)
+
+        if "n" in params.keys() and params["n"] != 1:
+            warnings.warn(f"Ignoring 'n' parameter value ({params['n']}) that was passed for {self.name}. Only 1 speed cell is needed.")
         self.n = 1
+
         self.one_sigma_speed = self.Agent.speed_mean + self.Agent.speed_std
 
         if ratinabox.verbose is True:
@@ -2747,7 +2898,7 @@ class FeedForwardLayer(Neurons):
         self.inputs[name]["layer"] = input_layer
         self.inputs[name]["w"] = w
         self.inputs[name]["w_init"] = w.copy()
-        self.inputs[name]["I"] = I
+        self.inputs[name]["I"] = I #stores the last input to this layer, only updated when "evaluate_at"=="last" i.e. not during plotting 
         self.inputs[name]["n"] = input_layer.n  # a copy for convenience
         self.inputs[name]["recurrent"] = recurrent
         for key, value in kwargs.items():
@@ -2786,9 +2937,9 @@ class FeedForwardLayer(Neurons):
             w = inputlayer["w"]
             if evaluate_at == "last":
                 I = inputlayer["layer"].firingrate
+                inputlayer["I"] = I
             else:  # kick can down the road let input layer decide how to evaluate the firingrate. this is core to feedforward layer as this recursive call will backprop through the upstraem layers until it reaches a "core" (e.g. place cells) layer which will then evaluate the firingrate.
                 I = inputlayer["layer"].get_state(evaluate_at, max_recurrence=pass_max_recurrence, **kwargs)
-            inputlayer["I_temp"] = I
             V += np.matmul(w, I)
 
         biases = self.biases
@@ -2856,7 +3007,7 @@ class RandomSpatialNeurons(Neurons):
                     print("Geodesic wall geometry only possible in environments with one or no additional walls. Using 'line_of_sight' instead. If this is slow, consider trying 'euclidean'")
                     self.wall_geometry = 'line_of_sight'
 
-        # We densely sample locations across the environment and then distance covariance matrix using a squared exponential kernel. Using this covariance we sample targets   (according to an exponential because it is way too expensive to use the default dx=0.01 we have to initially create a lower resolution array of poionts. We will sample from the prior over these points and then, for any other points, "infer" the firing rate from these samples. For all other points we'll take the mean of the posterior based on these samples.
+        # We densely sample locations across the environment and then distance covariance matrix using a squared exponential kernel. Using this covariance we sample targets   (according to an exponential because it is way too expensive to use the default dx=0.01 we have to initially create a lower resolution array of points. We will sample from the prior over these points and then, for any other points, "infer" the firing rate from these samples. For all other points we'll take the mean of the posterior based on these samples.
 
         assert self.lengthscale >= 0.02, "lengthscale must be greater than 0.02 m"
         self.X = self.Agent.Environment.discretise_environment(dx=min(0.05,self.lengthscale)) 

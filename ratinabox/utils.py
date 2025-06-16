@@ -66,10 +66,10 @@ def vector_intercepts(vector_list_a, vector_list_b, return_collisions=False):
     vector_list_a = vector_list_a.reshape(-1, 2, 2)
     vector_list_b = vector_list_b.reshape(-1, 2, 2)
     vector_list_a = vector_list_a + np.random.normal(
-        scale=1e-6, size=vector_list_a.shape
+        scale=1e-9, size=vector_list_a.shape
     )
     vector_list_b = vector_list_b + np.random.normal(
-        scale=1e-6, size=vector_list_b.shape
+        scale=1e-9, size=vector_list_b.shape
     )
 
     N_a = vector_list_a.shape[0]
@@ -109,6 +109,15 @@ def vector_intercepts(vector_list_a, vector_list_b, return_collisions=False):
             * (intercepts[:, :, 1] < 1)
         )
         return direct_collision
+    #do both
+    elif return_collisions == "as_well":
+        direct_collision = (
+            (intercepts[:, :, 0] > 0)
+            * (intercepts[:, :, 0] < 1)
+            * (intercepts[:, :, 1] > 0)
+            * (intercepts[:, :, 1] < 1)
+        )
+        return intercepts, direct_collision
     else:
         return intercepts
 
@@ -267,6 +276,7 @@ def get_angle(segment, is_array=False):
 
     return angs
 
+
 def get_bearing(segment, is_array=False):
     """Given a 'segment' (either 2x2 start and end positions or 2x1 direction vector)
          returns the 'bearing' of this segment modulo 2pi measured CLOCKwise from North e.g. [0,1]--> 0, [1,0]--> pi/2, ...[-1,0] --> 3pi/2. This uses the get_angle() function since...
@@ -288,7 +298,7 @@ def rotate(vector, theta):
     """rotates a vector shape (2,) anticlockwise by angle theta .
     Args:
         vector (array): the 2d vector
-        theta (flaot): the rotation angle
+        theta (flaot): the rotation angle, radians
     """
     R = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])
     vector_new = np.matmul(R, vector)
@@ -362,20 +372,22 @@ def ornstein_uhlenbeck(dt, x, drift=0.0, noise_scale=0.2, coherence_time=5.0):
     return dx
 
 
-def interpolate_and_smooth(x, y, sigma=None):
+def interpolate_and_smooth(x, y, sigma=None, resolution_increase=10):
     """Interpolates with cublic spline x and y to 10x resolution then smooths these with a gaussian kernel of width sigma.
     Currently this only works for 1-dimensional x.
     Args:
         x
         y
         sigma
+        resolution_increase
     Returns (x_new,y_new)
     """
     from scipy.ndimage.filters import gaussian_filter1d
     from scipy.interpolate import interp1d
 
     y_cubic = interp1d(x, y, kind="cubic")
-    x_new = np.arange(x[0], x[-1], (x[1] - x[0]) / 10)
+    # x_new = np.arange(x[0], x[-1], (x[1] - x[0]) / resolution_increase)
+    x_new = np.linspace(x[0], x[-1], len(x) * resolution_increase)
     y_interpolated = y_cubic(x_new)
     if sigma is not None:
         y_smoothed = gaussian_filter1d(
@@ -384,6 +396,18 @@ def interpolate_and_smooth(x, y, sigma=None):
         return x_new, y_smoothed
     else:
         return x_new, y_interpolated
+
+
+def get_rayleigh_sigma(mean):
+    """Returns the standard deviation (sigma) of a Rayleigh distribution based on its mean"""
+    sigma = mean / np.sqrt(np.pi / 2)
+    return sigma
+
+
+def get_rayleigh_mean(sigma):
+    """Returns the mean of a Rayleigh distribution based on its standard deviation (sigma)."""
+    mean = sigma * np.sqrt(np.pi / 2)
+    return mean
 
 
 def normal_to_rayleigh(x, sigma=1):
@@ -521,7 +545,7 @@ def distribution_sampler(
 """Plotting functions"""
 
 
-def bin_data_for_histogramming(data, extent, dx, weights=None, norm_by_bincount=False):
+def bin_data_for_histogramming(data, extent, dx, weights=None, norm_by_bincount=False, return_zero_bins=False):
     """Bins data ready for plotting.
     So for example if the data is 1D the extent is broken up into bins (leftmost edge = extent[0], rightmost edge = extent[1]) and then data is
     histogrammed into these bins.
@@ -535,16 +559,20 @@ def bin_data_for_histogramming(data, extent, dx, weights=None, norm_by_bincount=
 
     Returns:
         (heatmap,bin_centres): if 1D
-        (heatmap): if 2D
+        (heatmap): if 2D --> you should be able ot infer the bin centres from the extent and dx you passed 
+            in either case if return_zero_bins is True, the zero_bins array is also returned as the last element of the tuple
     """
     if len(extent) == 2:  # dimensionality = "1D"
         bins = np.arange(extent[0], extent[1] + dx, dx)
         heatmap, xedges = np.histogram(data, bins=bins, weights=weights)
         if norm_by_bincount:
             bincount = np.histogram(data, bins=bins)[0]
-            bincount[bincount == 0] = 1
+            zero_bins = (bincount == 0)
+            bincount[zero_bins] = 1
             heatmap = heatmap / bincount
         centres = (xedges[1:] + xedges[:-1]) / 2
+        if return_zero_bins:
+            return (heatmap, centres, zero_bins)
         return (heatmap, centres)
 
     elif len(extent) == 4:  # dimensionality = "2D"
@@ -555,11 +583,13 @@ def bin_data_for_histogramming(data, extent, dx, weights=None, norm_by_bincount=
         )
         if norm_by_bincount:
             bincount, xedges, yedges = np.histogram2d(
-                data[:, 0], data[:, 1], bins=[bins_x, bins_y]
-            )
-            bincount[bincount == 0] = 1
+                data[:, 0], data[:, 1], bins=[bins_x, bins_y])
+            zero_bins = (bincount == 0)
+            bincount[zero_bins] = 1
             heatmap = heatmap / bincount
         heatmap = heatmap.T[::-1, :]
+        if return_zero_bins:
+            return (heatmap, zero_bins.T[::-1, :])
         return heatmap
 
 
@@ -570,6 +600,7 @@ def mountain_plot(
     xlabel="",
     ylabel="",
     xlim=None,
+    nan_bins=None,
     fig=None,
     ax=None,
     norm_by="max",
@@ -577,6 +608,7 @@ def mountain_plot(
     width=ratinabox.MOUNTAIN_PLOT_WIDTH_MM,
     overlap=ratinabox.MOUNTAIN_PLOT_OVERLAP,
     shift=ratinabox.MOUNTAIN_PLOT_SHIFT_MM,
+    shade_kwargs=dict(),
     **kwargs,
 ):
     """Make a mountain plot.
@@ -591,6 +623,7 @@ def mountain_plot(
         xlabel (str, optional): x axis label. Defaults to "".
         ylabel (str, optional): y axis label. Defaults to "".
         xlim (_type_, optional): fix xlim to this is desired. Defaults to None.
+        nan_bins (array, optional): Optionally pass a boolean array of the same shape as X which is True where you want to plot a gap in the mountain plot. Defaults to None (ie skipped).
         fig (_type_, optional): fig to plot over if desired. Defaults to None.
         ax (_type_, optional): ax to plot on if desider. Defaults to None.
         norm_by: what to normalise each line of the mountainplot by.
@@ -599,6 +632,7 @@ def mountain_plot(
         width: width of figure in mm
         overlap: how much each plots overlap by (> 1 = overlap, < 1 = no overlap) (overlap is not relevant if you also set "norm_by")
         shift: distance between lines in mm
+        shade_kwargs: keyword arguments passed to the fill_between function for the mountain plot shading
 
     Returns:
         fig, ax: _description_
@@ -606,8 +640,10 @@ def mountain_plot(
     c = color if color is not None else "C1"
     c = np.array(matplotlib.colors.to_rgb(c))
     fc = 0.3 * c + (1 - 0.3) * np.array([1, 1, 1])  # convert rgb+alpha to rgb
-
-    NbyX = overlap * NbyX / (np.max(np.abs(NbyX)) if norm_by == "max" else norm_by)
+    norm = np.max(np.abs(NbyX)) if norm_by == "max" else norm_by
+    global_shift = kwargs.get("global_shift", 0) #any additional shift to add to each of the lines
+    if norm <= 1e-6: norm=100 #large
+    NbyX = overlap * NbyX / norm
     if fig is None and ax is None:
         w, h = width / 25, len(NbyX) * shift / 25
         # fig, ax = plt.subplots()
@@ -621,12 +657,12 @@ def mountain_plot(
         )
 
     zorder = 1
+    X_ = X.copy()
+    if nan_bins is not None: X_[nan_bins] = np.nan
     for i in range(len(NbyX)):
-        ax.plot(X, NbyX[i] + i + 1, c=c, zorder=zorder, lw=linewidth)
+        ax.plot(X_, NbyX[i] + i + 1 + global_shift, c=c, zorder=zorder, lw=linewidth)
         zorder -= 0.01
-        ax.fill_between(
-            X, NbyX[i] + i + 1, i + 1, color=fc, zorder=zorder, alpha=0.8, linewidth=0
-        )
+        ax.fill_between(X_, NbyX[i] + i + 1 + global_shift, i + 1 + global_shift, color=fc, zorder=zorder, alpha=0.8, linewidth=0, **shade_kwargs)
         zorder -= 0.01
     ax.spines["left"].set_bounds(1, len(NbyX))
     ax.spines["bottom"].set_position(("outward", 1))
@@ -643,7 +679,6 @@ def mountain_plot(
     ax.set_ylim()
     if xlim is not None:
         ax.set_xlim(right=xlim)
-
     return fig, ax
 
 
@@ -655,6 +690,7 @@ def save_figure(
         "mp4",
     ],
     save=True,
+    **save_kwargs,
 ):
     """
     Saves a figure in a dated-folder with the current time appended to save_title, as both '.png' and '.svg'. Same for animations but as ".gif" and ".mp4".
@@ -712,7 +748,7 @@ def save_figure(
         return
 
     # make today-specific directory inside figure directory
-    today = datetime.strftime(datetime.now(), "%d_%m_%y")
+    today = datetime.strftime(datetime.now(), "%y_%m_%d")
     figdir = os.path.join(figure_directory, f"{today}")
     os.makedirs(figdir, exist_ok=True)
 
@@ -733,7 +769,9 @@ def save_figure(
                     break
                 else:
                     break
-            fig.savefig(f"{path}.{filetype}", bbox_inches="tight")
+            save_kwargs_ = {'dpi':300, 'bbox_inches':'tight'}
+            save_kwargs_.update(save_kwargs)
+            fig.savefig(f"{path}.{filetype}", **save_kwargs_)
 
     elif type(fig) == matplotlib.animation.FuncAnimation:
         file_type = "Animation"
@@ -748,7 +786,9 @@ def save_figure(
                     break
                 else:
                     break
-            fig.save(f"{path}.{filetype}", dpi=300)
+            save_kwargs_ = {'dpi':300}
+            save_kwargs_.update(save_kwargs)
+            fig.save(f"{path}.{filetype}", **save_kwargs_)
 
     print(f"{file_type} saved to {os.path.abspath(path)}.{save_types}")
 

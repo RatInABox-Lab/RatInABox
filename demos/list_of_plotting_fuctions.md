@@ -76,7 +76,7 @@ Makes an animation of the firing rates timeseries
 <img src="../.images/plotting_examples/animate_rate_timeseries.gif" height="150">
 
 
-## `Neurons.plot_ratemap()`
+## `Neurons.plot_rate_map()`
 Depending on the parameters passed this function will either 
 
 1. Analytically calculate the rate map (`method = 'analytic'`),
@@ -84,19 +84,19 @@ Depending on the parameters passed this function will either
 3. Plot the observed spikes (`spikes=True`). 
 As an example here we show this function for a set of 3 (two dimensional) grid cells and 10 (one-dimensional) place cells. 
 
-* `Neurons.plot_ratemap(method=`analytic`)
+* `Neurons.plot_rate_map(method=`analytic`)
 
 <img src="../.images/plotting_examples/gc_plotrm.svg" height="150">
 
 <img src="../.images/plotting_examples/pc1d_plotrm.svg" height="150">
 
-* `Neurons.plot_ratemap(method=`history`)
+* `Neurons.plot_rate_map(method=`history`)
 
 <img src="../.images/plotting_examples/gc_plotrm_history.svg" height="150">
 
 <img src="../.images/plotting_examples/pc1d_plotrm_history.svg" height="150">
 
-* `Neurons.plot_ratemap(method=`neither`, spikes=True)
+* `Neurons.plot_rate_map(method=`neither`, spikes=True)
 
 <img src="../.images/plotting_examples/gc_plotrm_spikes.svg" height="150">
 
@@ -104,7 +104,7 @@ As an example here we show this function for a set of 3 (two dimensional) grid c
 
 
 
-## `PlaceCells.plot_place_cell_centres()`
+## `PlaceCells.plot_place_cell_locations()`
 
 Scatters where the place cells are centres 
 

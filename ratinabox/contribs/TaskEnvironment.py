@@ -199,8 +199,8 @@ class TaskEnvironment(Environment, pettingzoo.ParallelEnv):
             # Add the agent's observation space to the environment's
             # observation spaces dict
             ext = [self.extent[i : i + 2] for i in np.arange(0, len(self.extent), 2)]
-            lows, highs = np.array(list(zip(*ext)), dtype=np.float_)
-            self.observation_spaces[name] = Box(low=lows, high=highs, dtype=np.float_)
+            lows, highs = np.array(list(zip(*ext)), dtype=float)
+            self.observation_spaces[name] = Box(low=lows, high=highs, dtype=float)
             self.observation_lambda[name] = lambda agent: agent.pos
 
             # Attach a reward cache for the agent

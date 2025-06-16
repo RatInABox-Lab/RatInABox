@@ -10,7 +10,7 @@ import pandas as pd
 
 
 import warnings
-from typing import Union
+from typing import Union, List
 
 from ratinabox import utils
 from ratinabox.Agent import Agent
@@ -73,7 +73,7 @@ class Environment:
         "boundary": None,  # coordinates [[x0,y0],[x1,y1],...] of the corners of a 2D polygon bounding the Env (if None, Env defaults to rectangular). Corners must be ordered clockwise or anticlockwise, and the polygon must be a 'simple polygon' (no holes, doesn't self-intersect).
         "walls": [],  # a list of loose walls within the environment. Each wall in the list can be defined by it's start and end coords [[x0,y0],[x1,y1]]. You can also manually add walls after init using Env.add_wall() (preferred).
         "holes": [],  # coordinates [[[x0,y0],[x1,y1],...],...] of corners of any holes inside the Env. These must be entirely inside the environment and not intersect one another. Corners must be ordered clockwise or anticlockwise. holes has 1-dimension more than boundary since there can be multiple holes
-        "objects": [], #a list of objects within the environment. Each object is defined by it's position [[x0,y0],[x1,y1],...]. By default all objects are type 0, alternatively you can manually add objects after init using Env.add_object(object, type) (preferred).
+        "objects": [], # a list of objects within the environment. Each object is defined by its position [[x0,y0],[x1,y1],...] for 2D environments and [[x0],[x1],...] for 1D environments. By default all objects are type 0, alternatively you can manually add objects after init using Env.add_object(object, type) (preferred).
     }
 
     def __init__(self, params={}):
@@ -89,7 +89,7 @@ class Environment:
         utils.update_class_params(self, self.params, get_all_defaults=True)
         utils.check_params(self, params.keys())
 
-        self.Agents : list[Agent] = []  # each new Agent will append itself to this list
+        self.Agents : List[Agent] = []  # each new Agent will append itself to this list
         self.agents_dict = {} # this is a dictionary which allows you to lookup a agent by name
 
         self.name = self.params["name"]
@@ -97,7 +97,20 @@ class Environment:
         if self.dimensionality == "1D":
             self.D = 1
             self.extent = np.array([0, self.scale])
-            self.centre = np.array([self.scale / 2, self.scale / 2])
+            self.centre = np.array([self.scale / 2])
+            if self.boundary is not None:
+                warnings.warn(
+                    "You have passed a boundary into a 1D environment. This is ignored."
+                )
+                self.boundary = None
+
+            for feature_for_2D_only in ["holes", "walls"]:
+                if len(getattr(self, feature_for_2D_only)) > 0:
+                    warnings.warn(
+                        f"You have passed {feature_for_2D_only} into a 1D environment. "
+                        "This is ignored."
+                    )
+                    setattr(self, feature_for_2D_only, list())
 
         elif self.dimensionality == "2D":
             self.D = 2
@@ -153,18 +166,6 @@ class Environment:
                     self.holes_polygons.append(shapely.Polygon(h))
             self.boundary_polygon = shapely.Polygon(self.boundary)
 
-            # make list of "objects" within the Env
-            self.passed_in_objects = copy.deepcopy(self.objects)
-            self.objects = {
-                "objects": np.empty((0, 2)),
-                "object_types": np.empty(0, int),
-            }
-            self.n_object_types = 0
-            self.object_colormap = "rainbow_r"
-            if len(self.passed_in_objects) > 0:
-                for o in self.passed_in_objects:
-                    self.add_object(o, type=0)
-
             # make some other attributes
             left = min([c[0] for c in b])
             right = max([c[0] for c in b])
@@ -175,12 +176,35 @@ class Environment:
                 [left, right, bottom, top]
             )  # [left,right,bottom,top] ]the "extent" which will be plotted, always a rectilinear rectangle which will be the extent of all matplotlib plots
 
+        # make list of "objects" within the Env
+        self.passed_in_objects = copy.deepcopy(self.objects)
+        self.objects = {
+            "objects": np.empty((0, self.D)),
+            "object_types": np.empty(0, int),
+        }
+        self.n_object_types = 0
+        self.object_colormap = "rainbow_r"
+        if len(self.passed_in_objects) > 0:
+            for o in self.passed_in_objects:
+                self.add_object(o, type=0)
+
         # save some prediscretised coords (useful for plotting rate maps later)
         self.discrete_coords = self.discretise_environment(dx=self.dx)
         self.flattened_discrete_coords = self.discrete_coords.reshape(
             -1, self.discrete_coords.shape[-1]
         )
-
+        # dimensions dictionary
+        if self.D == 1:
+            self.dimensions = {'x' : self.discrete_coords[:,0]}
+            self.dim_names = ['x']
+            self.rate_map_dim_order = ['x']
+        elif self.D == 2:
+            self.dimensions = {
+                'y' : self.discrete_coords[:,0,1],
+                'x' : self.discrete_coords[0,:,0],
+                }
+            self.dim_names = ['x','y'] # this is ordering of the dimensions in, for example, the agents position
+            self.rate_map_dim_order = ['y','x'] # this is the order of the dimensions in rate maps (y then x)
         if ratinabox.verbose is True:
             print(
                 f"\nAn Environment has been initialised with parameters: {self.params}. Use Env.add_wall() to add a wall into the Environment. Plot Environment using Env.plot_environment()."
@@ -197,17 +221,17 @@ class Environment:
         return all_default_params
 
     
-    def agent_lookup(self, agent_names:Union[str, list[str]]  = None) -> list[Agent]:
+    def agent_lookup(self, agent_names:Union[str, List[str]]  = None) -> List[Agent]:        
         '''
         This function will lookup a agent by name and return it. This assumes that the agent has been 
         added to the Environment.agents list and that each agent object has a unique name associated with it.
 
 
         Args:
-            agent_names (str, list[str]): the name of the agent you want to lookup. 
+            agent_names (str, List[str]): the name of the agent you want to lookup. 
         
         Returns:
-            agents (list[Agent]): a list of agents that match the agent_names. If agent_names is a string, then a list of length 1 is returned. If agent_names is None, then None is returned
+            agents (List[Agent]): a list of agents that match the agent_names. If agent_names is a string, then a list of length 1 is returned. If agent_names is None, then None is returned
 
         '''
 
@@ -217,7 +241,7 @@ class Environment:
         if isinstance(agent_names, str):
             agent_names = [agent_names]
 
-        agents: list[Agent] = []
+        agents: List[Agent] = []
 
         for agent_name in agent_names:
             agent = self._agent_lookup(agent_name)
@@ -280,22 +304,19 @@ class Environment:
             if name in self.agents_dict:
                 raise ValueError(f"A agent with the name {agent.name}  and  {name} already exists. Please choose a unique name for each agent.\n\
                             This can cause trouble with lookups")
-                
             else:
                 agent.name = name 
                 warnings.warn(f"A agent with the name {agent.name} already exists. Renaming to {name}")
         
-
         self.Agents.append(agent)
         self.agents_dict[agent.name] = agent
 
     def remove_agent(self, agent: Union[str, Agent]  = None):
-
         """
-            A function to remove a agent from the Environment.Agents list and the Environment.agents_dict dictionary
+        A function to remove a agent from the Environment.Agents list and the Environment.agents_dict dictionary
 
-            Args:
-                agent (str|Agent): the name of the agent you want to remove or the agent object itself
+        Args:
+            agent (str|Agent): the name of the agent you want to remove or the agent object itself
         """
 
         if isinstance(agent, str):
@@ -306,7 +327,9 @@ class Environment:
 
         self.Agents.remove(agent)
         self.agents_dict.pop(agent.name)
-  
+        
+    
+
     def add_wall(self, wall):
         """Add a wall to the (2D) environment.
         Extends self.walls array to include one new wall.
@@ -351,8 +374,8 @@ class Environment:
             type (_type_): The "type" of the object, any integer. By default ("new") a new type is made s.t. the first object is type 0, 2nd type 1... n'th object will be type n-1, etc.... If type == "same" then the added object has the same type as the last
 
         """
-        object = np.array(object).reshape(1, 2)
-        assert object.shape[1] == 2
+        object = np.array(object).reshape(1, -1)
+        assert object.shape[1] == self.D
 
         if type == "new":
             type = self.n_object_types
@@ -378,12 +401,14 @@ class Environment:
                          fig=None, 
                          ax=None, 
                          gridlines=False,
+                         plot_objects=True,
                          autosave=None,
                          **kwargs,):
-        """Plots the environment on the x axis, dark grey lines show the walls
+        """Plots the environment (in 1D space is plotted along the x axis), dark grey lines show the walls
         Args:
             fig,ax: the fig and ax to plot on (can be None)
             gridlines: if True, plots gridlines
+            plot_objects: if True, plots objects
             autosave: if True, will try to save the figure to the figure directory `ratinabox.figure_directory`. Defaults to None in which case looks for global constant ratinabox.autosave_plots
         Returns:
             fig, ax: the environment figures, can be used for further downstream plotting.
@@ -398,20 +423,39 @@ class Environment:
                     )
                 )
             ax.set_xlim(left=extent[0], right=extent[1])
-            ax.spines["left"].set_color("none")
-            ax.spines["right"].set_color("none")
+            ax.spines["left"].set_visible(False)
+            ax.spines["right"].set_visible(False)
             ax.spines["bottom"].set_position("zero")
-            ax.spines["top"].set_color("none")
+            ax.spines["top"].set_visible(False)
             ax.set_yticks([])
             ax.set_xticks([extent[0], extent[1]])
             ax.set_xlabel("Position / m")
+
+            # plot objects, if applicable
+            if plot_objects:
+                object_cmap = matplotlib.colormaps[self.object_colormap]
+                for i, object in enumerate(self.objects["objects"]):
+                    object_color = object_cmap(
+                        self.objects["object_types"][i]
+                        / (self.n_object_types - 1 + 1e-8)
+                    )
+                    ax.scatter(
+                        object[0],
+                        0,
+                        facecolor=[0, 0, 0, 0],
+                        edgecolors=object_color,
+                        s=10,
+                        zorder=2,
+                        marker="o",
+                    )
 
         if self.dimensionality == "2D":
             extent, walls = self.extent, self.walls
             if fig is None and ax is None:
                 fig, ax = plt.subplots(
-                    figsize=(3 * (extent[1] - extent[0]), 3 * (extent[3] - extent[2]))
+                    figsize=(ratinabox.FIGURE_INCH_PER_ENVIRONMENT_METRE * (extent[1] - extent[0]), ratinabox.FIGURE_INCH_PER_ENVIRONMENT_METRE * (extent[3] - extent[2]))
                 )
+            fig.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=None, hspace=None) #remove border
             # plot background/arena
             background = matplotlib.patches.Polygon(
                 xy=np.array(self.boundary), facecolor=ratinabox.LIGHTGREY, zorder=-1
@@ -473,10 +517,8 @@ class Environment:
                     zorder=2,
                 )
 
-            # plot objects if there isn't a kwarg setting it to false
-            if 'plot_objects' in kwargs and kwargs['plot_objects'] == False:
-                pass
-            else: 
+            # plot objects, if applicable
+            if plot_objects: 
                 object_cmap = matplotlib.colormaps[self.object_colormap]
                 for i, object in enumerate(self.objects["objects"]):
                     object_color = object_cmap(
@@ -522,7 +564,6 @@ class Environment:
         Args:
             n (int): number of features
             method: "uniform", "uniform_jittered" or "random" for how points are distributed
-            true_random: if True, just randomly scatters point
         Returns:
             array: (n x dimensionality) of positions
         """
@@ -541,7 +582,8 @@ class Environment:
             return positions
 
         elif self.dimensionality == "2D":
-            if method == "random":
+            if method == "random": 
+                # random scatter positions and check they aren't in holes etc. 
                 positions = np.zeros((n, 2))
                 positions[:, 0] = np.random.uniform(
                     self.extent[0], self.extent[1], size=n
@@ -549,33 +591,46 @@ class Environment:
                 positions[:, 1] = np.random.uniform(
                     self.extent[2], self.extent[3], size=n
                 )
+                if (self.is_rectangular is False) or (self.has_holes is True):
+                # in this case, the positions you have sampled within the extent of the environment may not actually fall within it's legal area (i.e. they could be outside the polygon boundary or inside a hole). Brute force this by randomly resampling these points until all fall within the env.
+                    for i, pos in enumerate(positions):
+                        if self.check_if_position_is_in_environment(pos) == False:
+                            pos = self.sample_positions(n=1, method="random").reshape(
+                                -1
+                            )  # this recursive call must pass eventually, assuming the env is sufficiently large. this is why we don't need a while loop
+                            positions[i] = pos
             elif method[:7] == "uniform":
+                # uniformly scatter positions on a square grid and check they aren't in holes etc.
                 ex = self.extent
                 area = (ex[1] - ex[0]) * (ex[3] - ex[2])
+                if (self.has_holes is True): 
+                    area -= sum(shapely.geometry.Polygon(hole).area for hole in self.holes)
                 delta = np.sqrt(area / n)
-                x = np.arange(ex[0] + delta / 2, ex[1] - delta / 2 + 1e-6, delta)
-                y = np.arange(ex[2] + delta / 2, ex[3] - delta / 2 + 1e-6, delta)
+                x = np.linspace(ex[0] + delta /2, ex[1] - delta /2, int((ex[1] - ex[0])/delta))
+                y = np.linspace(ex[2] + delta /2, ex[3] - delta /2, int((ex[3] - ex[2])/delta))
                 positions = np.array(np.meshgrid(x, y)).reshape(2, -1).T
+                
+                if (self.is_rectangular is False) or (self.has_holes is True):
+                    # in this case, the positions you have sampled within the extent of the environment may not actually fall within it's legal area (i.e. they could be outside the polygon boundary or inside a hole). delete those that do for resampling later. 
+                    delpos = [i for (i,pos) in enumerate(positions) if self.check_if_position_is_in_environment(pos) == False]
+                    positions = np.delete(positions,delpos,axis=0) # this will delete illegal positions
+
                 n_uniformly_distributed = positions.shape[0]
                 if method[7:] == "_jitter":
+                    # add jitter to the uniformly distributed positions
                     positions += np.random.uniform(
-                        -0.45 * delta, 0.45 * delta, positions.shape
-                    )
+                        -0.45 * delta, 0.45 * delta, positions.shape 
+                    ) 
                 n_remaining = n - n_uniformly_distributed
                 if n_remaining > 0:
-                    positions_remaining = self.sample_positions(
-                        n=n_remaining, method="random"
+                    # sample remaining from available positions with further jittering (delta = delta/2)
+                    positions_remaining = np.array([positions[i] for i in np.random.choice(range(len(positions)),n_remaining, replace=True)])
+                    delta /= 2
+                    positions_remaining += np.random.uniform(
+                        -0.45 * delta, 0.45 * delta, positions_remaining.shape
                     )
                     positions = np.vstack((positions, positions_remaining))
 
-            if (self.is_rectangular is False) or (self.has_holes is True):
-                # in this case, the positions you have sampled within the extent of the environment may not actually fall within it's legal area (i.e. they could be outside the polygon boundary or inside a hole). Brute force this by randomly resampling these points until all fall within the env.
-                for i, pos in enumerate(positions):
-                    if self.check_if_position_is_in_environment(pos) == False:
-                        pos = self.sample_positions(n=1, method="random").reshape(
-                            -1
-                        )  # this recursive call must pass eventually, assuming the env is sufficiently large. this is why we don't need a while loop
-                        positions[i] = pos
             return positions
 
     def discretise_environment(self, dx=None):
@@ -595,9 +650,9 @@ class Environment:
         if self.dimensionality == "2D":
             [miny, maxy] = list(self.extent[2:])
             self.y_array = np.arange(miny + dx / 2, maxy, dx)[::-1]
-            x_mesh, y_mesh = np.meshgrid(self.x_array, self.y_array)
+            x_mesh, y_mesh = np.meshgrid(self.x_array, self.y_array) # note meshgrid flips inputs so that y is the first axis
             coordinate_mesh = np.array([x_mesh, y_mesh])
-            discrete_coords = np.swapaxes(np.swapaxes(coordinate_mesh, 0, 1), 1, 2)
+            discrete_coords = np.swapaxes(np.swapaxes(coordinate_mesh, 0, 1), 1, 2) #
         return discrete_coords
 
     def get_vectors_between___accounting_for_environment(
@@ -799,42 +854,44 @@ class Environment:
         return walls_to_pos_vectors
 
     def apply_boundary_conditions(self, pos):
-        """Performs a boundary condition check. If pos is OUTside the environment and the boundary conditions are solid then a different position, safely located 1cm within the environmnt, is returne3d. If pos is OUTside the environment but boundary conditions are periodic its position is looped to the other side of the environment appropriately.
+        """Performs a boundary condition check. If pos is OUTside the environment and the boundary conditions are solid then a different position, safely located 1cm within the environmnt, is returned. If pos is OUTside the environment but boundary conditions are periodic its position is looped to the other side of the environment appropriately.
         Args:
             pos (np.array): 1 or 2 dimensional position
         returns new_pos
+        TODO update this so if pos is in one of the holes the Agent is returned to the ~nearest legal location inside the Environment
         """
-        if self.check_if_position_is_in_environment(pos) is False:
-            if self.dimensionality == "1D":
-                if self.boundary_conditions == "periodic":
-                    pos = pos % self.extent[1]
-                if self.boundary_conditions == "solid":
-                    pos = min(max(pos, self.extent[0] + 0.01), self.extent[1] - 0.01)
-                    pos = np.reshape(pos, (-1))
-            elif self.dimensionality == "2D":
-                if self.is_rectangular == True:
-                    if not (
-                        matplotlib.path.Path(self.boundary).contains_point(
-                            pos, radius=-1e-10
+        if self.check_if_position_is_in_environment(pos) is True: return pos
+
+        if self.dimensionality == "1D":
+            if self.boundary_conditions == "periodic":
+                pos = pos % self.extent[1]
+            if self.boundary_conditions == "solid":
+                pos = min(max(pos, self.extent[0] + 0.01), self.extent[1] - 0.01)
+                pos = np.reshape(pos, (-1))
+        elif self.dimensionality == "2D":
+            if self.is_rectangular == True:
+                if not (
+                    matplotlib.path.Path(self.boundary).contains_point(
+                        pos, radius=-1e-10
+                    )
+                ):  # outside the bounding environment (i.e. not just in a hole), apply BCs
+                    if self.boundary_conditions == "periodic":
+                        pos[0] = pos[0] % self.extent[1]
+                        pos[1] = pos[1] % self.extent[3]
+                    if self.boundary_conditions == "solid":
+                        # in theory this wont be used as wall bouncing catches it earlier on
+                        pos[0] = min(
+                            max(pos[0], self.extent[0] + 0.01),
+                            self.extent[1] - 0.01,
                         )
-                    ):  # outside the bounding environment (i.e. not just in a hole), apply BCs
-                        if self.boundary_conditions == "periodic":
-                            pos[0] = pos[0] % self.extent[1]
-                            pos[1] = pos[1] % self.extent[3]
-                        if self.boundary_conditions == "solid":
-                            # in theory this wont be used as wall bouncing catches it earlier on
-                            pos[0] = min(
-                                max(pos[0], self.extent[0] + 0.01),
-                                self.extent[1] - 0.01,
-                            )
-                            pos[1] = min(
-                                max(pos[1], self.extent[2] + 0.01),
-                                self.extent[3] - 0.01,
-                            )
-                    else:  # in this case, must just be in a hole. sample new position (there should be a better way to do this but, in theory, this isn't used)
-                        pos = self.sample_positions(n=1, method="random").reshape(-1)
-                else:  # polygon shaped env, just resample random position
+                        pos[1] = min(
+                            max(pos[1], self.extent[2] + 0.01),
+                            self.extent[3] - 0.01,
+                        )
+                else:  # in this case, must just be in a hole. sample new position (there should be a better way to do this but, in theory, this isn't used)
                     pos = self.sample_positions(n=1, method="random").reshape(-1)
+            else:  # polygon shaped env, just resample random position
+                pos = self.sample_positions(n=1, method="random").reshape(-1)
         return pos
 
     def export_agents_history(self,

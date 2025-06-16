@@ -1,17 +1,6 @@
-⚠️⚠️⚠️WARNING: THIS BRANCH IS DEPRECATED⚠️⚠️⚠️
+# RatInABox ![Tests](https://github.com/RatInABox-Lab/RatInABox/actions/workflows/test.yml/badge.svg)   [![PyPI version](https://badge.fury.io/py/ratinabox.svg)](https://badge.fury.io/py/ratinabox) [![Downloads](https://static.pepy.tech/badge/ratinabox)](https://pepy.tech/project/ratinabox) [![PyPI Downloads](https://static.pepy.tech/badge/ratinabox/week)](https://pepy.tech/projects/ratinabox)<img align="right" src=".images/readme/logo.png" width=150> 
 
-The new default branch is `origin/main`, please make all PRs etc. here. To reassign your local branches upstream to be `origin/main` do 
-
-```
-git branch --set-upstream-to=origin/main <name-of-your-local-branch.
-```
-
-
-
-
-# RatInABox ![Tests](https://github.com/RatInABox-Lab/RatInABox/actions/workflows/test.yml/badge.svg)   [![PyPI version](https://badge.fury.io/py/ratinabox.svg)](https://badge.fury.io/py/ratinabox) [![Downloads](https://static.pepy.tech/badge/ratinabox)](https://pepy.tech/project/ratinabox)<img align="right" src=".images/readme/logo.png" width=150> 
-
-`RatInABox` (see [paper](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v3)) is a toolkit for generating synthetic behaviour and neural data for spatially and/or velocity selective cell types in complex continuous environments. 
+`RatInABox` (see [paper](https://elifesciences.org/articles/85274)) is a toolkit for generating synthetic behaviour and neural data for spatially and/or velocity selective cell types in complex continuous environments. 
 
 [**Install**](#installing-and-importing) | [**Demos**](#get-started) | [**Features**](#feature-run-down) | [**Contributions and Questions**](#contribute) | [**Cite**](#cite)
 
@@ -21,6 +10,7 @@ With `RatInABox` you can:
 * **Generate realistic trajectories** for rats exploring complex 1 and 2D environments under a smooth random policy, an external control signal, or your own trajectory data.
 * **Generate artificial neuronal data** for various location- or velocity-selective cells found in the brain (e.g., but not limited to, Hippocampal cell types), or build your own more complex cell types. 
 * **Build and train complex multi-layer networks** of cells, powered by data generated with `RatInABox`. 
+
 
 <img src=".images/readme/ratinabox.gif" width=850>
 
@@ -57,7 +47,7 @@ The top animation shows an example use case: an `Agent` randomly explores a 2D `
 
 <!-- 
 ## Announcement about support for OpenAI's `gymnasium` <img src=".images/readme/gymnasium_logo.svg" width=25> API
-A new wrapper contributed by [@SynapticSage](https://github.com/SynapticSage) allows `RatInABox` to natively support OpenAI's [`gymnasium`](https://gymnasium.farama.org) API for standardised and multiagent reinforment learning. This can be used to flexibly integrate `RatInABox` with other RL libraries such as Stable-Baselines3 etc. and to build non-trivial tasks with objectives and time dependent rewards. Check it out [here](https://github.com/RatInABox-Lab/RatInABox/blob/dev/ratinabox/contribs/TaskEnv_example_files/TaskEnvironment_basics.md). -->
+A new wrapper contributed by [@SynapticSage](https://github.com/SynapticSage) allows `RatInABox` to natively support OpenAI's [`gymnasium`](https://gymnasium.farama.org) API for standardised and multiagent reinforment learning. This can be used to flexibly integrate `RatInABox` with other RL libraries such as Stable-Baselines3 etc. and to build non-trivial tasks with objectives and time dependent rewards. Check it out [here](https://github.com/RatInABox-Lab/RatInABox/blob/main/ratinabox/contribs/TaskEnv_example_files/TaskEnvironment_basics.md). -->
 
 ## Get started 
 Many [demos](./demos/) are provided. Reading through the [example scripts](#example-scripts) (one simple and one extensive, duplicated at the bottom of the readme) these should be enough to get started. We also provide numerous interactive jupyter scripts as more in-depth case studies; for example one where `RatInABox` is used for [reinforcement learning](./demos/reinforcement_learning_example.ipynb), another for [neural decoding](./demos/decoding_position_example.ipynb) of position from firing rate. Jupyter scripts reproducing all figures in the [paper](./demos/paper_figures.ipynb) and [readme](./demos/readme_figures.ipynb) are also provided. All [demos](./demos/) can be run on Google Colab [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](./demos/)
@@ -110,6 +100,7 @@ Here is a list of features loosely organised into those pertaining to
 * [Plotting rate maps](#rate-maps)
 * [Place cell models](#place-cell-models) 
 * [Place cell geometry](#geometry-of-placecells)
+* [Grid cell models](#grid-cell-models)
 * [Egocentric encodings](#egocentric-encodings)
 * [Reinforcement learning and successor features](#reinforcement-learning-and-successor-features)
 * [Deep neural networks](#neurons-as-function-approximators)
@@ -135,9 +126,9 @@ Here are some easy to make examples.
 #### **Complex `Environment`s: Polygons, curves, and holes**
 By default, `Environments` in RatInABox are square (or rectangular if `aspect != 1`). It is possible to create arbitrary environment shapes using the `"boundary"` parameter at initialisation. 
 
-One can all add holes to the `Environment` using the `"holes"` parameter at initialisation. Positions sampled from the Environment (e.g. at initialisation) won't be inside holes.
+You can also add holes to the `Environment` using the `"holes"` parameter at initialisation. When sampling positions from the Environment (e.g. at initialisation), holes won't be included.
 
-Any curved environments can be made by creating a boundary of many small walls (uyse sparingly, walls may slow down computations)
+Any curved environments can be made by creating a boundary of many small walls (use sparingly, walls may slow down computations, particular for wall-responsive representations, e.g. boundary vector cells.)
 
 ```python 
 #A trapezium shaped Environment
@@ -157,7 +148,6 @@ Env = Environment(params = {
     'boundary':[[0.5*np.cos(t),0.5*np.sin(t)] for t in np.linspace(0,2*np.pi,100)],
     })
 ```
-
 
 <img src=".images/readme/complex_envs.png" width=1000>
 
@@ -333,7 +323,38 @@ Choose how you want `PlaceCells` to interact with walls in the `Environment`. We
 
 <img src=".images/readme/wall_geometry.png" width=900>
 
-  
+#### **Grid cell models** 
+The default grid cell model is a _rectified sum of three cosines_ (see paper) with an additional parameter controlling the field-width : gri spacing ratio. There is also a _shifted cosine_ model. And analagous models are defined in 1D as well. 
+
+<img src=".images/readme/grid_geometry.png" width=600>
+
+
+By default 30 grid cells are samples in evenly sized `"modules"` of increasing gridscale and orientation and offsets are `"uniform"` random between 0 and 2 $\pi$.
+
+To initialise non-default grid cells users specify their (i) `params['gridscale']`, (ii) `params['orientation']` and (iii) `params['phase_offset']`. These can be handed in as either: 
+- lists/arrays: in which case they are set to these _exact_ values, one per cell)
+- tuples: in which case the values inside the tuples define the parameters of a distribution (the string defined by params['<param>_distribution']) from which the parameters are sampled. 
+
+```python
+GCs = GridCells(Ag,
+                params = {
+                    "n": 30,
+                    "gridscale_distribution": "modules",
+                    "gridscale": (0.3, 0.5, 0.8),
+                    "orientation_distribution": "modules",
+                    "orientation": (0, 0.1, 0.2), #radians 
+                    "phase_offset_distribution": "uniform",
+                    "phase_offset": (0, 2 * np.pi), #degrees 
+                    "description": "rectified_cosines",  
+                    "width_ratio":4/(3*np.sqrt(3)), 
+                })
+```
+
+<img src=".images/readme/gridcells_default.png" width=600>
+
+
+
+
 #### **Egocentric encodings**
 Most `RatInABox` cell classes are allocentric (e.g. `PlaceCells`, `GridCells` etc. do not depend on the agents point of view) not egocentric. `BoundaryVectorCells` (BVCs) and `ObjectVectorCells` (OVCs) can be either. `FieldOfViewNeurons` exploit this by arranging sets of egocentric BVC or OVCs to tile to agents local field of view creating a comprehensive egocentric encoding of what boundaries or objects the agent can 'see' from it's current point of view. A custom plotting function displays the tiling and the firing rates as shown below. With an adequately defined field of view these can make, for example, "whisker cells". 
 
@@ -455,26 +476,30 @@ Questions? Just ask! Ideally via opening an issue so others can see the answer t
 Thanks to all contributors so far:
 ![GitHub Contributors Image](https://contrib.rocks/image?repo=RatInABox-Lab/RatInABox)
 
-## Cite [![](http://img.shields.io/badge/bioRxiv-10.1101/2022.08.10.503541-B31B1B.svg)](https://doi.org/10.1101/2022.08.10.503541) 
+## Cite 
 
 If you use `RatInABox` in your research or educational material, please cite the work as follows: 
+
 Bibtex:
 ```
-@article{ratinabox2022,
-	doi = {10.1101/2022.08.10.503541},
-	url = {https://doi.org/10.1101%2F2022.08.10.503541},
-	year = 2022,
-	month = {aug},
-	publisher = {Cold Spring Harbor Laboratory},
-	author = {Tom M George and William de Cothi and Claudia Clopath and Kimberly Stachenfeld and Caswell Barry},
-	title = {{RatInABox}: A toolkit for modelling locomotion and neuronal activity in continuous environments}
+@article{George2024,
+  title = {RatInABox,  a toolkit for modelling locomotion and neuronal activity in continuous environments},
+  volume = {13},
+  ISSN = {2050-084X},
+  url = {http://dx.doi.org/10.7554/eLife.85274},
+  DOI = {10.7554/elife.85274},
+  journal = {eLife},
+  publisher = {eLife Sciences Publications,  Ltd},
+  author = {George,  Tom M and Rastogi,  Mehul and de Cothi,  William and Clopath,  Claudia and Stachenfeld,  Kimberly and Barry,  Caswell},
+  year = {2024},
+  month = feb 
 }
 ```
 
 Formatted:
 ```
-Tom M George, William de Cothi, Claudia Clopath, Kimberly Stachenfeld, Caswell Barry. "RatInABox: A toolkit for modelling locomotion and neuronal activity in continuous environments" (2022).
+Tom M George, Mehul Rastogi, William de Cothi, Claudia Clopath, Kimberly Stachenfeld, Caswell Barry. "RatInABox, a toolkit for modelling locomotion and neuronal activity in continuous environments" (2024), eLife, https://doi.org/10.7554/eLife.85274 .
 ``` 
-The research paper corresponding to the above citation can be found [here](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v4).
+The research paper corresponding to the above citation can be found [here](https://elifesciences.org/articles/85274).
 
 

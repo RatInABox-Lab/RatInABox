@@ -26,3 +26,5 @@ We have included an extra GitHub actions workflow in `.github/workflows/docs_bui
 * The published docs are by default hosted at `https://<github_username_or_organization>.github.io/<package_name>/`. To enable hosting, you will need to go to the settings of your repository, and under the "Pages" section, select the `gh-pages` branch as the source for your GitHub pages site.
 * A popular alternative to GitHub pages for hosting the documentation is [Read the Docs](https://readthedocs.org/). To enable hosting on Read the Docs, you will need to create an account on the website and follow the instructions to link your GitHub repository to your Read the Docs account.
 
+## Publishing override
+Go onto the github actions page on GitHub and go to the "Build Sphinx docs and deploy to GitHub Pages" workflow. Click "Run workflow". Should manually build and deploy docs with requiring a new tag. 
