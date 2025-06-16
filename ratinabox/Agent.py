@@ -538,7 +538,7 @@ class Agent:
     def export_history(self, 
                     filename:Union[str,None] = None,
                     keys_to_export: Union[str, list[str], None] = None,
-                    save_to_file: bool = True,
+                    save_to_file: bool = False,
                     **kwargs
                     )-> pd.DataFrame:
         """Exports the agent history to a csv file at the given filename.Only the parameters saved to history are exported, not the agent parameters.
@@ -597,6 +597,9 @@ class Agent:
             elif self.Environment.dimensionality == "1D":
                 dict_to_export["head_dir_x"] = head_direction[:, 0]
                 dict_to_export["head_dir_y"] = np.zeros_like(head_direction[:, 0])
+                
+        if "distance_travelled" in keys_to_export:
+            dict_to_export["distance_travelled"] = np.array(self.history["distance_travelled"]).astype(np.float32)
         
         
         return utils.export_history(

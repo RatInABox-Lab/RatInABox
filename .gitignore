@@ -18,3 +18,4 @@ community_use_cases.md
 .vscode/
 
 .idea/
+*.parquet

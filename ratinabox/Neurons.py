@@ -698,7 +698,7 @@ class Neurons:
     def export_history(self, 
                     filename:Union[str,None] = None,
                     keys_to_export: Union[str, list[str],None] = None,
-                    save_to_file:bool = True,
+                    save_to_file:bool = False,
                     **kwargs
                     ) -> pd.DataFrame:
         """Exports the Neuron history to a csv file at the given filename.Only the parameters saved to history are exported, not the agent parameters.
