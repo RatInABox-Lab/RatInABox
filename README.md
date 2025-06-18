@@ -1,3 +1,14 @@
+⚠️⚠️⚠️WARNING: THIS BRANCH IS DEPRECATED⚠️⚠️⚠️
+
+The new default branch is `origin/main`, please make all PRs etc. here. To reassign your local branches upstream to be `origin/main` do 
+
+```
+git branch --set-upstream-to=origin/main <name-of-your-local-branch.
+```
+
+
+
+
 # RatInABox ![Tests](https://github.com/RatInABox-Lab/RatInABox/actions/workflows/test.yml/badge.svg)   [![PyPI version](https://badge.fury.io/py/ratinabox.svg)](https://badge.fury.io/py/ratinabox) [![Downloads](https://static.pepy.tech/badge/ratinabox)](https://pepy.tech/project/ratinabox)<img align="right" src=".images/readme/logo.png" width=150> 
 
 `RatInABox` (see [paper](https://elifesciences.org/articles/85274)) is a toolkit for generating synthetic behaviour and neural data for spatially and/or velocity selective cell types in complex continuous environments. 
