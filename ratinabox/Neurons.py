@@ -1826,7 +1826,7 @@ class BoundaryVectorCells(VectorCells):
 
         for i, n in enumerate(chosen_neurons):
             mu_r = self.tuning_distances[n]
-            sigma_r = self.sigma_angles[n]
+            sigma_r = self.sigma_distances[n] 
             mu_theta = self.tuning_angles[n]
             sigma_theta = self.sigma_angles[n]
             receptive_field = bvc_rf(
