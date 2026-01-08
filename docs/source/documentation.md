@@ -31,7 +31,7 @@ Here is a list of features loosely organised into those pertaining to
 
 (iv) [Figures and animations plotting](#iv-figures-and-animations)
 
-Specific details can be found in the [paper](https://www.biorxiv.org/content/10.1101/2022.08.10.503541v3). 
+Specific details can be found in the eLife paper. 
 
 
 

@@ -128,3 +128,10 @@ html_baseurl = f"https://{github_user}.github.io/{project}"
 # so a file named "default.css" will overwrite the builtin "default.css".
 # html_static_path = ['_static']
 
+# -- Options for linkcheck builder -------------------------------------------
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-the-linkcheck-builder
+
+linkcheck_ignore = [
+    r'https://doi\.org/.*',           # DOIs often redirect to sites that block bots
+    r'https://www\.biorxiv\.org/.*',  # BioRxiv blocks the default Sphinx user agent
+] # prevents bioarxiv captcha breaking build 
