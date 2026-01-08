@@ -638,6 +638,7 @@ def mountain_plot(
     fc = 0.3 * c + (1 - 0.3) * np.array([1, 1, 1])  # convert rgb+alpha to rgb
     norm = np.max(np.abs(NbyX)) if norm_by == "max" else norm_by
     global_shift = kwargs.get("global_shift", 0) #any additional shift to add to each of the lines
+    shade_skiprate = kwargs.get("shade_skiprate", 1) # skip rate for plotting shading (1 for every points, etc.)
     if norm <= 1e-6: norm=100 #large
     NbyX = overlap * NbyX / norm
     if fig is None and ax is None:
@@ -654,11 +655,12 @@ def mountain_plot(
 
     zorder = 1
     X_ = X.copy()
+    mask = np.arange(len(X_))[::shade_skiprate]
     if nan_bins is not None: X_[nan_bins] = np.nan
     for i in range(len(NbyX)):
         ax.plot(X_, NbyX[i] + i + 1 + global_shift, c=c, zorder=zorder, lw=linewidth)
         zorder -= 0.01
-        ax.fill_between(X_, NbyX[i] + i + 1 + global_shift, i + 1 + global_shift, color=fc, zorder=zorder, alpha=0.8, linewidth=0, **shade_kwargs)
+        ax.fill_between(X_[mask], NbyX[i][mask] + i + 1 + global_shift, i + 1 + global_shift, color=fc, zorder=zorder, alpha=0.8, linewidth=0, **shade_kwargs)
         zorder -= 0.01
     ax.spines["left"].set_bounds(1, len(NbyX))
     ax.spines["bottom"].set_position(("outward", 1))

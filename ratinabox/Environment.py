@@ -410,6 +410,8 @@ class Environment:
         Returns:
             fig, ax: the environment figures, can be used for further downstream plotting.
         """
+        wall_lw = kwargs.get("wall_lw", 4.0) # wall linewidth for 2D environment
+
         if self.dimensionality == "1D":
             extent = self.extent
             if fig is None and ax is None:
@@ -509,7 +511,7 @@ class Environment:
                     [wall[0][0], wall[1][0]],
                     [wall[0][1], wall[1][1]],
                     color=ratinabox.GREY,
-                    linewidth=4.0,
+                    linewidth=wall_lw,
                     solid_capstyle="round",
                     zorder=2,
                 )
