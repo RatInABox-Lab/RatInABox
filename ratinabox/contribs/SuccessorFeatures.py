@@ -13,11 +13,11 @@ class SuccessorFeatures(ValueNeuron):
     """
     Contributer: Tom George tomgeorge1@btinternet.com
 
-    The SuccessorFeatures class defines neuron(s) which learns the "successor features" of a set of features {\phi_i(x)}, using TD learning. This is a special case of the ValueNeuron class where the reward function is the features (thus the value function being learned are the successor features). Successor features are approximated, {\hat{\psi}_i}, as a non-linearly activated (default relu) linear sum of a set of "basis features", {f_i(x)}.
+    The SuccessorFeatures class defines neuron(s) which learns the "successor features" of a set of features {\\phi_i(x)}, using TD learning. This is a special case of the ValueNeuron class where the reward function is the features (thus the value function being learned are the successor features). Successor features are approximated, {\\hat{\\psi}_i}, as a non-linearly activated (default relu) linear sum of a set of "basis features", {f_i(x)}.
 
     Note the basis features are not the same as the input features, they are a set of basis functions (e.g. place cells, grid cells, boundary vector cells etc...) which are used to represent the successor features of the input features. This TeX equation summarises the idea:
 
-    $$\hat{\psi_i}(t) = \sigma^{\textrm{non-lin}}\bigg(\sum_j w_{ij} f_j(t)\bigg)  \approx \psi_i^{\pi}(t) = \mathbb{E} \bigg[  \int_{t}^{\infty} e^{-\frac{t^{\prime}-t}{\tau}} \phi_i(t^{\prime}) dt^{\prime}\bigg] $$
+    $$\\hat{\\psi_i}(t) = \\sigma^{\\textrm{non-lin}}\\bigg(\\sum_j w_{ij} f_j(t)\\bigg)  \\approx \\psi_i^{\\pi}(t) = \\mathbb{E} \\bigg[  \\int_{t}^{\\infty} e^{-\\frac{t^{\\prime}-t}{\\tau}} \\phi_i(t^{\\prime}) dt^{\\prime}\\bigg] $$
 
     Basis features can be any list of RatInABox Neurons class here (a set of PlaceCells, BoundaryVectorCells, GridCells etc...or more complex things). Specify basis features with the params["input_layers"] kwarg. It linearly sums these inputs to calculate the firing rate (this summation is all handled by the FeedForwardLayer class). Since successor features are a subset of value functions (where the reward is the feature activity), this class is a subclass of WalueNeuron. The only fundamental difference is it also insists you pass features, on each update_weights() call passes the activity of the feaures to super().update() as reward signals. Weights are trained using TD learning, self.update_weights() should be called at each update step. Remember 'eta' and 'tau_e' as kwargs of the ValueNeuron which you may like to play around with. For more infor see ratinabox/example_scripts/successor_features/ or the parent class ValueNeuron for details of the learning rule.
 
