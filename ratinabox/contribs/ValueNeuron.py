@@ -13,15 +13,15 @@ class ValueNeuron(FeedForwardLayer):
 
     The ValueNeuron class defines neuron(s) which learns the "value" of a policy using TD learning. For n > 1 the reward function is assumed to be multidimensional and n value functions (one neuron for each reward function) will be learned under the current policy.  
 
-    The true value function, V, is approximated, \hat{V}, as a non-linearly activated (default relu) linear sum of input features (i.e. one layer neural network, in later classes we may generalise this):
+    The true value function, V, is approximated, \\hat{V}, as a non-linearly activated (default relu) linear sum of input features (i.e. one layer neural network, in later classes we may generalise this):
 
-    V_i(x) = \int_{t}^{\infty}e^{-\frac{t^{\prime}-t}{\tau}}R_i(x(t^{\prime}))) dt^{\prime} | x(t) = x    \\
-    \hat{V}_i(x) \approx \sigma_{nonlinearity} ( \w_{ij} \cdot \phi_j(x) )
+    V_i(x) = \\int_{t}^{\\infty}e^{-\\frac{t^{\\prime}-t}{\\tau}}R_i(x(t^{\\prime}))) dt^{\\prime} | x(t) = x    \\
+    \\hat{V}_i(x) \\approx \\sigma_{nonlinearity} ( \\w_{ij} \\cdot \\phi_j(x) )
 
     For this we calculate the (temporally continuous) temporal difference error and apply it to the weights:
     
     td_error(t) = R(t) + dV(t)/dt - V(t) 
-    d w_i = \eta td_error(t) \z_i(t) \psi_prime(t)
+    d w_i = \\eta td_error(t) \\z_i(t) \\psi_prime(t)
 
     where z is the eligibility trace of the i^th feature (psi_prime accounts for the non-linearrity in the learning rule and is caluclated by the parent class. 
 
